@@ -120,6 +120,13 @@
       </div>
     </div>
 
+    <div class="row2">
+      <div class="field">
+        <label>Position texte Y (%)</label>
+        <input type="number" id="textY" value="90" min="10" max="100" step="1" />
+      </div>
+    </div>
+
     <div id="dlWrap">
       <button class="btn btn-success" id="dlBtn">↓ Télécharger le post Instagram</button>
     </div>
@@ -147,6 +154,7 @@
     const fontSizeEl   = document.getElementById('fontSize');
     const lineSpacingEl = document.getElementById('lineSpacing');
     const logoYEl       = document.getElementById('logoY');
+    const textYEl       = document.getElementById('textY');
     const modeTabs     = document.getElementById('modeTabs');
     const modeNoticeIcon = document.getElementById('modeNoticeIcon');
     const modeNoticeText = document.getElementById('modeNoticeText');
@@ -297,7 +305,7 @@
       ctx.textAlign = 'center';
 
       const lines   = wrapText(text, TXT_W);
-      const anchorY = H * 0.90;
+      const anchorY = H * ((parseFloat(textYEl.value) || 90) / 100);
       const startY  = anchorY - lines.length * lineH + lineH;
 
       lines.forEach((line, i) => {
@@ -415,6 +423,7 @@
     fontSizeEl.addEventListener('input',   draw);
     lineSpacingEl.addEventListener('input', draw);
     logoYEl.addEventListener('input',      draw);
+    textYEl.addEventListener('input',      draw);
 
     setMode('fr');
   </script>
