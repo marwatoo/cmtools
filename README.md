@@ -35,21 +35,21 @@ mediatools/
 │   ├── theme.js                ← Dark/light mode toggle (persisted in localStorage)
 │   │
 │   ├── ig/
-│   │   ├── branding.png        ← ⚠️ YOU MUST ADD THIS (IG Sport overlay)
-│   │   └── LamaSans-ExtraBold.ttf  ← ⚠️ YOU MUST ADD THIS (Arabic font)
+│   │   └── branding.png        ← ⚠️ YOU MUST ADD THIS (IG Sport overlay)
 │   │
 │   └── diapo/
-│       └── logo.png            ← ⚠️ YOU MUST ADD THIS (Diapo logo overlay)
-│
+│   │  └── logo.png            ← ⚠️ YOU MUST ADD THIS (Diapo logo overlay)
 ├── overlays/                   ← ⚠️ YOU MUST ADD THESE (YT Cover overlays)
 │   ├── ar.png
 │   ├── fr.png
 │   ├── footix.png
 │   └── sport.png
 │
+│
 ├── fonts/                      ← ⚠️ YOU MUST ADD THESE (YT Cover fonts)
 │   ├── Cairo-Bold.ttf
 │   └── DINCondensed-Bold.ttf
+│   └── LamaSans-ExtraBold.ttf  ← ⚠️ YOU MUST ADD THIS (Arabic font)
 │
 └── tools/
     ├── ytcover.html            ← Tool 01: YT Cover Creator
@@ -68,10 +68,10 @@ You must copy your own proprietary assets into the correct folders before deploy
 ### YT Cover Creator (`/overlays/` + `/fonts/`)
 | File | Purpose |
 |------|---------|
-| `overlays/ar.png` | Arabic overlay template |
-| `overlays/fr.png` | French overlay template |
-| `overlays/footix.png` | Footix overlay template |
-| `overlays/sport.png` | Sport overlay template |
+| `assets/overlays/ar.png` | Arabic overlay template |
+| `assets/overlays/fr.png` | French overlay template |
+| `assets/overlays/footix.png` | Footix overlay template |
+| `assets/overlays/sport.png` | Sport overlay template |
 | `fonts/Cairo-Bold.ttf` | Arabic text font |
 | `fonts/DINCondensed-Bold.ttf` | French/Latin text font |
 
