@@ -6,152 +6,60 @@
   <title>Insta Post — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
   <style>
-    :root {
-      --bg:        #0a0a0f;
-      --bg2:       #111118;
-      --bg3:       #1a1a24;
-      --border:    rgba(255,255,255,0.07);
-      --border2:   rgba(255,255,255,0.13);
-      --text:      #e8e8f0;
-      --text2:     #8888a8;
-      --text3:     #555570;
-      --accent:    #e8ff47;
-      --card-bg:   #13131c;
-      --input-bg:  #1a1a26;
-      --btn-bg:    #e8ff47;
-      --btn-text:  #0a0a0f;
-      --radius:    16px;
-      --radius-sm: 10px;
-      --radius-xs: 6px;
-    }
-    [data-theme="light"] {
-      --bg:        #f4f4f0;
-      --bg2:       #ffffff;
-      --bg3:       #ebebeb;
-      --border:    rgba(0,0,0,0.07);
-      --border2:   rgba(0,0,0,0.13);
-      --text:      #111118;
-      --text2:     #555570;
-      --text3:     #aaaacc;
-      --accent:    #3a2fff;
-      --card-bg:   #ffffff;
-      --input-bg:  #f8f8fc;
-      --btn-bg:    #111118;
-      --btn-text:  #ffffff;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      background: var(--bg); color: var(--text);
-      line-height: 1.6; min-height: 100vh;
-      transition: background .3s, color .3s;
-      -webkit-font-smoothing: antialiased;
-    }
-    .nav {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 24px;
-      background: var(--bg); border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-    }
-    .nav-back {
-      display: flex; align-items: center; gap: 6px;
-      color: var(--text2); text-decoration: none;
-      font-size: .85rem; font-weight: 500;
-      padding: 6px 12px;
-      border: 1px solid var(--border2); border-radius: var(--radius-xs);
-      transition: all .2s;
-    }
-    .nav-back:hover { color: var(--text); border-color: var(--accent); }
-    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
-    .nav-num { font-size: .75rem; color: var(--text3); }
-    .theme-toggle {
-      margin-left: auto; width: 38px; height: 38px;
-      border: 1px solid var(--border2); border-radius: 50%;
-      background: transparent; color: var(--text2);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 1rem; transition: all .2s;
-    }
-    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
-    .tool-page { max-width: 620px; margin: 0 auto; padding: 32px 20px 80px; }
-    .tool-header { margin-bottom: 28px; }
-    .tool-header h1 {
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 1.8rem; letter-spacing: -.02em; margin-bottom: 6px;
-    }
-    .tool-header p { color: var(--text2); font-size: .9rem; }
+    /* ── page-specific only ─────────────────────────────────────────────── */
     .mode-tabs {
-      display: flex; gap: 6px; margin-bottom: 24px;
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 5px;
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px;
     }
     .mode-tab {
-      flex: 1; padding: 9px 14px; border: none;
-      background: transparent; color: var(--text2);
-      font-family: 'Syne', sans-serif; font-size: .75rem; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
-      cursor: pointer; border-radius: var(--radius-xs); transition: all .2s;
+      flex: 1;
+      padding: 9px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: var(--radius-xs);
+      transition: all .2s;
     }
-    .mode-tab:hover { color: var(--text); background: var(--bg3); }
+    .mode-tab:hover  { color: var(--text); background: var(--bg3); }
     .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
-    .notice {
-      padding: 14px 18px; border-radius: var(--radius-sm);
-      background: var(--bg3); border-left: 3px solid var(--accent);
-      font-size: .85rem; color: var(--text2); margin-bottom: 20px; line-height: 1.5;
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
     }
-    .upload-zone {
-      border: 2px dashed var(--border2); border-radius: var(--radius-sm);
-      padding: 32px 20px; text-align: center; cursor: pointer;
-      transition: all .2s; margin-bottom: 20px; position: relative;
-      background: var(--card-bg);
-    }
-    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--bg3); }
-    .upload-zone.has-file { border-style: solid; border-color: #1a7f37; }
-    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
-    .upload-text { font-size: .9rem; color: var(--text2); }
-    .upload-browse { color: var(--accent); text-decoration: underline; }
-    .field { margin-bottom: 16px; }
-    .field label {
-      display: block; font-size: .8rem; font-weight: 500;
-      letter-spacing: .04em; color: var(--text2); margin-bottom: 6px;
-    }
-    .field input[type=text],
-    .field select,
-    .field textarea {
-      width: 100%; padding: 10px 14px;
-      background: var(--input-bg); border: 1px solid var(--border2);
-      border-radius: var(--radius-xs); color: var(--text);
-      font-family: 'DM Sans', sans-serif; font-size: .9rem;
-      outline: none; transition: border-color .2s;
-    }
-    .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
-    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
     #dlWrap {
-      margin-top: 16px; overflow: hidden; max-height: 0; opacity: 0;
+      margin-top: 16px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
       transition: max-height .25s ease, opacity .25s ease;
     }
     #dlWrap.visible { max-height: 60px; opacity: 1; }
-    .btn {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 12px 20px; border-radius: var(--radius-xs); border: none;
-      font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: .95rem;
-      cursor: pointer; transition: all .2s; width: 100%;
-    }
-    .btn-success { background: #1a7f37; color: #fff; }
-    .btn-success:hover { background: #196f30; }
-    .canvas-wrap {
-      margin-top: 16px; border-radius: var(--radius); overflow: hidden;
-      border: 1px solid var(--border); background: #000;
-    }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    #dlWrap .btn    { width: 100%; margin-bottom: 0; justify-content: center; }
   </style>
 </head>
 <body>
@@ -171,7 +79,7 @@
 
     <div class="mode-tabs" id="modeTabs">
       <button class="mode-tab active" data-mode="fr">🇫🇷 Français</button>
-      <button class="mode-tab" data-mode="ar">🇲🇦 Arabe</button>
+      <button class="mode-tab"        data-mode="ar">🇲🇦 Arabe</button>
     </div>
 
     <div class="notice" id="modeNotice">
@@ -196,14 +104,19 @@
         <input type="text" id="highlightWord" placeholder="ex: 90 MILLIONS" />
       </div>
       <div class="field">
-        <label>Taille de police</label>
-        <select id="fontSize">
-          <option value="80">Très grande — 80pt</option>
-          <option value="68" selected>Grande — 68pt</option>
-          <option value="56">Moyenne — 56pt</option>
-          <option value="44">Petite — 44pt</option>
-          <option value="34">Très petite — 34pt</option>
-        </select>
+        <label>Taille de police (px)</label>
+        <input type="number" id="fontSize" value="107" min="20" max="300" step="1" />
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Interligne (px)</label>
+        <input type="number" id="lineSpacing" value="0" min="-60" max="200" step="1" />
+      </div>
+      <div class="field">
+        <label>Position logo Y (%)</label>
+        <input type="number" id="logoY" value="0" min="-50" max="50" step="1" />
       </div>
     </div>
 
@@ -211,342 +124,299 @@
       <button class="btn btn-success" id="dlBtn">↓ Télécharger le post Instagram</button>
     </div>
 
-    <div class="canvas-wrap" style="aspect-ratio:4/5;">
+    <div class="canvas-wrap" style="aspect-ratio:4/5; margin-top:16px;">
       <canvas id="canvas" width="1080" height="1350" style="width:100%;height:auto;display:block;"></canvas>
     </div>
   </div>
 
-<script>
-  // ── Theme ──────────────────────────────────────────────────────────────────
-  (function () {
-    const key = 'mts-theme';
-    function get() {
-      return localStorage.getItem(key) ||
-        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    }
-    function apply(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      localStorage.setItem(key, t);
-      const ic = document.querySelector('.theme-icon');
-      if (ic) ic.textContent = t === 'dark' ? '☽' : '○';
-    }
-    apply(get());
-    document.addEventListener('DOMContentLoaded', () => {
-      const btn = document.getElementById('themeToggle');
-      if (btn) btn.addEventListener('click', () => {
-        apply(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-      });
-    });
-  })();
+  <script>
+    const W = 1080, H = 1350;
+    const ORANGE = '#ff7a14';
+    const MARGIN = 33;
+    const TXT_W  = W - MARGIN * 2; // 1014px
 
-  // ── Setup ──────────────────────────────────────────────────────────────────
-  const W = 1080, H = 1350;
-  const ORANGE  = '#ff7a14';
-  const MARGIN  = 33;        // (1080 - 1014) / 2
-  const TXT_W   = W - MARGIN * 2; // 1014px
+    const canvas       = document.getElementById('canvas');
+    const ctx          = canvas.getContext('2d');
+    const upload       = document.getElementById('upload');
+    const dropzone     = document.getElementById('dropzone');
+    const uploadText   = document.getElementById('uploadText');
+    const dlWrap       = document.getElementById('dlWrap');
+    const dlBtn        = document.getElementById('dlBtn');
+    const txtMain      = document.getElementById('txtMain');
+    const hlWordEl     = document.getElementById('highlightWord');
+    const fontSizeEl   = document.getElementById('fontSize');
+    const lineSpacingEl = document.getElementById('lineSpacing');
+    const logoYEl       = document.getElementById('logoY');
+    const modeTabs     = document.getElementById('modeTabs');
+    const modeNoticeIcon = document.getElementById('modeNoticeIcon');
+    const modeNoticeText = document.getElementById('modeNoticeText');
+    const labelText    = document.getElementById('labelText');
 
-  const canvas      = document.getElementById('canvas');
-  const ctx         = canvas.getContext('2d');
-  const upload      = document.getElementById('upload');
-  const dropzone    = document.getElementById('dropzone');
-  const uploadText  = document.getElementById('uploadText');
-  const dlWrap      = document.getElementById('dlWrap');
-  const dlBtn       = document.getElementById('dlBtn');
-  const txtMain     = document.getElementById('txtMain');
-  const hlWordEl    = document.getElementById('highlightWord');
-  const fontSizeEl  = document.getElementById('fontSize');
-  const modeTabs    = document.getElementById('modeTabs');
-  const modeNoticeIcon = document.getElementById('modeNoticeIcon');
-  const modeNoticeText = document.getElementById('modeNoticeText');
-  const labelText   = document.getElementById('labelText');
+    let currentFile = null;
+    let currentMode = 'fr';
 
-  let currentFile = null;
-  let currentMode = 'fr';
+    const MODES = {
+      fr: {
+        icon: '🇫🇷', label: 'Mode Français',
+        desc: 'DIN Condensed Bold, centré, marges 33px',
+        font: 'DINCondensedBold',
+        fallback: 'Impact, Helvetica Neue, Helvetica',
+        dir: 'ltr', upper: true,
+        lbl: 'Texte',
+        ph: 'PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026',
+      },
+      ar: {
+        icon: '🇲🇦', label: 'Mode Arabe',
+        desc: 'Somar Bold, centré, marges 33px',
+        font: 'SomarBold',
+        fallback: 'Arial',
+        dir: 'rtl', upper: false,
+        lbl: 'النص',
+        ph: 'مندوبية التخطيط: أسعار الخضر والمحروقات ارتفعت بأزيد من 9% في شهر واحد',
+      },
+    };
 
-  const MODES = {
-    fr: {
-      icon: '🇫🇷', label: 'Mode Français',
-      desc: 'DIN Condensed Bold, centré, marges 33px',
-      font: 'DINCondensedBold',
-      fallback: 'Impact, Helvetica Neue, Helvetica',
-      dir: 'ltr', upper: true,
-      lbl: 'Texte',
-      ph: 'PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026',
-    },
-    ar: {
-      icon: '🇲🇦', label: 'Mode Arabe',
-      desc: 'Somar Bold, centré, marges 33px',
-      font: 'SomarBold',
-      fallback: 'Arial',
-      dir: 'rtl', upper: false,
-      lbl: 'النص',
-      ph: 'مندوبية التخطيط: أسعار الخضر والمحروقات ارتفعت بأزيد من 9% في شهر واحد',
-    },
-  };
-
-  // ── Fonts ──────────────────────────────────────────────────────────────────
-  async function loadFonts() {
-    const list = [
-      { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
-      { name: 'SomarBold',        url: '../fonts/Somar-Bold.ttf' },
-    ];
-    for (const { name, url } of list) {
-      try {
-        const f = new FontFace(name, `url(${url})`);
-        await f.load();
-        document.fonts.add(f);
-      } catch(e) { console.warn('Font not loaded:', name); }
-    }
-  }
-  const fontsReady = loadFonts();
-
-  // ── Image helpers ──────────────────────────────────────────────────────────
-  function loadImg(src) {
-    return new Promise((res, rej) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload  = () => res(img);
-      img.onerror = () => rej(new Error('Cannot load: ' + src));
-      img.src = src;
-    });
-  }
-
-  const cache = {};
-  function getCached(key, src) {
-    if (!cache[key]) cache[key] = loadImg(src);
-    return cache[key];
-  }
-  // Preload silently
-  getCached('shadow', '../assets/overlays/shadow.png').catch(() => {});
-  getCached('logo',   '../assets/overlays/le360.png').catch(() => {});
-
-  // ── Word-wrap ──────────────────────────────────────────────────────────────
-  // Never breaks a word mid-word. Returns array of line strings.
-  function wrapText(text, maxW) {
-    const words = text.split(' ');
-    const lines = [];
-    let line = '';
-    for (const word of words) {
-      const candidate = line ? line + ' ' + word : word;
-      if (ctx.measureText(candidate).width <= maxW) {
-        line = candidate;
-      } else {
-        if (line) lines.push(line);
-        line = word; // single word may exceed width — that's intentional, no mid-break
+    // ── Fonts ────────────────────────────────────────────────────────────────
+    async function loadFonts() {
+      const list = [
+        { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
+        { name: 'SomarBold',        url: '../fonts/Somar-Bold.ttf' },
+      ];
+      for (const { name, url } of list) {
+        try {
+          const f = new FontFace(name, `url(${url})`);
+          await f.load();
+          document.fonts.add(f);
+        } catch(e) { console.warn('Font not loaded:', name); }
       }
     }
-    if (line) lines.push(line);
-    return lines;
-  }
+    const fontsReady = loadFonts();
 
-  // ── Draw ───────────────────────────────────────────────────────────────────
-  async function draw() {
-    if (!currentFile) { updateDlBtn(); return; }
-
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-
-    // 1. Background — cover-fit
-    const bg    = await loadImg(URL.createObjectURL(currentFile));
-    const scale = Math.max(W / bg.width, H / bg.height);
-    const bw = bg.width * scale, bh = bg.height * scale;
-    ctx.drawImage(bg, (W - bw) / 2, (H - bh) / 2, bw, bh);
-
-    // 2. Shadow overlay — full canvas, NO crop/resize
-    try {
-      const sh = await getCached('shadow', '../assets/overlays/shadow.png');
-      ctx.drawImage(sh, 0, 0, W, H);
-    } catch(_) {
-      // fallback gradient
-      const g = ctx.createLinearGradient(0, H * 0.4, 0, H);
-      g.addColorStop(0,   'rgba(0,0,0,0)');
-      g.addColorStop(0.4, 'rgba(0,0,0,0.65)');
-      g.addColorStop(1,   'rgba(0,0,0,0.92)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
+    // ── Image helpers ────────────────────────────────────────────────────────
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Cannot load: ' + src));
+        img.src = src;
+      });
     }
 
-    // 3. le360 logo overlay — full canvas, NO crop/resize
-    try {
-      const logo = await getCached('logo', '../assets/overlays/le360.png');
-      ctx.drawImage(logo, 0, 0, W, H);
-    } catch(_) {
-      // fallback text logo
+    const imgCache = {};
+    function getCached(key, src) {
+      if (!imgCache[key]) imgCache[key] = loadImg(src);
+      return imgCache[key];
+    }
+    getCached('shadow', '../assets/overlays/shadow.png').catch(() => {});
+    getCached('logo',   '../assets/overlays/le360.png').catch(() => {});
+
+    // ── Word-wrap (no mid-word break) ────────────────────────────────────────
+    function wrapText(text, maxW) {
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for (const word of words) {
+        const candidate = line ? line + ' ' + word : word;
+        if (ctx.measureText(candidate).width <= maxW) {
+          line = candidate;
+        } else {
+          if (line) lines.push(line);
+          line = word;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    // ── Draw ─────────────────────────────────────────────────────────────────
+    async function draw() {
+      if (!currentFile) { updateDlBtn(); return; }
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      // 1. Background — cover-fit
+      const bg    = await loadImg(URL.createObjectURL(currentFile));
+      const scale = Math.max(W / bg.width, H / bg.height);
+      ctx.drawImage(bg, (W - bg.width * scale) / 2, (H - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+
+      // 2. Shadow overlay — full canvas, no crop
+      try {
+        const sh = await getCached('shadow', '../assets/overlays/shadow.png');
+        ctx.drawImage(sh, 0, 0, W, H);
+      } catch(_) {
+        const g = ctx.createLinearGradient(0, H * 0.4, 0, H);
+        g.addColorStop(0,   'rgba(0,0,0,0)');
+        g.addColorStop(0.4, 'rgba(0,0,0,0.65)');
+        g.addColorStop(1,   'rgba(0,0,0,0.92)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // 3. le360 logo — offset by logoY
+      const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * H;
+      try {
+        const logo = await getCached('logo', '../assets/overlays/le360.png');
+        ctx.drawImage(logo, 0, logoOffsetY, W, H);
+      } catch(_) {
+        ctx.save();
+        ctx.font = 'bold 38px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.direction = 'ltr';
+        ctx.fillText('le360', W / 2, H * 0.775 + logoOffsetY);
+        ctx.restore();
+      }
+
+      // 4. Text
+      await fontsReady;
+      drawText();
+      updateDlBtn();
+    }
+
+    // ── Text ─────────────────────────────────────────────────────────────────
+    function drawText() {
+      const cfg  = MODES[currentMode];
+      const raw  = txtMain.value.trim();
+      if (!raw) return;
+
+      const text    = cfg.upper ? raw.toUpperCase() : raw;
+      const hlRaw   = hlWordEl.value.trim();
+      const hl      = hlRaw ? (cfg.upper ? hlRaw.toUpperCase() : hlRaw) : '';
+      const px      = Math.max(20, parseInt(fontSizeEl.value, 10) || 107);
+      const spacing = parseInt(lineSpacingEl.value, 10) || 0;
+      const lineH   = Math.round(px * 1.16) + spacing;
+      const fontW   = cfg.dir === 'rtl' ? 'bold' : '900';
+      const fontStr = `${fontW} ${px}px ${cfg.font}, ${cfg.fallback}`;
+
       ctx.save();
-      ctx.font      = 'bold 38px Arial';
-      ctx.fillStyle = '#fff';
+      ctx.font      = fontStr;
+      ctx.direction = 'ltr'; // always ltr for measureText accuracy
       ctx.textAlign = 'center';
-      ctx.direction = 'ltr';
-      ctx.fillText('le360', W / 2, H * 0.775);
+
+      const lines   = wrapText(text, TXT_W);
+      const anchorY = H * 0.90;
+      const startY  = anchorY - lines.length * lineH + lineH;
+
+      lines.forEach((line, i) => {
+        const y = startY + i * lineH;
+        if (hl) {
+          drawHighlightedLine(line, hl, W / 2, y, fontStr);
+        } else {
+          withShadow(() => {
+            ctx.fillStyle = '#fff';
+            ctx.fillText(line, W / 2, y);
+          });
+        }
+      });
+
       ctx.restore();
     }
 
-    // 4. Text
-    await fontsReady;
-    drawText();
+    // Centred line with per-word colour check — mirrors the Python logic exactly.
+    // Measure the FULL line once → derive start X → step word-by-word.
+    function drawHighlightedLine(line, hl, cx, y, fontStr) {
+      ctx.font      = fontStr;
+      ctx.direction = 'ltr';
+      ctx.textAlign = 'left';
 
-    updateDlBtn();
-  }
+      const words  = line.split(' ');
+      const spaceW = ctx.measureText(' ').width;
+      const fullW  = ctx.measureText(line).width;
+      let x = cx - fullW / 2;   // left edge of the centred line
 
-  // ── Text ───────────────────────────────────────────────────────────────────
-  function drawText() {
-    const cfg  = MODES[currentMode];
-    const raw  = txtMain.value.trim();
-    if (!raw) return;
-
-    const text = cfg.upper ? raw.toUpperCase() : raw;
-    const hlRaw = hlWordEl.value.trim();
-    const hl   = hlRaw ? (cfg.upper ? hlRaw.toUpperCase() : hlRaw) : '';
-
-    // pt → px (96 dpi)
-    const pt   = parseInt(fontSizeEl.value, 10);
-    const px   = Math.round(pt * 96 / 72);
-    const lineH = Math.round(px * 1.16);
-    const fontStr = `900 ${px}px ${cfg.font}, ${cfg.fallback}`;
-
-    ctx.save();
-    ctx.font      = fontStr;
-    ctx.direction = 'ltr'; // always LTR for measurement; we handle RTL visually
-    ctx.textAlign = 'center';
-
-    const lines = wrapText(text, TXT_W);
-
-    // Anchor bottom of text block at 90% of canvas height
-    const blockH    = lines.length * lineH;
-    const anchorY   = H * 0.90;
-    const startY    = anchorY - blockH + lineH; // top of first baseline
-
-    lines.forEach((line, i) => {
-      const y  = startY + i * lineH;
-      const cx = W / 2;
-
-      if (hl && line.includes(hl)) {
-        drawHighlightedLine(line, hl, cx, y, fontStr);
-      } else {
+      for (const w of words) {
+        const isHL = hl && w === hl;   // exact word match (like re.fullmatch in Python)
         withShadow(() => {
-          ctx.fillStyle = '#fff';
-          ctx.fillText(line, cx, y);
+          ctx.fillStyle = isHL ? ORANGE : '#fff';
+          ctx.fillText(w, x, y);
         });
+        x += ctx.measureText(w).width + spaceW;
       }
+    }
+
+    function withShadow(fn) {
+      ctx.shadowColor   = 'rgba(0,0,0,0.85)';
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur    = 14;
+      fn();
+      ctx.shadowColor   = 'transparent';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur    = 0;
+    }
+
+    // ── Mode ─────────────────────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      const cfg   = MODES[mode];
+      document.querySelectorAll('.mode-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.mode === mode)
+      );
+      modeNoticeIcon.textContent = cfg.icon;
+      modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
+      labelText.textContent      = cfg.lbl;
+      txtMain.placeholder        = cfg.ph;
+      txtMain.dir                = cfg.dir;
+      hlWordEl.dir               = cfg.dir;
+      dlWrap.classList.remove('visible');
+      draw();
+    }
+
+    function updateDlBtn() {
+      dlWrap.classList.toggle('visible', !!(currentFile && txtMain.value.trim()));
+    }
+
+    // ── Download ─────────────────────────────────────────────────────────────
+    dlBtn.addEventListener('click', () => {
+      try {
+        const now = new Date();
+        const ts  = now.getFullYear()
+          + String(now.getMonth()+1).padStart(2,'0')
+          + String(now.getDate()).padStart(2,'0')
+          + '_' + String(now.getHours()).padStart(2,'0')
+          + String(now.getMinutes()).padStart(2,'0')
+          + String(now.getSeconds()).padStart(2,'0');
+        const a   = document.createElement('a');
+        a.href     = canvas.toDataURL('image/jpeg', 0.94);
+        a.download = `insta_post_${currentMode}_${ts}.jpeg`;
+        a.click();
+      } catch(e) { alert('Erreur : ' + e.message); }
     });
 
-    ctx.restore();
-  }
+    // ── Events ───────────────────────────────────────────────────────────────
+    modeTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (tab) setMode(tab.dataset.mode);
+    });
 
-  // Renders one line centred at cx with the highlight word in orange.
-  // We manually compute segment widths and paint LTR so RTL text renders
-  // correctly when using measureText (Arabic is bidirectional, the browser
-  // handles glyph shaping in fillText automatically).
-  function drawHighlightedLine(line, word, cx, y, fontStr) {
-    ctx.font      = fontStr;
-    ctx.direction = 'ltr';
-    ctx.textAlign = 'left';
+    dropzone.addEventListener('click',    () => upload.click());
+    dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
 
-    const idx    = line.indexOf(word);
-    const before = line.slice(0, idx);
-    const after  = line.slice(idx + word.length);
+    function enableFile(file) {
+      currentFile = file;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      draw();
+    }
 
-    const wB = ctx.measureText(before).width;
-    const wW = ctx.measureText(word).width;
-    const wA = ctx.measureText(after).width;
+    txtMain.addEventListener('input',      draw);
+    hlWordEl.addEventListener('input',     draw);
+    fontSizeEl.addEventListener('input',   draw);
+    lineSpacingEl.addEventListener('input', draw);
+    logoYEl.addEventListener('input',      draw);
 
-    // Start x so full line is centred
-    let x = cx - (wB + wW + wA) / 2;
-
-    const paint = (txt, color) => {
-      if (!txt) return;
-      withShadow(() => {
-        ctx.fillStyle = color;
-        ctx.fillText(txt, x, y);
-      });
-      x += ctx.measureText(txt).width;
-    };
-
-    paint(before, '#fff');
-    paint(word,   ORANGE);
-    paint(after,  '#fff');
-  }
-
-  function withShadow(fn) {
-    ctx.shadowColor   = 'rgba(0,0,0,0.85)';
-    ctx.shadowOffsetX = 3;
-    ctx.shadowOffsetY = 3;
-    ctx.shadowBlur    = 14;
-    fn();
-    ctx.shadowColor   = 'transparent';
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.shadowBlur    = 0;
-  }
-
-  // ── Mode ───────────────────────────────────────────────────────────────────
-  function setMode(mode) {
-    currentMode = mode;
-    const cfg   = MODES[mode];
-    document.querySelectorAll('.mode-tab').forEach(t =>
-      t.classList.toggle('active', t.dataset.mode === mode)
-    );
-    modeNoticeIcon.textContent = cfg.icon;
-    modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
-    labelText.textContent      = cfg.lbl;
-    txtMain.placeholder        = cfg.ph;
-    txtMain.dir                = cfg.dir;
-    hlWordEl.dir               = cfg.dir;
-    dlWrap.classList.remove('visible');
-    draw();
-  }
-
-  // ── Readiness ──────────────────────────────────────────────────────────────
-  function updateDlBtn() {
-    dlWrap.classList.toggle('visible', !!(currentFile && txtMain.value.trim()));
-  }
-
-  // ── Download ───────────────────────────────────────────────────────────────
-  dlBtn.addEventListener('click', () => {
-    try {
-      const now = new Date();
-      const ts  = now.getFullYear()
-        + String(now.getMonth()+1).padStart(2,'0')
-        + String(now.getDate()).padStart(2,'0')
-        + '_' + String(now.getHours()).padStart(2,'0')
-        + String(now.getMinutes()).padStart(2,'0')
-        + String(now.getSeconds()).padStart(2,'0');
-      const a       = document.createElement('a');
-      a.href        = canvas.toDataURL('image/jpeg', 0.94);
-      a.download    = `insta_post_${currentMode}_${ts}.jpeg`;
-      a.click();
-    } catch(e) { alert('Erreur : ' + e.message); }
-  });
-
-  // ── Events ─────────────────────────────────────────────────────────────────
-  modeTabs.addEventListener('click', e => {
-    const tab = e.target.closest('.mode-tab');
-    if (tab) setMode(tab.dataset.mode);
-  });
-
-  dropzone.addEventListener('click',    () => upload.click());
-  dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
-  dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
-  });
-  upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
-
-  function enableFile(file) {
-    currentFile = file;
-    dropzone.classList.add('has-file');
-    uploadText.textContent = '✓ ' + file.name;
-    draw();
-  }
-
-  txtMain.addEventListener('input',     draw);
-  hlWordEl.addEventListener('input',    draw);
-  fontSizeEl.addEventListener('change', draw);
-
-  setMode('fr');
-</script>
+    setMode('fr');
+  </script>
 </body>
 </html>
