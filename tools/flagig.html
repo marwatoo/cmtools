@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IG Flag Post — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    /* ── page-specific only ─────────────────────────────────────────────── */
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 560px) {
+      .controls-grid { grid-template-columns: 1fr; }
+      .divider-col   { display: none; }
+    }
+
+    .divider-col {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 12px;
+      color: var(--text3);
+      font-size: 18px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .flag-col .field {
+      margin-bottom: 0;
+    }
+
+    .flag-search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-search {
+      flex-shrink: 0;
+      padding: 12px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-search:hover    { border-color: var(--accent); color: var(--accent); }
+    .btn-search:active   { transform: scale(0.98); }
+    .btn-search:disabled { opacity: 0.35; cursor: default; transform: none; }
+
+    .suggestions {
+      position: absolute;
+      z-index: 200;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      max-height: 220px;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+
+    .suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      font-size: 0.85rem;
+      color: var(--text2);
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .suggestion-item:hover { background: var(--bg3); color: var(--text); }
+    .suggestion-item img {
+      width: 34px;
+      height: 21px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border2);
+      flex-shrink: 0;
+    }
+
+    .flag-preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 22px;
+      font-size: 0.78rem;
+      color: var(--text3);
+    }
+    .flag-preview.loaded { color: var(--text2); }
+    .flag-preview img {
+      width: 34px;
+      height: 21px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border2);
+    }
+
+    /* Logo Y offset control */
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .logo-row .field { flex: 1; margin-bottom: 0; }
+
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    #dlBtn { width: auto; margin-bottom: 0; }
+
+    .status { font-size: 0.8rem; color: var(--text3); }
+
+    /* Portrait canvas aspect ratio */
+    .canvas-wrap { aspect-ratio: 4/5; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">IG Flag Post</span>
+    <span class="nav-num">1080 × 1350</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+
+    <div class="tool-header">
+      <h1>IG Flag Post</h1>
+      <p>Two flags stacked top/bottom — exports 1080×1350 PNG with le360 logo overlay.</p>
+    </div>
+
+    <div class="controls-grid">
+
+      <div class="flag-col">
+        <div class="field">
+          <label>Top flag</label>
+          <div class="search-row">
+            <div class="flag-search-wrap" id="wrapT">
+              <input type="text" id="inputT" placeholder="Morocco, France, Brazil…" autocomplete="off" />
+              <div class="suggestions" id="sugT" style="display:none;"></div>
+            </div>
+            <button class="btn-search" id="btnT">Search</button>
+          </div>
+        </div>
+        <div class="flag-preview" id="previewT">—</div>
+      </div>
+
+      <div class="divider-col">⇅</div>
+
+      <div class="flag-col">
+        <div class="field">
+          <label>Bottom flag</label>
+          <div class="search-row">
+            <div class="flag-search-wrap" id="wrapB">
+              <input type="text" id="inputB" placeholder="Honduras, Germany, Japan…" autocomplete="off" />
+              <div class="suggestions" id="sugB" style="display:none;"></div>
+            </div>
+            <button class="btn-search" id="btnB">Search</button>
+          </div>
+        </div>
+        <div class="flag-preview" id="previewB">—</div>
+      </div>
+
+    </div>
+
+    <div class="logo-row">
+      <div class="field">
+        <label>Logo Y offset (%)</label>
+        <input type="number" id="logoY" value="0" min="-50" max="50" step="1" />
+      </div>
+    </div>
+
+    <div class="notice" id="statusNotice">
+      Search and select two flags to generate the image.
+    </div>
+
+    <div class="bottom-row">
+      <button class="btn btn-primary" id="dlBtn" disabled>↓ Download 1080×1350 PNG</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="cv" width="1080" height="1350"></canvas>
+    </div>
+
+  </div>
+
+  <script>
+    const CW = 1080, CH = 1350;
+    const cv       = document.getElementById('cv');
+    const ctx      = cv.getContext('2d');
+    const noticeEl = document.getElementById('statusNotice');
+    const statusEl = document.getElementById('status');
+    const dlBtn    = document.getElementById('dlBtn');
+    const logoYEl  = document.getElementById('logoY');
+
+    let flagT = null, flagB = null;
+
+    // Preload le360 logo
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.src = '../assets/overlays/le360.png';
+
+    function setStatus(msg) {
+      noticeEl.textContent = msg;
+      statusEl.textContent = msg;
+    }
+
+    function wikiThumbURL(title, px) {
+      return `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${px}&origin=*`;
+    }
+
+    async function fetchThumb(title, px = 800) {
+      try {
+        const r = await fetch(wikiThumbURL(title, px));
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        return p.thumbnail ? p.thumbnail.source : null;
+      } catch { return null; }
+    }
+
+    async function searchFlags(q) {
+      const url = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + q)}&limit=7&namespace=0&format=json&origin=*`;
+      const r   = await fetch(url);
+      const d   = await r.json();
+      const titles = d[1] || [];
+      const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
+      return titles
+        .map((t, i) => ({ title: t, thumb: thumbs[i] }))
+        .filter(x => x.thumb);
+    }
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Failed: ' + src));
+        img.src = src;
+      });
+    }
+
+    // Draw a flag cover-fitted into a clipped rectangle
+    function drawFlag(img, x, y, w, h) {
+      if (!img) {
+        ctx.fillStyle = '#1c1c1c';
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#444';
+        ctx.font = 'bold 32px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No flag selected', x + w / 2, y + h / 2);
+        return;
+      }
+      const scale = Math.max(w / img.width, h / img.height);
+      const sw = img.width  * scale;
+      const sh = img.height * scale;
+      const ox = x + (w - sw) / 2;
+      const oy = y + (h - sh) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      ctx.drawImage(img, ox, oy, sw, sh);
+      ctx.restore();
+    }
+
+    function drawCanvas() {
+      ctx.clearRect(0, 0, CW, CH);
+
+      const divH   = 6;                    // horizontal divider thickness
+      const half   = CH / 2;              // split exactly at midpoint
+      const topH   = half - divH / 2;
+      const botY   = half + divH / 2;
+      const botH   = CH - botY;
+
+      // Top flag
+      drawFlag(flagT, 0, 0, CW, topH);
+
+      // Bottom flag
+      drawFlag(flagB, 0, botY, CW, botH);
+
+      // White divider
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, half - divH / 2, CW, divH);
+
+      // le360 logo overlay — centered near bottom of the bottom half
+      const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * CH;
+
+      if (logoImg.complete && logoImg.naturalWidth > 0) {
+        // Logo is sized to fill the full canvas width — same pattern as instapost
+        ctx.drawImage(logoImg, 0, logoOffsetY, CW, CH);
+      } else {
+        // Fallback text logo
+        ctx.save();
+        ctx.font = 'bold 52px Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.90)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const logoY = botY + botH * 0.82 + logoOffsetY;
+        // Draw "le" in regular weight + "360" bold — simple approximation
+        ctx.fillText('le360', CW / 2, logoY);
+        ctx.restore();
+      }
+    }
+
+    logoYEl.addEventListener('input', drawCanvas);
+
+    // Re-draw when logo loads
+    logoImg.onload = drawCanvas;
+
+    function setupSide(side) {
+      const inp     = document.getElementById('input'   + side);
+      const btn     = document.getElementById('btn'     + side);
+      const sug     = document.getElementById('sug'     + side);
+      const preview = document.getElementById('preview' + side);
+
+      let debounce;
+
+      function triggerSearch() {
+        const q = inp.value.trim();
+        if (q.length < 2) return;
+        clearTimeout(debounce);
+        doSearch(q);
+      }
+
+      inp.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = inp.value.trim();
+        if (q.length < 2) { sug.style.display = 'none'; return; }
+        debounce = setTimeout(() => doSearch(q), 420);
+      });
+
+      btn.addEventListener('click', triggerSearch);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') triggerSearch(); });
+
+      document.addEventListener('click', e => {
+        if (!sug.contains(e.target) && e.target !== inp) sug.style.display = 'none';
+      });
+
+      async function doSearch(q) {
+        setStatus('Searching Wikipedia…');
+        btn.disabled = true;
+        try {
+          const results = await searchFlags(q);
+          if (!results.length) {
+            setStatus('No results — try a different spelling.');
+            btn.disabled = false;
+            return;
+          }
+          sug.innerHTML = '';
+          results.forEach(({ title, thumb }) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            const label = title.replace(/^Flag of /i, '');
+            item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
+            item.addEventListener('click', () => selectFlag(title, thumb, label));
+            sug.appendChild(item);
+          });
+          sug.style.display = 'block';
+          setStatus(`${results.length} result(s) found — click to select.`);
+        } catch (err) {
+          setStatus('Search error. Check your connection.');
+          console.error(err);
+        }
+        btn.disabled = false;
+      }
+
+      async function selectFlag(title, previewThumb, label) {
+        sug.style.display = 'none';
+        inp.value = label;
+        preview.className = 'flag-preview';
+        preview.innerHTML = '<span>Loading HD flag…</span>';
+        setStatus('Fetching high-resolution flag…');
+        try {
+          const hdSrc = await fetchThumb(title, 1920) || previewThumb;
+          const img   = await loadImg(hdSrc);
+          if (side === 'T') flagT = img;
+          else              flagB = img;
+          preview.className = 'flag-preview loaded';
+          preview.innerHTML = `<img src="${hdSrc}" alt=""><span>${label}</span>`;
+          drawCanvas();
+          const ready = flagT && flagB;
+          dlBtn.disabled = !ready;
+          setStatus(ready
+            ? 'Ready — 1080×1350 image generated.'
+            : 'Now select the ' + (side === 'T' ? 'bottom' : 'top') + ' flag.');
+        } catch {
+          preview.innerHTML = '<span>Could not load image.</span>';
+          setStatus('Failed to load flag image.');
+        }
+      }
+    }
+
+    setupSide('T');
+    setupSide('B');
+
+    dlBtn.addEventListener('click', () => {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const a  = document.createElement('a');
+      a.href     = cv.toDataURL('image/png');
+      a.download = `flags_ig_1080x1350_${ts}.png`;
+      a.click();
+    });
+
+    drawCanvas();
+  </script>
+</body>
+</html>
