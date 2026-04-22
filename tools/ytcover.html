@@ -95,14 +95,25 @@
     overlays.footix.src = assetURL('overlays/footix.png');
     overlays.sport.src = assetURL('overlays/sport.png');
 
+    let fontLoadAttempted = false;
+    let fontLoadSuccess = false;
+
     async function loadFonts() {
+      if (fontLoadAttempted) return;
+      fontLoadAttempted = true;
+      
       try {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject('Font load timeout'), 3000));
         const cairo = new FontFace('CairoBold', `url(${assetURL('fonts/Cairo-Bold.ttf')})`);
         const din   = new FontFace('DINCondensedBold', `url(${assetURL('fonts/DINCondensed-Bold.ttf')})`);
-        await cairo.load(); await din.load();
-        document.fonts.add(cairo); document.fonts.add(din);
-        await document.fonts.ready;
-      } catch(e) { console.warn('Custom fonts unavailable, falling back.'); }
+        await Promise.race([Promise.all([cairo.load(), din.load()]), timeout]);
+        document.fonts.add(cairo); 
+        document.fonts.add(din);
+        fontLoadSuccess = true;
+      } catch(e) { 
+        fontLoadSuccess = false;
+        console.warn('Custom fonts unavailable, using system fonts:', e); 
+      }
     }
     const fontsReady = loadFonts();
 
@@ -161,15 +172,27 @@
           ctx.drawImage(overlay, 0, 0, 1920, 1080);
           if (lang !== 'footix' && lang !== 'sport') {
             const line1 = line1Input.value, line2 = line2Input.value;
-            ctx.shadowColor = "rgba(0,0,0,0.7)"; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5; ctx.shadowBlur = 10;
+            ctx.shadowColor = "rgba(0,0,0,0.7)"; 
+            ctx.shadowOffsetX = 5; 
+            ctx.shadowOffsetY = 5; 
+            ctx.shadowBlur = 10;
             if (lang === 'ar') {
-              ctx.font = '90pt CairoBold'; ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.direction = 'rtl';
-              ctx.fillText(line1, 1920 - 560, 828); ctx.fillText(line2, 1920 - 560, 970);
+              ctx.font = fontLoadSuccess ? '90pt CairoBold' : 'bold 90pt Arial'; 
+              ctx.fillStyle = '#fff'; 
+              ctx.textAlign = 'right';
+              ctx.fillText(line1, 1920 - 560, 828); 
+              ctx.fillText(line2, 1920 - 560, 970);
             } else {
-              ctx.font = '105pt DINCondensedBold'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
-              ctx.fillText(line1.toUpperCase(), 574, 828); ctx.fillText(line2.toUpperCase(), 574, 978);
+              ctx.font = fontLoadSuccess ? '105pt DINCondensedBold' : 'bold 105pt Helvetica'; 
+              ctx.fillStyle = '#fff'; 
+              ctx.textAlign = 'left';
+              ctx.fillText(line1.toUpperCase(), 574, 828); 
+              ctx.fillText(line2.toUpperCase(), 574, 978);
             }
-            ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
+            ctx.shadowColor = "rgba(0,0,0,0)"; 
+            ctx.shadowOffsetX = 0; 
+            ctx.shadowOffsetY = 0; 
+            ctx.shadowBlur = 0;
           }
         } catch(e) { console.warn('Overlay not loaded:', e); }
       }
