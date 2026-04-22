@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
@@ -109,7 +108,20 @@
 
     function loadImage(img) {
       return new Promise((resolve, reject) => {
-        if (img.complete && img.naturalWidth !== 0) { img.decode ? img.decode().then(() => resolve(img)).catch(reject) : resolve(img); return; }
+        // Already loaded successfully
+        if (img.complete && img.naturalWidth !== 0) {
+          img.decode ? img.decode().then(() => resolve(img)).catch(reject) : resolve(img);
+          return;
+        }
+        // Already errored — img is complete but broken, reload fresh with cache-bust
+        if (img.complete && img.naturalWidth === 0) {
+          const fresh = new Image();
+          fresh.crossOrigin = 'anonymous';
+          fresh.onload  = () => resolve(fresh);
+          fresh.onerror = () => reject('Failed to load: ' + img.src);
+          fresh.src = img.src.split('?')[0] + '?cb=' + Date.now();
+          return;
+        }
         img.onload  = () => img.decode ? img.decode().then(() => resolve(img)).catch(reject) : resolve(img);
         img.onerror = () => reject('Failed to load: ' + img.src);
       });
@@ -158,8 +170,8 @@
       if (lang !== 'site') {
         const overlay = overlays[lang];
         try {
-          await loadImage(overlay);
-          ctx.drawImage(overlay, 0, 0, 1920, 1080);
+          const loadedOverlay = await loadImage(overlay);
+          ctx.drawImage(loadedOverlay, 0, 0, 1920, 1080);
         } catch(e) { console.warn('Overlay not loaded:', e); }
         if (lang !== 'footix' && lang !== 'sport') {
           const line1 = line1Input.value, line2 = line2Input.value;
