@@ -89,12 +89,11 @@
       return '../' + path;
     }
 
-    const overlayPaths = {
-      ar: assetURL('overlays/ar.png'),
-      fr: assetURL('overlays/fr.png'),
-      footix: assetURL('overlays/footix.png'),
-      sport: assetURL('overlays/sport.png')
-    };
+    const overlays = { ar: new Image(), fr: new Image(), footix: new Image(), sport: new Image() };
+    overlays.ar.src    = assetURL('overlays/ar.png');
+    overlays.fr.src    = assetURL('overlays/fr.png');
+    overlays.footix.src = assetURL('overlays/footix.png');
+    overlays.sport.src = assetURL('overlays/sport.png');
 
     async function loadFonts() {
       try {
@@ -107,13 +106,11 @@
     }
     const fontsReady = loadFonts();
 
-    function loadImageFromURL(url, timeout = 8000) {
+    function loadImage(img) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        const timer = setTimeout(() => reject('Timeout loading: ' + url), timeout);
-        img.onload  = () => { clearTimeout(timer); resolve(img); };
-        img.onerror = () => { clearTimeout(timer); reject('Failed to load: ' + url); };
-        img.src = url;
+        if (img.complete && img.naturalWidth !== 0) { img.decode ? img.decode().then(() => resolve(img)).catch(reject) : resolve(img); return; }
+        img.onload  = () => img.decode ? img.decode().then(() => resolve(img)).catch(reject) : resolve(img);
+        img.onerror = () => reject('Failed to load: ' + img.src);
       });
     }
 
@@ -156,24 +153,25 @@
       ctx.clearRect(0, 0, 1920, 1080);
       drawBaseImage(uploadedImg);
       const lang = langSelect.value;
-      await fontsReady;
-      if (lang !== 'site' && overlayPaths[lang]) {
+      if (lang !== 'site') {
+        const overlay = overlays[lang];
         try {
-          const overlayImg = await loadImageFromURL(overlayPaths[lang]);
-          ctx.drawImage(overlayImg, 0, 0, 1920, 1080);
-        } catch(e) { console.warn('Overlay skipped:', e); }
-      }
-      if (lang !== 'site' && lang !== 'footix' && lang !== 'sport') {
-        const line1 = line1Input.value, line2 = line2Input.value;
-        ctx.shadowColor = "rgba(0,0,0,0.7)"; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5; ctx.shadowBlur = 10;
-        if (lang === 'ar') {
-          ctx.font = '90pt CairoBold, Cairo, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.direction = 'rtl';
-          ctx.fillText(line1, 1920 - 560, 828); ctx.fillText(line2, 1920 - 560, 970);
-        } else {
-          ctx.font = '105pt DINCondensedBold, Impact, Arial Narrow, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
-          ctx.fillText(line1.toUpperCase(), 574, 828); ctx.fillText(line2.toUpperCase(), 574, 978);
-        }
-        ctx.shadowColor = "rgba(0,0,0,0)"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
+          await loadImage(overlay);
+          await fontsReady;
+          ctx.drawImage(overlay, 0, 0, 1920, 1080);
+          if (lang !== 'footix' && lang !== 'sport') {
+            const line1 = line1Input.value, line2 = line2Input.value;
+            ctx.shadowColor = "rgba(0,0,0,0.7)"; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 5; ctx.shadowBlur = 10;
+            if (lang === 'ar') {
+              ctx.font = '90pt CairoBold'; ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.direction = 'rtl';
+              ctx.fillText(line1, 1920 - 560, 828); ctx.fillText(line2, 1920 - 560, 970);
+            } else {
+              ctx.font = '105pt DINCondensedBold'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.direction = 'ltr';
+              ctx.fillText(line1.toUpperCase(), 574, 828); ctx.fillText(line2.toUpperCase(), 574, 978);
+            }
+            ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
+          }
+        } catch(e) { console.warn('Overlay not loaded:', e); }
       }
       renderBtn.disabled = false;
       renderBtn.textContent = '▶ Render';
