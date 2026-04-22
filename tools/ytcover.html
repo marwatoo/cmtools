@@ -208,6 +208,8 @@
           
           if (lang !== 'footix' && lang !== 'sport') {
             await fontsReady;
+            // Wait for canvas to render before drawing text
+            await new Promise(r => requestAnimationFrame(r));
             drawText(lang);
           }
         }
