@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YT Cover Creator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">YT Cover Creator</span>
+    <span class="nav-num">01 / 04</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>YT Cover Creator</h1>
+      <p>Generate 1920×1080 YouTube covers with overlays and custom text.</p>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="upload-zone" id="uploadArea">
+      <div class="upload-icon">⬆</div>
+      <div class="upload-text">Drag &amp; drop an image here<br>or <span class="upload-browse" id="browseLink">browse</span></div>
+      <input type="file" id="imageInput" accept="image/*" />
+    </div>
+
+    <!-- Controls -->
+    <div class="field">
+      <label>Overlay Style</label>
+      <select id="lang">
+        <option value="ar">Arabic (AR)</option>
+        <option value="fr">French (FR)</option>
+        <option value="footix">Footix</option>
+        <option value="sport">Sport</option>
+        <option value="site">Site (no overlay)</option>
+      </select>
+    </div>
+
+    <div id="textFields">
+      <div class="field">
+        <label>Line 1 (shorter)</label>
+        <textarea id="line1" placeholder="First line of text" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>Line 2 (longer)</label>
+        <textarea id="line2" placeholder="Second line of text" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="renderBtn">▶ Render</button>
+      <button class="btn btn-secondary" id="downloadBtn">↓ Download JPG</button>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas" width="1920" height="1080"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const upload     = document.getElementById('imageInput');
+    const processBtn = document.getElementById('renderBtn');
+    const canvas     = document.getElementById('canvas');
+    const ctx        = canvas.getContext('2d');
+    const dlBtn      = document.getElementById('downloadBtn');
+    const line1      = document.getElementById('line1');
+    const line2      = document.getElementById('line2');
+    const langSelect = document.getElementById('lang');
+    const uploadArea = document.getElementById('uploadArea');
+    const uploadText = uploadArea.querySelector('.upload-text');
+    const textFields = document.getElementById('textFields');
+
+    const W = 1920, H = 1080;
+    let currentFile = null;
+
+    const overlays = new Image();
+    overlays.src    = '../overlays/ar.png';
+    async function loadFonts() {
+      try {
+        const cairo = new FontFace('CairoBold', `url(../fonts/Cairo-Bold.ttf)`);
+        await cairo.load();
+        document.fonts.add(cairo);
+      } catch(e) { console.warn('Custom fonts not available.'); }
+    }
+    const fontReady = loadFonts();
+
+    function loadImage(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = src;
+      });
+    }
+
+    function enableFile(file) {
+      currentFile = file;
+      uploadArea.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      previewFile(file);
+    }
+
+    function previewFile(file) {
+      const img = new Image();
+      img.onload = () => drawAll(img);
+      img.src = URL.createObjectURL(file);
+    }
+
+    async function drawAll(img) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      const scale = Math.max(W / img.width, H / img.height);
+      const iw = img.width * scale, ih = img.height * scale;
+      ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
+
+      const lang = langSelect.value;
+      if (lang !== 'site') {
+        const overlay = overlays[lang];
+        if (overlay.complete && overlay.naturalWidth) {
+          ctx.drawImage(overlay, 0, 0, W, H);
+        } else {
+          await new Promise(r => { overlay.onload = r; });
+          ctx.drawImage(overlay, 0, 0, W, H);
+        }
+
+        if (lang !== 'footix' && lang !== 'sport') {
+          await fontReady;
+          drawText(lang);
+        }
+      }
+    }
+
+    function drawText(lang) {
+      const txt1 = line1.value.trim();
+      const txt2 = line2.value.trim();
+      if (!txt1 && !txt2) return;
+
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowOffsetX = 5;
+      ctx.shadowOffsetY = 5;
+      ctx.shadowBlur = 10;
+
+      if (lang === 'ar') {
+        ctx.font = '900 90pt CairoBold, Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'right';
+        ctx.fillText(txt1, W - 560, 828);
+        ctx.fillText(txt2, W - 560, 970);
+      } else {
+        ctx.font = '900 105pt DINCondensedBold, Helvetica';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(txt1.toUpperCase(), 574, 828);
+        ctx.fillText(txt2.toUpperCase(), 574, 978);
+      }
+
+      ctx.shadowColor = 'rgba(0,0,0,0)';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur = 0;
+    }
+
+    // Drag & drop
+    uploadArea.addEventListener('click', () => upload.click());
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
+
+    langSelect.addEventListener('change', () => {
+      const v = langSelect.value;
+      textFields.style.display = (v === 'footix' || v === 'sport' || v === 'site') ? 'none' : 'block';
+      if (currentFile) previewFile(currentFile);
+    });
+
+    line1.addEventListener('input', () => { if (currentFile) previewFile(currentFile); });
+    line2.addEventListener('input', () => { if (currentFile) previewFile(currentFile); });
+
+    processBtn.addEventListener('click', () => {
+      if (!currentFile) { alert('Please upload an image first.'); return; }
+      processBtn.disabled = true;
+      processBtn.textContent = 'Rendering…';
+      const img = new Image();
+      img.onload = async () => {
+        await drawAll(img);
+        dlBtn.href = canvas.toDataURL('image/jpeg');
+        dlBtn.download = 'yt-cover-1920x1080.jpg';
+        dlBtn.style.display = 'block';
+        dlBtn.textContent = '↓ Download JPG';
+        processBtn.disabled = false;
+        processBtn.textContent = '▶ Render';
+      };
+      img.src = URL.createObjectURL(currentFile);
+    });
+
+    dlBtn.addEventListener('click', () => {
+      if (dlBtn.href) {
+        const a = document.createElement('a');
+        a.href = dlBtn.href;
+        a.download = dlBtn.download;
+        a.click();
+      }
+    });
+  </script>
+</body>
+</html>

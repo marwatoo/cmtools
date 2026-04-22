@@ -65,7 +65,7 @@
 
     async function loadFont() {
       try {
-        const f = new FontFace('LamaSans', `url(../assets/ig/LamaSans-ExtraBold.ttf)`);
+        const f = new FontFace('LamaSans', `url(../fonts/LamaSans-ExtraBold.ttf)`);
         await f.load();
         document.fonts.add(f);
       } catch(e) { console.warn('LamaSans not found, using fallback.'); }
