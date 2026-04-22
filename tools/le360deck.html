@@ -121,6 +121,17 @@
       catch(e) { return ds; }
     }
 
+    // ── HTML escape helper ────────────────────────────────────────────────
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
     // ── Copy helper ────────────────────────────────────────────────────────
     function copyToClipboard(text, btn) {
       navigator.clipboard.writeText(text).then(() => {
@@ -143,8 +154,8 @@
         <h3>${article.title}</h3>
         <div class="deck-card-date">${formatDate(article.date)}</div>
         <div class="deck-card-btns">
-          <button class="deck-btn copy-link" data-link="${article.link}">Copy Link</button>
-          <button class="deck-btn copy-both" data-title="${article.title.replace(/"/g,'&quot;')}" data-link="${article.link}">Copy Title + Link</button>
+          <button class="deck-btn copy-link" data-link="${escapeHtml(article.link)}">Copy Link</button>
+          <button class="deck-btn copy-both" data-title="${escapeHtml(article.title)}" data-link="${escapeHtml(article.link)}">Copy Title + Link</button>
           ${hasCarousel ? '<span class="deck-btn carousel-tag">Carousel</span>' : ''}
         </div>`;
 
