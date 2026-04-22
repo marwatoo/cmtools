@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le360 Deck — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Le360 Deck</span>
+    <span class="nav-num">03 / 04</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
+      <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
+    </div>
+  </nav>
+
+  <!-- Deck columns container -->
+  <div class="deck-container" id="deckContainer"></div>
+
+  <!-- Article Modal -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalBody">Loading…</div>
+    </div>
+  </div>
+
+  <script>
+    // ── CORS proxies (tried in order) ──────────────────────────────────────
+    const PROXIES = [
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    ];
+
+    const sources = {
+      FR:       'https://fr.le360.ma/arc/outboundfeeds/google-news-feed/',
+      AR:       'https://ar.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Sport_AR: 'https://ar.sport.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Sport_FR: 'https://sport.le360.ma/arc/outboundfeeds/google-news-feed/',
+      AFRIQUE:  'https://afrique.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Es:       'https://es.le360.ma/arc/outboundfeeds/google-news-feed/category/actualites-es/'
+    };
+
+    const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
+    const cache  = {};
+
+    // ── Build columns ──────────────────────────────────────────────────────
+    const container = document.getElementById('deckContainer');
+
+    Object.keys(sources).forEach(key => {
+      const col = document.createElement('div');
+      col.className = 'deck-column';
+      col.id = `col-${key}`;
+      col.innerHTML = `
+        <div class="deck-col-header">
+          <h2>${labels[key]}</h2>
+          <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+        </div>
+        <div class="deck-col-feed" id="feed-${key}">
+          <div class="deck-loading">Loading…</div>
+        </div>`;
+      container.appendChild(col);
+    });
+
+    // ── Fetch with proxy fallback ──────────────────────────────────────────
+    async function fetchWithProxy(url) {
+      for (const proxy of PROXIES) {
+        try {
+          const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) });
+          if (res.ok) return await res.text();
+        } catch(e) { /* try next proxy */ }
+      }
+      throw new Error('All proxies failed for ' + url);
+    }
+
+    function extractImagesFromHTML(html) {
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      return [...d.querySelectorAll('img')].map(i => i.src).filter(Boolean);
+    }
+
+    function imgFromDescription(desc) {
+      if (!desc) return '';
+      const d = document.createElement('div'); d.innerHTML = desc;
+      return d.querySelector('img')?.src || '';
+    }
+
+    async function fetchArticles(key, url) {
+      const text = await fetchWithProxy(url);
+      const doc  = new DOMParser().parseFromString(text, 'text/xml');
+      return [...doc.querySelectorAll('item')].slice(0, 12).map(item => {
+        let content = '';
+        try {
+          const nodes = item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/', 'encoded');
+          if (nodes.length) content = nodes[0].textContent;
+        } catch(e) {}
+        const desc = item.querySelector('description')?.textContent || '';
+        const media = item.querySelector('media\\:content, content');
+        return {
+          title: item.querySelector('title')?.textContent || '',
+          link:  item.querySelector('link')?.textContent || '',
+          img:   media?.getAttribute('url') || imgFromDescription(desc) || '',
+          date:  item.querySelector('pubDate')?.textContent || '',
+          content: content || desc || '<p>No content.</p>',
+          description: desc,
+          contentImages: extractImagesFromHTML(content)
+        };
+      });
+    }
+
+    function formatDate(ds) {
+      try { return new Date(ds).toLocaleString('fr-FR', { hour12: false }); }
+      catch(e) { return ds; }
+    }
+
+    // ── Copy helper ────────────────────────────────────────────────────────
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1200);
+      });
+    }
+
+    // ── Render card ────────────────────────────────────────────────────────
+    function createCard(article) {
+      const card = document.createElement('div');
+      card.className = 'deck-card';
+      const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
+      const hasCarousel = article.contentImages.length > 1;
+
+      card.innerHTML = `
+        <img class="deck-card-img" src="${article.img || fallback}" loading="lazy" alt="" onerror="this.src='${fallback}'">
+        <h3>${article.title}</h3>
+        <div class="deck-card-date">${formatDate(article.date)}</div>
+        <div class="deck-card-btns">
+          <button class="deck-btn copy-link" data-link="${article.link}">Copy Link</button>
+          <button class="deck-btn copy-both" data-title="${article.title.replace(/"/g,'&quot;')}" data-link="${article.link}">Copy Title + Link</button>
+          ${hasCarousel ? '<span class="deck-btn carousel-tag">Carousel</span>' : ''}
+        </div>`;
+
+      // Open modal on card click (not buttons)
+      card.addEventListener('click', e => {
+        if (e.target.closest('.deck-card-btns')) return;
+        openModal(article);
+      });
+
+      card.querySelector('.copy-link').addEventListener('click', e => {
+        e.stopPropagation();
+        copyToClipboard(e.currentTarget.dataset.link, e.currentTarget);
+      });
+      card.querySelector('.copy-both').addEventListener('click', e => {
+        e.stopPropagation();
+        const el = e.currentTarget;
+        copyToClipboard(`${el.dataset.title}\n${el.dataset.link}`, el);
+      });
+
+      return card;
+    }
+
+    // ── Update loop ────────────────────────────────────────────────────────
+    async function updateColumn(key, url) {
+      const feed = document.getElementById(`feed-${key}`);
+      if (!cache[key]) cache[key] = new Set();
+
+      try {
+        const articles = await fetchArticles(key, url);
+        const fresh = articles.filter(a => !cache[key].has(a.link));
+        if (!fresh.length) return;
+
+        // Remove loading placeholder if present
+        const loader = feed.querySelector('.deck-loading');
+        if (loader) loader.remove();
+
+        const frag = document.createDocumentFragment();
+        fresh.forEach(a => { frag.appendChild(createCard(a)); cache[key].add(a.link); });
+        feed.insertBefore(frag, feed.firstChild);
+      } catch(e) {
+        const loader = feed.querySelector('.deck-loading');
+        if (loader) loader.textContent = '⚠ Failed to load feed';
+        console.warn('Feed error', key, e);
+      }
+    }
+
+    async function updateLoop() {
+      await Promise.allSettled(Object.entries(sources).map(([k, u]) => updateColumn(k, u)));
+      setTimeout(updateLoop, 15000);
+    }
+
+    updateLoop();
+
+    // ── Modal ──────────────────────────────────────────────────────────────
+    function openModal(article) {
+      const overlay = document.getElementById('modalOverlay');
+      const body    = document.getElementById('modalBody');
+      const hasCarousel = article.contentImages.length > 1;
+
+      let mediaHTML = '';
+      if (hasCarousel) {
+        mediaHTML = `<div class="slider">
+          ${article.contentImages.map((src, i) => `<img src="${src}" class="slide ${i===0?'active':''}" alt="">`).join('')}
+          <button class="slider-btn slider-prev">&#10094;</button>
+          <button class="slider-btn slider-next">&#10095;</button>
+        </div>`;
+      } else if (article.img) {
+        mediaHTML = `<img class="modal-img" src="${article.img}" alt="">`;
+      }
+
+      let contentHTML = article.content;
+      if (hasCarousel) {
+        const tmp = document.createElement('div'); tmp.innerHTML = article.content;
+        tmp.querySelectorAll('img').forEach(img => { if (article.contentImages.includes(img.src)) img.remove(); });
+        contentHTML = tmp.innerHTML;
+      }
+
+      body.innerHTML = `
+        <h2>${article.title}</h2>
+        ${mediaHTML}
+        <div class="modal-meta">Published: ${formatDate(article.date)}</div>
+        <a class="modal-link" href="${article.link}" target="_blank" rel="noopener">Open full article →</a>
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div class="modal-content-html">${contentHTML}</div>`;
+
+      overlay.classList.remove('hidden');
+      if (window.twttr?.widgets) twttr.widgets.load(body);
+
+      // Slider
+      const slides = body.querySelectorAll('.slide');
+      if (slides.length > 1) {
+        let cur = 0;
+        const show = i => slides.forEach((s,j) => s.classList.toggle('active', j===i));
+        body.querySelector('.slider-prev').onclick = () => { cur = (cur - 1 + slides.length) % slides.length; show(cur); };
+        body.querySelector('.slider-next').onclick = () => { cur = (cur + 1) % slides.length; show(cur); };
+      }
+    }
+
+    document.getElementById('modalClose').addEventListener('click', () =>
+      document.getElementById('modalOverlay').classList.add('hidden'));
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modalOverlay'))
+        document.getElementById('modalOverlay').classList.add('hidden');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
