@@ -131,6 +131,36 @@
       ctx.drawImage(img, (1920 - w) / 2, (1080 - h) / 2, w, h);
     }
 
+    function drawText(lang) {
+      const line1 = line1Input.value.trim();
+      const line2 = line2Input.value.trim();
+      if (!line1 && !line2) return;
+      
+      ctx.shadowColor = "rgba(0,0,0,0.7)"; 
+      ctx.shadowOffsetX = 5; 
+      ctx.shadowOffsetY = 5; 
+      ctx.shadowBlur = 10;
+      
+      if (lang === 'ar') {
+        ctx.font = fontLoadSuccess ? 'bold 90pt CairoBold, Arial' : 'bold 90pt Arial'; 
+        ctx.fillStyle = '#fff'; 
+        ctx.textAlign = 'right';
+        ctx.fillText(line1, 1920 - 560, 828); 
+        ctx.fillText(line2, 1920 - 560, 970);
+      } else {
+        ctx.font = fontLoadSuccess ? 'bold 105pt DINCondensedBold, Helvetica' : 'bold 105pt Helvetica'; 
+        ctx.fillStyle = '#fff'; 
+        ctx.textAlign = 'left';
+        ctx.fillText(line1.toUpperCase(), 574, 828); 
+        ctx.fillText(line2.toUpperCase(), 574, 978);
+      }
+      
+      ctx.shadowColor = "rgba(0,0,0,0)"; 
+      ctx.shadowOffsetX = 0; 
+      ctx.shadowOffsetY = 0; 
+      ctx.shadowBlur = 0;
+    }
+
     async function handleFile(file) {
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -161,43 +191,32 @@
       if (!uploadedImg) { alert('Please upload an image first.'); return; }
       renderBtn.disabled = true;
       renderBtn.textContent = 'Rendering…';
-      ctx.clearRect(0, 0, 1920, 1080);
-      drawBaseImage(uploadedImg);
-      const lang = langSelect.value;
-      if (lang !== 'site') {
-        const overlay = overlays[lang];
-        try {
-          await loadImage(overlay);
-          await fontsReady;
-          ctx.drawImage(overlay, 0, 0, 1920, 1080);
-          if (lang !== 'footix' && lang !== 'sport') {
-            const line1 = line1Input.value, line2 = line2Input.value;
-            ctx.shadowColor = "rgba(0,0,0,0.7)"; 
-            ctx.shadowOffsetX = 5; 
-            ctx.shadowOffsetY = 5; 
-            ctx.shadowBlur = 10;
-            if (lang === 'ar') {
-              ctx.font = fontLoadSuccess ? '90pt CairoBold' : 'bold 90pt Arial'; 
-              ctx.fillStyle = '#fff'; 
-              ctx.textAlign = 'right';
-              ctx.fillText(line1, 1920 - 560, 828); 
-              ctx.fillText(line2, 1920 - 560, 970);
-            } else {
-              ctx.font = fontLoadSuccess ? '105pt DINCondensedBold' : 'bold 105pt Helvetica'; 
-              ctx.fillStyle = '#fff'; 
-              ctx.textAlign = 'left';
-              ctx.fillText(line1.toUpperCase(), 574, 828); 
-              ctx.fillText(line2.toUpperCase(), 574, 978);
-            }
-            ctx.shadowColor = "rgba(0,0,0,0)"; 
-            ctx.shadowOffsetX = 0; 
-            ctx.shadowOffsetY = 0; 
-            ctx.shadowBlur = 0;
+      
+      try {
+        ctx.clearRect(0, 0, 1920, 1080);
+        drawBaseImage(uploadedImg);
+        
+        const lang = langSelect.value;
+        if (lang !== 'site') {
+          const overlay = overlays[lang];
+          if (overlay.complete && overlay.naturalWidth) {
+            ctx.drawImage(overlay, 0, 0, 1920, 1080);
+          } else {
+            await loadImage(overlay);
+            ctx.drawImage(overlay, 0, 0, 1920, 1080);
           }
-        } catch(e) { console.warn('Overlay not loaded:', e); }
+          
+          if (lang !== 'footix' && lang !== 'sport') {
+            await fontsReady;
+            drawText(lang);
+          }
+        }
+      } catch(e) { 
+        console.error('Render error:', e); 
+      } finally {
+        renderBtn.disabled = false;
+        renderBtn.textContent = '▶ Render';
       }
-      renderBtn.disabled = false;
-      renderBtn.textContent = '▶ Render';
     });
 
     downloadBtn.addEventListener('click', () => {

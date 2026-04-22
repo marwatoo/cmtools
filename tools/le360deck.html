@@ -72,9 +72,11 @@
 
     // ── Fetch with proxy fallback ──────────────────────────────────────────
     async function fetchWithProxy(url) {
+      const cacheBuster = '?_t=' + Date.now();
+      const bustUrl = url + (url.includes('?') ? '&' : '') + cacheBuster;
       for (const proxy of PROXIES) {
         try {
-          const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) });
+          const res = await fetch(proxy(bustUrl), { signal: AbortSignal.timeout(8000) });
           if (res.ok) return await res.text();
         } catch(e) { /* try next proxy */ }
       }
