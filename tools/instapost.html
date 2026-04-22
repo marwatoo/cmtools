@@ -188,7 +188,7 @@
     async function loadFonts() {
       const list = [
         { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
-        { name: 'SomarBold',        url: '../fonts/Somar-Bold.ttf' },
+        { name: 'SomarBold',        url: '../fonts/Somar-Bold.otf' },
       ];
       for (const { name, url } of list) {
         try {
@@ -296,8 +296,7 @@
       const px      = Math.max(20, parseInt(fontSizeEl.value, 10) || 107);
       const spacing = parseInt(lineSpacingEl.value, 10) || 0;
       const lineH   = Math.round(px * 1.16) + spacing;
-      const fontW   = cfg.dir === 'rtl' ? 'bold' : '900';
-      const fontStr = `${fontW} ${px}px ${cfg.font}, ${cfg.fallback}`;
+      const fontStr = `normal ${px}px ${cfg.font}, ${cfg.fallback}`;
 
       ctx.save();
       ctx.font      = fontStr;
