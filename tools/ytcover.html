@@ -320,8 +320,8 @@
           + String(now.getMinutes()).padStart(2,'0')
           + String(now.getSeconds()).padStart(2,'0');
         const a = document.createElement('a');
-        a.href = canvas.toDataURL('image/png');
-        a.download = `yt_cover_${currentMode}_${ts}.png`;
+        a.href = canvas.toDataURL('image/jpeg');
+        a.download = `yt_cover_${currentMode}_${ts}.jpeg`;
         a.click();
       } catch(e) {
         console.error('Download error:', e);
