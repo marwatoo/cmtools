@@ -138,15 +138,48 @@
       const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
       const hasCarousel = article.contentImages.length > 1;
 
-      card.innerHTML = `
-        <img class="deck-card-img" src="${article.img || fallback}" loading="lazy" alt="" onerror="this.src='${fallback}'">
-        <h3>${article.title}</h3>
-        <div class="deck-card-date">${formatDate(article.date)}</div>
-        <div class="deck-card-btns">
-          <button class="deck-btn copy-link" data-link="${article.link}">Copy Link</button>
-          <button class="deck-btn copy-both" data-title="${article.title.replace(/"/g,'&quot;')}" data-link="${article.link}">Copy Title + Link</button>
-          ${hasCarousel ? '<span class="deck-btn carousel-tag">Carousel</span>' : ''}
-        </div>`;
+      // Use DOM methods instead of innerHTML to avoid escaping issues
+      const img = document.createElement('img');
+      img.className = 'deck-card-img';
+      img.src = article.img || fallback;
+      img.loading = 'lazy';
+      img.alt = '';
+      img.onerror = `this.src='${fallback}'`;
+      card.appendChild(img);
+
+      const h3 = document.createElement('h3');
+      h3.textContent = article.title;
+      card.appendChild(h3);
+
+      const date = document.createElement('div');
+      date.className = 'deck-card-date';
+      date.textContent = formatDate(article.date);
+      card.appendChild(date);
+
+      const btns = document.createElement('div');
+      btns.className = 'deck-card-btns';
+
+      const copyLink = document.createElement('button');
+      copyLink.className = 'deck-btn copy-link';
+      copyLink.textContent = 'Copy Link';
+      copyLink.dataset.link = article.link;
+      btns.appendChild(copyLink);
+
+      const copyBoth = document.createElement('button');
+      copyBoth.className = 'deck-btn copy-both';
+      copyBoth.textContent = 'Copy Title + Link';
+      copyBoth.dataset.title = article.title;
+      copyBoth.dataset.link = article.link;
+      btns.appendChild(copyBoth);
+
+      if (hasCarousel) {
+        const carousel = document.createElement('span');
+        carousel.className = 'deck-btn carousel-tag';
+        carousel.textContent = 'Carousel';
+        btns.appendChild(carousel);
+      }
+
+      card.appendChild(btns);
 
       // Open modal on card click (not buttons)
       card.addEventListener('click', e => {
@@ -154,14 +187,14 @@
         openModal(article);
       });
 
-      card.querySelector('.copy-link').addEventListener('click', e => {
+      copyLink.addEventListener('click', e => {
         e.stopPropagation();
-        copyToClipboard(e.currentTarget.dataset.link, e.currentTarget);
+        copyToClipboard(copyLink.dataset.link, copyLink);
       });
-      card.querySelector('.copy-both').addEventListener('click', e => {
+      
+      copyBoth.addEventListener('click', e => {
         e.stopPropagation();
-        const el = e.currentTarget;
-        copyToClipboard(`${el.dataset.title}\n${el.dataset.link}`, el);
+        copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth);
       });
 
       return card;
