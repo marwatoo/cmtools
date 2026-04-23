@@ -384,19 +384,23 @@ const COLUMNS = [
 const seen = {};   // key → Set of tweet IDs
 
 // ── Fetch attempt matrix ───────────────────────────────────────────────────
-// xcancel.com is the most reliable Nitter instance in 2026.
-// We race multiple proxy+instance combos; first valid RSS wins.
-// Staggered by 250ms each so we don't hammer any single proxy.
+// nitter.net works in browser — try it direct first (no proxy = no CORS issue
+// if the server sends the right headers, and no rate limit hit).
+// Proxies are fallbacks in case CORS blocks the direct request.
 const ATTEMPTS = [
-  h => `https://corsproxy.io/?${encodeURIComponent(`https://xcancel.com/${h}/rss`)}`,
-  h => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://xcancel.com/${h}/rss`)}`,
-  h => `https://corsproxy.io/?${encodeURIComponent(`https://nitter.poast.org/${h}/rss`)}`,
-  h => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://nitter.poast.org/${h}/rss`)}`,
-  h => `https://corsproxy.io/?${encodeURIComponent(`https://nitter.privacydev.net/${h}/rss`)}`,
-  h => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://nitter.privacydev.net/${h}/rss`)}`,
+  // Direct — works if nitter.net sends Access-Control-Allow-Origin (it sometimes does)
+  h => `https://nitter.net/${h}/rss`,
+  // Via corsproxy.io — rewrites CORS headers
+  h => `https://corsproxy.io/?${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
+  // Via allorigins
+  h => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
+  // Via codetabs proxy
+  h => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
+  // htmldriven cors proxy
+  h => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
 ];
 
-async function tryFetch(url, timeoutMs = 8000) {
+async function tryFetch(url, timeoutMs = 7000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -405,7 +409,7 @@ async function tryFetch(url, timeoutMs = 8000) {
     if (!res.ok) return null;
     const text = await res.text();
     if (!text.includes('<item')) return null;
-    const start = text.search(/<\?xml|<rss/i);
+    const start = text.search(/<[?]xml|<rss/i);
     return start !== -1 ? text.slice(start) : null;
   } catch(e) {
     clearTimeout(timer);
@@ -431,7 +435,7 @@ async function fetchFeed(nitterHandle) {
           failed++;
           if (failed === ATTEMPTS.length) reject(new Error('All attempts failed for @' + nitterHandle));
         }
-      }, i * 250);
+      }, i * 300);
     });
   });
 }

@@ -1,638 +1,292 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Le360 Nitter Deck — MediaTools Studio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/global.css" />
-    <script src="../assets/theme.js"></script>
-    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-    <style>
-        /* Additional tweet-specific styles */
-        .deck-card h3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 4;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            line-height: 1.35;
-            font-size: 0.9rem;
-            margin: 8px 0 4px;
-        }
-        .deck-card .tweet-indicator {
-            display: inline-block;
-            font-size: 0.68rem;
-            color: var(--accent, #6ab0f3);
-            background: var(--border2, rgba(255, 255, 255, 0.06));
-            padding: 2px 7px;
-            border-radius: 10px;
-            margin-left: 4px;
-            vertical-align: middle;
-        }
-        .deck-col-header .nitter-badge {
-            font-size: 0.65rem;
-            font-weight: 500;
-            color: var(--text2);
-            background: var(--border2);
-            padding: 3px 8px;
-            border-radius: 10px;
-            letter-spacing: 0.3px;
-        }
-        .modal-content-html {
-            font-size: 0.95rem;
-            line-height: 1.6;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-        .modal-content-html img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 8px 0;
-        }
-        .modal-content-html a {
-            color: var(--accent, #6ab0f3);
-            word-break: break-all;
-        }
-        .deck-card-img {
-            object-fit: cover;
-            width: 100%;
-            height: 160px;
-            border-radius: 8px 8px 0 0;
-            background: #1a1a2e;
-        }
-        .no-image-placeholder {
-            width: 100%;
-            height: 120px;
-            border-radius: 8px 8px 0 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #252540 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: #444;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le360 Nitter Deck (Fast) — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <style>
+    .deck-card h3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.35;
+      font-size: 0.9rem;
+      margin: 8px 0 4px;
+    }
+    .deck-col-header .nitter-badge { font-size:0.65rem; color:var(--text2); background:var(--border2); padding:3px 8px; border-radius:10px; }
+    .modal-content-html { font-size:0.95rem; line-height:1.6; word-wrap:break-word; }
+    .modal-content-html img { max-width:100%; height:auto; border-radius:8px; margin:8px 0; }
+    .deck-card-img { object-fit:cover; width:100%; height:160px; border-radius:8px 8px 0 0; background:#1a1a2e; }
+    .no-image-placeholder { width:100%; height:120px; border-radius:8px 8px 0 0; background:linear-gradient(135deg,#1a1a2e,#252540); display:flex; align-items:center; justify-content:center; font-size:2rem; color:#444; }
+  </style>
 </head>
 <body>
-
-    <nav class="nav">
-        <a href="../index.html" class="nav-back">← Back</a>
-        <span class="nav-title">Le360 Nitter Deck</span>
-        <span class="nav-num">🐦 RSS</span>
-        <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-            <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
-            <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
-        </div>
-    </nav>
-
-    <!-- Deck columns container -->
-    <div class="deck-container" id="deckContainer"></div>
-
-    <!-- Article Modal -->
-    <div class="modal-overlay hidden" id="modalOverlay">
-        <div class="modal-box" id="modalBox">
-            <button class="modal-close" id="modalClose">×</button>
-            <div id="modalBody">Loading…</div>
-        </div>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Le360 Nitter Deck ⚡</span>
+    <span class="nav-num">🐦 RSS</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
+      <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
     </div>
+  </nav>
 
-    <script>
-        // ── Nitter instances (primary + fallbacks) ─────────────────────────
-        const NITTER_BASE = 'https://nitter.net';
-        const NITTER_FALLBACKS = [
-            'https://nitter.poast.org',
-            'https://nitter.1d4.us',
-            'https://nitter.space',
-        ];
+  <div class="deck-container" id="deckContainer"></div>
 
-        // ── CORS proxies (tried in order) ──────────────────────────────────
-        const PROXIES = [
-            url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        ];
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalBody">Loading…</div>
+    </div>
+  </div>
 
-        // ── Le360 Twitter accounts → Nitter RSS feeds ──────────────────────
-        const accounts = {
-            le360fr: { handle: 'le360fr', label: 'Français 🇫🇷', nitter: NITTER_BASE },
-            le360ar: { handle: 'le360ar', label: 'Arabe 🇲🇦', nitter: NITTER_BASE },
-            le360sport: { handle: 'le360sport', label: 'Sport ⚽', nitter: NITTER_BASE },
-            le360afrique: { handle: 'le360afrique', label: 'Afrique 🌍', nitter: NITTER_BASE },
-            le360es: { handle: 'le360es', label: 'Espagnol 🇪🇸', nitter: NITTER_BASE },
-        };
+  <script>
+    (function() {
+      // ----- CONFIGURATION -----
+      const NITTER_BASE = 'https://nitter.net';
+      const NITTER_FALLBACKS = ['https://nitter.poast.org','https://nitter.1d4.us'];
+      
+      // Proxies used simultaneously (race, first success wins)
+      const PROXIES = [
+        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        url => `https://proxy.cors.sh/${url}`   // additional fast proxy
+      ];
 
-        // Build RSS URLs
-        function getRSSUrl(accountKey) {
-            const acc = accounts[accountKey];
-            return `${acc.nitter}/${acc.handle}/rss`;
+      const accounts = {
+        le360fr:      { handle:'le360fr',      label:'Français 🇫🇷', nitter:NITTER_BASE },
+        le360ar:      { handle:'le360ar',      label:'Arabe 🇲🇦',   nitter:NITTER_BASE },
+        le360sport:   { handle:'le360sport',   label:'Sport ⚽',    nitter:NITTER_BASE },
+        le360afrique: { handle:'le360afrique', label:'Afrique 🌍',  nitter:NITTER_BASE },
+        le360es:      { handle:'le360es',      label:'Espagnol 🇪🇸', nitter:NITTER_BASE }
+      };
+
+      // ----- STATE -----
+      const cache = {};
+      const instanceIndex = {};
+
+      // ----- BUILD COLUMNS -----
+      const container = document.getElementById('deckContainer');
+      Object.keys(accounts).forEach(key => {
+        const acc = accounts[key];
+        const col = document.createElement('div');
+        col.className = 'deck-column';
+        col.id = `col-${key}`;
+        col.innerHTML = `
+          <div class="deck-col-header">
+            <h2>${acc.label} 🐦</h2>
+            <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+          </div>
+          <div class="deck-col-feed" id="feed-${key}">
+            <div class="deck-loading">⏳ Loading…</div>
+          </div>`;
+        container.appendChild(col);
+      });
+
+      // ----- FAST FETCH WITH MULTI-PROXY RACE -----
+      async function fastFetch(url) {
+        const busted = url + (url.includes('?')?'&':'?') + '_t=' + Date.now();
+        const promises = PROXIES.map(proxy => 
+          fetch(proxy(busted), { signal: AbortSignal.timeout(5000) })
+            .then(r => { if(!r.ok) throw new Error('bad status'); return r.text(); })
+        );
+        // Also try direct fetch as a fallback (some networks allow it)
+        promises.push(
+          fetch(busted, { signal: AbortSignal.timeout(5000) })
+            .then(r => { if(!r.ok) throw new Error('direct fail'); return r.text(); })
+        );
+        try {
+          const txt = await Promise.any(promises);
+          if (txt.includes('<rss') || txt.includes('<feed') || txt.includes('<item') || txt.includes('<entry')) return txt;
+          throw new Error('Not a valid feed');
+        } catch (e) {
+          throw new Error('All proxies & direct failed');
         }
+      }
 
-        // ── Cache: track seen tweet links per account ──────────────────────
-        const cache = {};
+      // ----- RSS PARSING -----
+      function extractImages(html) {
+        if (!html) return [];
+        const d = document.createElement('div'); d.innerHTML = html;
+        return [...d.querySelectorAll('img')].map(i => i.src).filter(Boolean);
+      }
+      function firstImage(desc, content) {
+        const d = document.createElement('div');
+        if (desc) { d.innerHTML = desc; let img = d.querySelector('img'); if(img) return img.src; }
+        if (content) { d.innerHTML = content; let img = d.querySelector('img'); if(img) return img.src; }
+        return '';
+      }
 
-        // ── Build columns ──────────────────────────────────────────────────
-        const container = document.getElementById('deckContainer');
-
-        Object.keys(accounts).forEach(key => {
-            const acc = accounts[key];
-            const col = document.createElement('div');
-            col.className = 'deck-column';
-            col.id = `col-${key}`;
-            col.innerHTML = `
-            <div class="deck-col-header">
-              <h2>${acc.label} <span class="tweet-indicator">🐦</span></h2>
-              <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
-            </div>
-            <div class="deck-col-feed" id="feed-${key}">
-              <div class="deck-loading">Loading tweets…</div>
-            </div>`;
-            container.appendChild(col);
+      async function fetchTweets(accountKey) {
+        const url = `${accounts[accountKey].nitter}/${accounts[accountKey].handle}/rss`;
+        const xml = await fastFetch(url);
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        if (doc.querySelector('parsererror')) throw new Error('XML parse error');
+        
+        // RSS items
+        let items = [...doc.querySelectorAll('item')];
+        if (items.length === 0) {
+          // Atom fallback
+          const entries = [...doc.querySelectorAll('entry')];
+          return entries.slice(0,6).map(e => ({
+            title: e.querySelector('title')?.textContent || '',
+            link: e.querySelector('link[rel="alternate"]')?.getAttribute('href') || e.querySelector('link')?.getAttribute('href') || '',
+            content: e.querySelector('content')?.textContent || e.querySelector('summary')?.textContent || '',
+            date: e.querySelector('published')?.textContent || e.querySelector('updated')?.textContent || '',
+            img: '',
+            contentImages: []
+          })).map(t => { t.img = firstImage('', t.content) || (t.contentImages[0]||''); t.contentImages = extractImages(t.content); return t; });
+        }
+        
+        return items.slice(0,6).map(item => {
+          const title = item.querySelector('title')?.textContent || '';
+          const link = item.querySelector('link')?.textContent || '';
+          const desc = item.querySelector('description')?.textContent || '';
+          let content = '';
+          try { const enc = item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/','encoded'); if(enc.length) content = enc[0].textContent; } catch(e){}
+          const mediaEl = item.querySelector('media\\:content, content[url]');
+          const mediaUrl = mediaEl?.getAttribute('url') || '';
+          const combined = content || desc;
+          const img = mediaUrl || firstImage(desc, content) || (extractImages(combined)[0]||'');
+          return {
+            title, link, img,
+            date: item.querySelector('pubDate')?.textContent || '',
+            content: combined,
+            description: desc,
+            contentImages: extractImages(combined)
+          };
         });
+      }
 
-        // ── Fetch with proxy fallback ──────────────────────────────────────
-        async function fetchWithProxy(url) {
-            const cacheBuster = '_t=' + Date.now();
-            const bustUrl = url + (url.includes('?') ? '&' : '?') + cacheBuster;
+      function formatDate(ds) {
+        try { return new Date(ds).toLocaleString('fr-FR',{hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+        catch(e){ return ds; }
+      }
 
-            const errors = [];
+      // ----- COPY HELPER -----
+      function copyText(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+          btn.classList.add('copied'); const orig = btn.textContent; btn.textContent='✓ Copied';
+          setTimeout(() => { btn.classList.remove('copied'); btn.textContent=orig; },1200);
+        }).catch(() => { /* fallback */ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); });
+      }
 
-            // Try each proxy
-            for (const proxy of PROXIES) {
-                try {
-                    const res = await fetch(proxy(bustUrl), {
-                        signal: AbortSignal.timeout(10000),
-                        headers: {
-                            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-                        },
-                    });
-                    if (res.ok) {
-                        const text = await res.text();
-                        if (text.includes('<rss') || text.includes('<feed') || text.includes('<item') || text.includes(
-                                '<entry')) {
-                            return text;
-                        }
-                        // If response is HTML (nitter returned a page instead of RSS), it's invalid
-                        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-                            errors.push(`Proxy returned HTML instead of RSS for ${url}`);
-                            continue;
-                        }
-                        return text;
-                    }
-                } catch (e) {
-                    errors.push(e.message);
-                }
-            }
-
-            // Try direct fetch as last resort (some networks allow it)
-            try {
-                const directRes = await fetch(bustUrl, {
-                    signal: AbortSignal.timeout(8000),
-                    headers: { 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
-                });
-                if (directRes.ok) {
-                    const text = await directRes.text();
-                    if (text.includes('<rss') || text.includes('<item')) return text;
-                }
-            } catch (e) {
-                errors.push('Direct: ' + e.message);
-            }
-
-            throw new Error(`All fetch attempts failed for ${url}: ${errors.join(' | ')}`);
+      // ----- CARD BUILDER -----
+      function createCard(tweet) {
+        const card = document.createElement('div');
+        card.className = 'deck-card';
+        const fallback = 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160"><rect fill="%231a1a2e" width="320" height="160"/><text x="160" y="85" text-anchor="middle" fill="%23444" font-size="40" font-family="sans-serif">🐦</text></svg>');
+        const hasImg = tweet.img && tweet.img.startsWith('http');
+        
+        if (hasImg) {
+          const img = document.createElement('img'); img.className='deck-card-img'; img.src=tweet.img; img.loading='lazy';
+          img.onerror = () => { img.remove(); const ph = document.createElement('div'); ph.className='no-image-placeholder'; ph.textContent='🐦'; card.prepend(ph); };
+          card.appendChild(img);
+        } else {
+          const ph = document.createElement('div'); ph.className='no-image-placeholder'; ph.textContent='🐦';
+          card.appendChild(ph);
         }
+        
+        const h3 = document.createElement('h3'); h3.textContent = tweet.title; card.appendChild(h3);
+        const date = document.createElement('div'); date.className='deck-card-date'; date.textContent = formatDate(tweet.date); card.appendChild(date);
+        
+        const btns = document.createElement('div'); btns.className='deck-card-btns';
+        const copyLink = document.createElement('button'); copyLink.className='deck-btn copy-link'; copyLink.textContent='Copy Link'; copyLink.dataset.link=tweet.link; btns.appendChild(copyLink);
+        const copyTitle = document.createElement('button'); copyTitle.className='deck-btn copy-title'; copyTitle.textContent='Copy Text'; copyTitle.dataset.title=tweet.title; btns.appendChild(copyTitle);
+        const copyBoth = document.createElement('button'); copyBoth.className='deck-btn copy-both'; copyBoth.textContent='Copy Text+Link'; copyBoth.dataset.title=tweet.title; copyBoth.dataset.link=tweet.link; btns.appendChild(copyBoth);
+        if (tweet.contentImages.length>1) { const tag = document.createElement('span'); tag.className='deck-btn carousel-tag'; tag.textContent='📷 '+tweet.contentImages.length; btns.appendChild(tag); }
+        card.appendChild(btns);
+        
+        card.addEventListener('click', e => { if(!e.target.closest('.deck-card-btns')) openModal(tweet); });
+        copyLink.addEventListener('click', e => { e.stopPropagation(); copyText(copyLink.dataset.link, copyLink); });
+        copyTitle.addEventListener('click', e => { e.stopPropagation(); copyText(copyTitle.dataset.title, copyTitle); });
+        copyBoth.addEventListener('click', e => { e.stopPropagation(); copyText(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth); });
+        return card;
+      }
 
-        // ── Extract images from HTML string ────────────────────────────────
-        function extractImagesFromHTML(html) {
-            if (!html) return [];
-            const d = document.createElement('div');
-            d.innerHTML = html;
-            return [...d.querySelectorAll('img')].map(i => i.src).filter(Boolean);
+      // ----- COLUMN UPDATE (RACE TO RENDER FAST) -----
+      async function updateColumn(key) {
+        const feed = document.getElementById(`feed-${key}`);
+        if (!cache[key]) cache[key] = new Set();
+        try {
+          const tweets = await fetchTweets(key);
+          const fresh = tweets.filter(t => !cache[key].has(t.link));
+          if (!fresh.length) {
+            const loader = feed.querySelector('.deck-loading');
+            if (loader) loader.textContent = '✓ Up to date';
+            return;
+          }
+          const loader = feed.querySelector('.deck-loading');
+          if (loader) loader.remove();
+          const frag = document.createDocumentFragment();
+          fresh.reverse().forEach(t => { frag.appendChild(createCard(t)); cache[key].add(t.link); });
+          feed.insertBefore(frag, feed.firstChild);
+          while (feed.children.length > 30) feed.lastChild.remove();
+        } catch (e) {
+          console.warn(key, e);
+          const loader = feed.querySelector('.deck-loading');
+          if (loader) loader.textContent = '⚠ ' + (e.message.substring(0,35) || 'Error');
+          // Rotate fallback instance on next error
+          if (!instanceIndex[key]) instanceIndex[key]=0;
+          instanceIndex[key]++;
+          if (instanceIndex[key] < NITTER_FALLBACKS.length) {
+            accounts[key].nitter = NITTER_FALLBACKS[instanceIndex[key]];
+            cache[key] = new Set(); // reset to refetch
+          } else {
+            accounts[key].nitter = NITTER_BASE;
+            instanceIndex[key] = 0;
+            cache[key] = new Set();
+          }
         }
+      }
 
-        function imgFromDescription(desc) {
-            if (!desc) return '';
-            const d = document.createElement('div');
-            d.innerHTML = desc;
-            const img = d.querySelector('img');
-            return img ? img.src : '';
+      function refreshAll() {
+        Object.keys(accounts).forEach(k => updateColumn(k));
+        setTimeout(refreshAll, 20000);
+      }
+      refreshAll();
+
+      // ----- MODAL -----
+      function openModal(tweet) {
+        const overlay = document.getElementById('modalOverlay');
+        const body = document.getElementById('modalBody');
+        let mediaHTML = '';
+        if (tweet.contentImages.length > 1) {
+          mediaHTML = `<div class="slider">${tweet.contentImages.map((s,i)=>`<img src="${s}" class="slide ${i===0?'active':''}" alt="" loading="lazy">`).join('')}<button class="slider-btn slider-prev">&#10094;</button><button class="slider-btn slider-next">&#10095;</button></div>`;
+        } else if (tweet.img) {
+          mediaHTML = `<img class="modal-img" src="${tweet.img}" alt="">`;
         }
-
-        // ── Fetch articles from Nitter RSS ─────────────────────────────────
-        async function fetchTweets(accountKey) {
-            const url = getRSSUrl(accountKey);
-            const text = await fetchWithProxy(url);
-            const doc = new DOMParser().parseFromString(text, 'text/xml');
-
-            // Check for parsing errors
-            const parseError = doc.querySelector('parsererror');
-            if (parseError) {
-                throw new Error('XML parse error: ' + parseError.textContent);
-            }
-
-            const items = [...doc.querySelectorAll('item')];
-            if (items.length === 0) {
-                // Try Atom feed format (some nitter instances use Atom)
-                const atomItems = [...doc.querySelectorAll('entry')];
-                if (atomItems.length > 0) {
-                    return atomItems.slice(0, 15).map(entry => {
-                        const title = entry.querySelector('title')?.textContent || '';
-                        const link = entry.querySelector('link[rel="alternate"]')?.getAttribute('href') ||
-                            entry.querySelector('link')?.getAttribute('href') || '';
-                        const desc = entry.querySelector('content')?.textContent ||
-                            entry.querySelector('summary')?.textContent || '';
-                        const pubDate = entry.querySelector('published')?.textContent ||
-                            entry.querySelector('updated')?.textContent || '';
-                        const contentImages = extractImagesFromHTML(desc);
-                        return {
-                            title,
-                            link,
-                            img: imgFromDescription(desc) || (contentImages.length > 0 ? contentImages[0] : ''),
-                            date: pubDate,
-                            content: desc || '<p>No content.</p>',
-                            description: desc,
-                            contentImages,
-                        };
-                    });
-                }
-                throw new Error('No items found in feed (neither RSS nor Atom)');
-            }
-
-            return items.slice(0, 15).map(item => {
-                // Try content:encoded namespace
-                let content = '';
-                try {
-                    const nodes = item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/',
-                        'encoded');
-                    if (nodes.length) content = nodes[0].textContent;
-                } catch (e) { /* ignore */ }
-
-                const desc = item.querySelector('description')?.textContent || '';
-                const title = item.querySelector('title')?.textContent || '';
-                const link = item.querySelector('link')?.textContent || '';
-                const pubDate = item.querySelector('pubDate')?.textContent || '';
-
-                // Nitter embeds images in description; also check media:content
-                const mediaEl = item.querySelector('media\\:content, content[url]');
-                const mediaUrl = mediaEl?.getAttribute('url') || '';
-
-                const descHTML = content || desc;
-                const contentImages = extractImagesFromHTML(descHTML);
-                const firstImg = mediaUrl || imgFromDescription(desc) || (contentImages.length > 0 ? contentImages[
-                    0] : '');
-
-                return {
-                    title: title || '(no text)',
-                    link: link || '',
-                    img: firstImg,
-                    date: pubDate,
-                    content: descHTML || '<p>No content.</p>',
-                    description: desc || '',
-                    contentImages: contentImages.length > 0 ? contentImages : (firstImg ? [firstImg] : []),
-                };
-            });
+        let contentHTML = tweet.content || tweet.description || '';
+        if (tweet.contentImages.length > 1) {
+          const tmp = document.createElement('div'); tmp.innerHTML = contentHTML;
+          tmp.querySelectorAll('img').forEach(img => { if(tweet.contentImages.includes(img.src)) img.remove(); });
+          contentHTML = tmp.innerHTML;
         }
-
-        // ── Format date ────────────────────────────────────────────────────
-        function formatDate(ds) {
-            if (!ds) return '';
-            try {
-                return new Date(ds).toLocaleString('fr-FR', {
-                    hour12: false,
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                });
-            } catch (e) {
-                return ds;
-            }
+        const tweetId = tweet.link.split('/').pop() || '';
+        const twitterUrl = 'https://twitter.com/i/status/' + tweetId;
+        body.innerHTML = `<h2 style="word-wrap:break-word;">${tweet.title}</h2>${mediaHTML}<div class="modal-meta">📅 ${formatDate(tweet.date)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;"><a class="modal-link" href="${twitterUrl}" target="_blank">🔗 Twitter/X →</a><a class="modal-link" href="${tweet.link}" target="_blank" style="opacity:0.7;">📡 Nitter →</a></div>
+          <hr><div class="modal-content-html">${contentHTML}</div>`;
+        overlay.classList.remove('hidden');
+        const slides = body.querySelectorAll('.slide');
+        if (slides.length>1) {
+          let cur=0; const show=i=>slides.forEach((s,j)=>s.classList.toggle('active',j===i));
+          body.querySelector('.slider-prev').onclick=()=>{ cur=(cur-1+slides.length)%slides.length; show(cur); };
+          body.querySelector('.slider-next').onclick=()=>{ cur=(cur+1)%slides.length; show(cur); };
         }
+        document.getElementById('modalBox').scrollTop = 0;
+      }
 
-        // ── Copy helper ────────────────────────────────────────────────────
-        function copyToClipboard(text, btn) {
-            navigator.clipboard.writeText(text).then(() => {
-                btn.classList.add('copied');
-                const orig = btn.textContent;
-                btn.textContent = '✓ Copied';
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.textContent = orig;
-                }, 1200);
-            }).catch(() => {
-                // Fallback for older browsers
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                btn.classList.add('copied');
-                const orig = btn.textContent;
-                btn.textContent = '✓ Copied';
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.textContent = orig;
-                }, 1200);
-            });
-        }
-
-        // ── Render card ────────────────────────────────────────────────────
-        function createCard(tweet) {
-            const card = document.createElement('div');
-            card.className = 'deck-card';
-            const fallbackSvg =
-                'data:image/svg+xml,' + encodeURIComponent(
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160"><rect fill="%231a1a2e" width="320" height="160"/><text x="160" y="85" text-anchor="middle" fill="%23444" font-size="40" font-family="sans-serif">🐦</text></svg>'
-                    );
-            const hasCarousel = tweet.contentImages && tweet.contentImages.length > 1;
-            const hasImage = !!tweet.img;
-
-            // Card image
-            if (hasImage) {
-                const img = document.createElement('img');
-                img.className = 'deck-card-img';
-                img.src = tweet.img;
-                img.loading = 'lazy';
-                img.alt = '';
-                img.onerror = function() {
-                    this.remove();
-                    const placeholder = document.createElement('div');
-                    placeholder.className = 'no-image-placeholder';
-                    placeholder.textContent = '🐦';
-                    card.insertBefore(placeholder, card.firstChild);
-                };
-                card.appendChild(img);
-            } else {
-                const placeholder = document.createElement('div');
-                placeholder.className = 'no-image-placeholder';
-                placeholder.textContent = '🐦';
-                card.appendChild(placeholder);
-            }
-
-            // Title (tweet text)
-            const h3 = document.createElement('h3');
-            h3.textContent = tweet.title;
-            h3.title = tweet.title; // full text on hover
-            card.appendChild(h3);
-
-            // Date
-            const date = document.createElement('div');
-            date.className = 'deck-card-date';
-            date.textContent = formatDate(tweet.date);
-            card.appendChild(date);
-
-            // Buttons
-            const btns = document.createElement('div');
-            btns.className = 'deck-card-btns';
-
-            const copyLink = document.createElement('button');
-            copyLink.className = 'deck-btn copy-link';
-            copyLink.textContent = 'Copy Link';
-            copyLink.dataset.link = tweet.link;
-            btns.appendChild(copyLink);
-
-            const copyTitle = document.createElement('button');
-            copyTitle.className = 'deck-btn copy-title';
-            copyTitle.textContent = 'Copy Text';
-            copyTitle.dataset.title = tweet.title;
-            btns.appendChild(copyTitle);
-
-            const copyBoth = document.createElement('button');
-            copyBoth.className = 'deck-btn copy-both';
-            copyBoth.textContent = 'Copy Text + Link';
-            copyBoth.dataset.title = tweet.title;
-            copyBoth.dataset.link = tweet.link;
-            btns.appendChild(copyBoth);
-
-            if (hasCarousel) {
-                const carousel = document.createElement('span');
-                carousel.className = 'deck-btn carousel-tag';
-                carousel.textContent = `📷 ${tweet.contentImages.length}`;
-                btns.appendChild(carousel);
-            }
-
-            card.appendChild(btns);
-
-            // Open modal on card click (not on buttons)
-            card.addEventListener('click', e => {
-                if (e.target.closest('.deck-card-btns')) return;
-                openModal(tweet);
-            });
-
-            // Copy button handlers
-            copyLink.addEventListener('click', e => {
-                e.stopPropagation();
-                copyToClipboard(copyLink.dataset.link, copyLink);
-            });
-
-            copyTitle.addEventListener('click', e => {
-                e.stopPropagation();
-                copyToClipboard(copyTitle.dataset.title, copyTitle);
-            });
-
-            copyBoth.addEventListener('click', e => {
-                e.stopPropagation();
-                copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth);
-            });
-
-            return card;
-        }
-
-        // ── Update loop ────────────────────────────────────────────────────
-        async function updateColumn(accountKey) {
-            const feed = document.getElementById(`feed-${accountKey}`);
-            if (!cache[accountKey]) cache[accountKey] = new Set();
-
-            try {
-                const tweets = await fetchTweets(accountKey);
-                const fresh = tweets.filter(t => !cache[accountKey].has(t.link));
-
-                if (!fresh.length) {
-                    // All tweets already seen; update the loader text
-                    const loader = feed.querySelector('.deck-loading');
-                    if (loader) loader.textContent = '✓ Up to date';
-                    return;
-                }
-
-                // Remove loading placeholder
-                const loader = feed.querySelector('.deck-loading');
-                if (loader) loader.remove();
-
-                const frag = document.createDocumentFragment();
-                // Show newest first
-                fresh.reverse().forEach(t => {
-                    frag.appendChild(createCard(t));
-                    cache[accountKey].add(t.link);
-                });
-                feed.insertBefore(frag, feed.firstChild);
-
-                // Limit cards per column to 50 to avoid memory issues
-                while (feed.children.length > 50) {
-                    feed.removeChild(feed.lastChild);
-                }
-
-                // Update column badge
-                const badge = document.querySelector(`#col-${accountKey} .deck-col-badge`);
-                if (badge) {
-                    badge.innerHTML = '<span class="deck-pulse"></span>' + fresh.length + ' new';
-                    setTimeout(() => {
-                        badge.innerHTML = '<span class="deck-pulse"></span>live';
-                    }, 3000);
-                }
-            } catch (e) {
-                const loader = feed.querySelector('.deck-loading');
-                if (loader) loader.textContent = '⚠ ' + (e.message.length > 40 ? e.message.substring(0, 40) +
-                    '…' : e.message);
-                console.warn('Feed error for', accountKey, e);
-                // Try fallback nitter instance on next cycle
-                trySwitchNitterInstance(accountKey);
-            }
-        }
-
-        // ── Fallback nitter instance rotation ──────────────────────────────
-        const instanceIndex = {};
-        function trySwitchNitterInstance(accountKey) {
-            if (!instanceIndex[accountKey]) instanceIndex[accountKey] = 0;
-            instanceIndex[accountKey]++;
-            if (instanceIndex[accountKey] < NITTER_FALLBACKS.length) {
-                accounts[accountKey].nitter = NITTER_FALLBACKS[instanceIndex[accountKey]];
-                console.log(`Switched ${accountKey} to nitter instance: ${accounts[accountKey].nitter}`);
-                // Reset cache so we get fresh data from new instance
-                cache[accountKey] = new Set();
-            } else if (instanceIndex[accountKey] >= NITTER_FALLBACKS.length + 1) {
-                // Cycle back to primary after trying all fallbacks
-                accounts[accountKey].nitter = NITTER_BASE;
-                instanceIndex[accountKey] = 0;
-                console.log(`Reset ${accountKey} to primary nitter: ${NITTER_BASE}`);
-                cache[accountKey] = new Set();
-            }
-        }
-
-        async function updateLoop() {
-            const promises = Object.keys(accounts).map(key => updateColumn(key));
-            await Promise.allSettled(promises);
-            setTimeout(updateLoop, 20000); // 20 seconds between refresh cycles
-        }
-
-        // Initial fetch
-        updateLoop();
-
-        // ── Modal ──────────────────────────────────────────────────────────
-        function openModal(tweet) {
-            const overlay = document.getElementById('modalOverlay');
-            const body = document.getElementById('modalBody');
-            const hasCarousel = tweet.contentImages && tweet.contentImages.length > 1;
-
-            let mediaHTML = '';
-            if (hasCarousel) {
-                mediaHTML = `<div class="slider">
-              ${tweet.contentImages.map((src, i) => `<img src="${src}" class="slide ${i===0?'active':''}" alt="" loading="lazy">`).join('')}
-              <button class="slider-btn slider-prev">&#10094;</button>
-              <button class="slider-btn slider-next">&#10095;</button>
-            </div>`;
-            } else if (tweet.img && tweet.contentImages.length === 1) {
-                mediaHTML = `<img class="modal-img" src="${tweet.img}" alt="" loading="lazy">`;
-            } else if (tweet.img) {
-                mediaHTML = `<img class="modal-img" src="${tweet.img}" alt="" loading="lazy">`;
-            }
-
-            // Clean up content HTML: remove images that are in the carousel
-            let contentHTML = tweet.content || tweet.description || '<p>No content.</p>';
-            if (hasCarousel && tweet.contentImages.length > 0) {
-                const tmp = document.createElement('div');
-                tmp.innerHTML = contentHTML;
-                tmp.querySelectorAll('img').forEach(img => {
-                    if (tweet.contentImages.includes(img.src)) img.remove();
-                });
-                contentHTML = tmp.innerHTML;
-            }
-
-            // Build Twitter/X and Nitter links
-            const tweetId = tweet.link.split('/').pop() || '';
-            const twitterUrl = tweet.link.replace(/nitter\.\S+/, 'twitter.com').replace(/x\.com/, 'twitter.com');
-            // Ensure we have a proper twitter URL
-            let openTweetUrl = tweet.link;
-            if (openTweetUrl.includes('nitter')) {
-                openTweetUrl = 'https://twitter.com/i/status/' + tweetId;
-            }
-
-            body.innerHTML = `
-            <h2 style="word-wrap:break-word;overflow-wrap:break-word;">${tweet.title}</h2>
-            ${mediaHTML}
-            <div class="modal-meta">📅 ${formatDate(tweet.date)}</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
-              <a class="modal-link" href="${openTweetUrl}" target="_blank" rel="noopener">🔗 View on Twitter/X →</a>
-              <a class="modal-link" href="${tweet.link}" target="_blank" rel="noopener" style="opacity:0.7;font-size:0.85rem;">📡 View on Nitter →</a>
-            </div>
-            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
-            <div class="modal-content-html">${contentHTML}</div>`;
-
-            overlay.classList.remove('hidden');
-
-            // Re-trigger Twitter widget loading if needed
-            if (window.twttr && window.twttr.widgets) {
-                try { twttr.widgets.load(body); } catch (e) { /* ignore */ }
-            }
-
-            // Slider logic
-            const slides = body.querySelectorAll('.slide');
-            if (slides.length > 1) {
-                let cur = 0;
-                const show = i => slides.forEach((s, j) => s.classList.toggle('active', j === i));
-                const prevBtn = body.querySelector('.slider-prev');
-                const nextBtn = body.querySelector('.slider-next');
-                if (prevBtn) prevBtn.onclick = () => {
-                    cur = (cur - 1 + slides.length) % slides.length;
-                    show(cur);
-                };
-                if (nextBtn) nextBtn.onclick = () => {
-                    cur = (cur + 1) % slides.length;
-                    show(cur);
-                };
-                // Keyboard navigation for slider
-                body.addEventListener('keydown', function sliderKeys(e) {
-                    if (e.key === 'ArrowLeft') {
-                        cur = (cur - 1 + slides.length) % slides.length;
-                        show(cur);
-                        e.stopPropagation();
-                    } else if (e.key === 'ArrowRight') {
-                        cur = (cur + 1) % slides.length;
-                        show(cur);
-                        e.stopPropagation();
-                    }
-                });
-            }
-
-            // Scroll modal to top
-            const modalBox = document.getElementById('modalBox');
-            if (modalBox) modalBox.scrollTop = 0;
-        }
-
-        // ── Modal event handlers ───────────────────────────────────────────
-        document.getElementById('modalClose').addEventListener('click', () => {
-            document.getElementById('modalOverlay').classList.add('hidden');
-        });
-
-        document.getElementById('modalOverlay').addEventListener('click', e => {
-            if (e.target === document.getElementById('modalOverlay')) {
-                document.getElementById('modalOverlay').classList.add('hidden');
-            }
-        });
-
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                document.getElementById('modalOverlay').classList.add('hidden');
-            }
-        });
-
-        // ── Log startup info ────────────────────────────────────────────────
-        console.log('🐦 Le360 Nitter Deck initialized');
-        console.log('📡 Monitoring', Object.keys(accounts).length, 'accounts via Nitter RSS');
-        console.log('🔄 Refresh interval: 20 seconds');
-        console.log('📋 Accounts:', Object.entries(accounts).map(([k, a]) => `${a.label} → ${a.nitter}/${a.handle}/rss`)
-            .join(', '));
-    </script>
+      document.getElementById('modalClose').addEventListener('click', ()=> document.getElementById('modalOverlay').classList.add('hidden'));
+      document.getElementById('modalOverlay').addEventListener('click', e=> { if(e.target===e.currentTarget) document.getElementById('modalOverlay').classList.add('hidden'); });
+      document.addEventListener('keydown', e=> { if(e.key==='Escape') document.getElementById('modalOverlay').classList.add('hidden'); });
+    })();
+  </script>
 </body>
 </html>
