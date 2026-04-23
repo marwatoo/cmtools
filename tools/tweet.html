@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tweet Deck — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Tweet Deck</span>
+    <span class="nav-num">05 / 05</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
+      <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
+    </div>
+  </nav>
+
+  <div class="deck-container" id="deckContainer"></div>
+
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalBody">Loading…</div>
+    </div>
+  </div>
+
+  <script>
+    const PROXIES = [
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    ];
+
+    const sources = {
+      FR:       'https://nitter.net/le360fr',
+      AR:       'https://nitter.net/le360ar',
+      Sport:    'https://nitter.net/le360sport',
+      ES:       'https://nitter.net/le360es',
+      AFRIQUE:  'https://nitter.net/le360_afrique'
+    };
+
+    const labels = { FR:'Le360 FR', AR:'Le360 AR', Sport:'Le360 Sport', ES:'Le360 ES', AFRIQUE:'Le360 Afrique' };
+    const cache  = {};
+
+    const container = document.getElementById('deckContainer');
+    Object.keys(sources).forEach(key => {
+      const col = document.createElement('div');
+      col.className = 'deck-column';
+      col.id = `col-${key}`;
+      col.innerHTML = `
+        <div class="deck-col-header">
+          <h2>${labels[key]}</h2>
+          <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+        </div>
+        <div class="deck-col-feed" id="feed-${key}">
+          <div class="deck-loading">Loading…</div>
+        </div>`;
+      container.appendChild(col);
+    });
+
+    async function fetchWithProxy(url) {
+      const cacheBuster = '?_t=' + Date.now();
+      const bustUrl = url + (url.includes('?') ? '&' : '') + cacheBuster;
+      for (const proxy of PROXIES) {
+        try {
+          const res = await fetch(proxy(bustUrl), { signal: AbortSignal.timeout(10000) });
+          if (res.ok) return await res.text();
+        } catch (e) {
+          // try next proxy
+        }
+      }
+      throw new Error('All proxies failed for ' + url);
+    }
+
+    function resolveSrc(el) {
+      if (!el) return '';
+      let url = el.src || el.dataset?.src || el.getAttribute('data-src') || '';
+      if (!url) return '';
+      if (url.startsWith('//')) return 'https:' + url;
+      if (url.startsWith('/')) return 'https://nitter.net' + url;
+      return url;
+    }
+
+    function cleanText(el) {
+      if (!el) return '';
+      return el.textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    function parseTweetLink(item) {
+      const link = item.querySelector('a[href*="/status/"]') || item.querySelector('a.timeline-link');
+      if (!link) return '';
+      let url = link.getAttribute('href') || '';
+      url = url.startsWith('/') ? `https://nitter.net${url}` : url;
+      return url;
+    }
+
+    function parseTweetDate(item) {
+      const time = item.querySelector('time');
+      if (time) {
+        const raw = time.getAttribute('datetime') || cleanText(time);
+        const label = cleanText(time);
+        return { raw, label: label || raw };
+      }
+      const dateAnchor = item.querySelector('a[href*="/status/"]');
+      return { raw: '', label: dateAnchor ? cleanText(dateAnchor) : '' };
+    }
+
+    function formatDate(ds) {
+      if (!ds) return ''; 
+      try {
+        const date = new Date(ds);
+        if (!isNaN(date)) return date.toLocaleString('fr-FR', { hour12: false });
+      } catch (e) {}
+      return ds;
+    }
+
+    function parseTweetMedia(item) {
+      const video = item.querySelector('video');
+      if (video) {
+        const source = video.querySelector('source');
+        const src = resolveSrc(source) || resolveSrc(video);
+        const poster = resolveSrc(video) || video.getAttribute('poster') || '';
+        if (src) return { type: 'video', src, poster };
+      }
+
+      const images = [...item.querySelectorAll('img')]
+        .map(img => ({ src: resolveSrc(img), alt: img.alt || '' }))
+        .filter(img => img.src && !img.src.includes('/profile_images/') && !img.alt.toLowerCase().includes('avatar'))
+        .map(img => img.src);
+
+      if (images.length) {
+        return { type: 'image', src: images[0] };
+      }
+      return { type: 'none', src: '' };
+    }
+
+    function extractTweets(html) {
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const items = [...temp.querySelectorAll('.timeline-item, .tweet')].slice(0, 16);
+      return items.map(item => {
+        const link = parseTweetLink(item);
+        if (!link) return null;
+
+        const tweetText = cleanText(item.querySelector('.tweet-content') || item.querySelector('.tweet-body') || item.querySelector('.tweet-text') || item.querySelector('.status-content') || item.querySelector('[data-testid="tweetText"]'));
+        const dateInfo = parseTweetDate(item);
+        const media = parseTweetMedia(item);
+
+        return {
+          title: tweetText || 'Tweet',
+          text: tweetText || 'Tweet text unavailable.',
+          link,
+          date: dateInfo.raw,
+          dateLabel: dateInfo.label,
+          ...media,
+        };
+      }).filter(Boolean);
+    }
+
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1200);
+      });
+    }
+
+    function createCard(tweet) {
+      const card = document.createElement('div');
+      card.className = 'deck-card';
+      const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
+      const mediaSrc = tweet.type === 'video' ? (tweet.poster || fallback) : (tweet.src || fallback);
+
+      const img = document.createElement('img');
+      img.className = 'deck-card-img';
+      img.src = mediaSrc;
+      img.loading = 'lazy';
+      img.alt = '';
+      img.onerror = () => { img.src = fallback; };
+      card.appendChild(img);
+
+      const h3 = document.createElement('h3');
+      h3.textContent = tweet.title.slice(0, 120);
+      card.appendChild(h3);
+
+      const textBlock = document.createElement('p');
+      textBlock.className = 'deck-card-text';
+      textBlock.textContent = tweet.text.length > 160 ? tweet.text.slice(0, 160) + '…' : tweet.text;
+      card.appendChild(textBlock);
+
+      const date = document.createElement('div');
+      date.className = 'deck-card-date';
+      date.textContent = formatDate(tweet.date) || tweet.dateLabel || 'No timestamp';
+      card.appendChild(date);
+
+      const btns = document.createElement('div');
+      btns.className = 'deck-card-btns';
+
+      const copyLink = document.createElement('button');
+      copyLink.className = 'deck-btn copy-link';
+      copyLink.textContent = 'Copy Tweet Link';
+      copyLink.dataset.link = tweet.link;
+      btns.appendChild(copyLink);
+
+      if (tweet.type === 'video') {
+        const badge = document.createElement('span');
+        badge.className = 'deck-btn carousel-tag';
+        badge.textContent = 'Video';
+        btns.appendChild(badge);
+      }
+
+      card.appendChild(btns);
+
+      card.addEventListener('click', e => {
+        if (e.target.closest('.deck-card-btns')) return;
+        openModal(tweet);
+      });
+
+      copyLink.addEventListener('click', e => {
+        e.stopPropagation();
+        copyToClipboard(copyLink.dataset.link, copyLink);
+      });
+
+      return card;
+    }
+
+    async function updateColumn(key, url) {
+      const feed = document.getElementById(`feed-${key}`);
+      if (!cache[key]) cache[key] = new Set();
+
+      try {
+        const html = await fetchWithProxy(url);
+        const tweets = extractTweets(html);
+        const fresh = tweets.filter(t => !cache[key].has(t.link));
+
+        const loader = feed.querySelector('.deck-loading');
+        if (loader) loader.remove();
+
+        if (!fresh.length && !feed.children.length) {
+          const prompt = document.createElement('div');
+          prompt.className = 'deck-loading';
+          prompt.textContent = 'No tweets found yet.';
+          feed.appendChild(prompt);
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        fresh.forEach(tweet => {
+          cache[key].add(tweet.link);
+          frag.appendChild(createCard(tweet));
+        });
+        feed.insertBefore(frag, feed.firstChild);
+      } catch (e) {
+        const loader = feed.querySelector('.deck-loading');
+        if (loader) loader.textContent = '⚠ Failed to load feed';
+        console.warn('Feed error', key, e);
+      }
+    }
+
+    async function updateLoop() {
+      await Promise.allSettled(Object.entries(sources).map(([k, u]) => updateColumn(k, u)));
+      setTimeout(updateLoop, 20000);
+    }
+
+    updateLoop();
+
+    function openModal(tweet) {
+      const overlay = document.getElementById('modalOverlay');
+      const body = document.getElementById('modalBody');
+
+      let mediaHTML = '';
+      if (tweet.type === 'video' && tweet.src) {
+        mediaHTML = `<video class="modal-img" controls playsinline preload="metadata" poster="${tweet.poster || ''}">
+            <source src="${tweet.src}" type="video/mp4">
+            Your browser does not support HTML video.
+          </video>`;
+      } else if (tweet.type === 'image' && tweet.src) {
+        mediaHTML = `<img class="modal-img" src="${tweet.src}" alt="Tweet image">`;
+      }
+
+      body.innerHTML = `
+        <h2>${tweet.title}</h2>
+        ${mediaHTML}
+        <div class="modal-meta">Published: ${formatDate(tweet.date) || tweet.dateLabel}</div>
+        <a class="modal-link" href="${tweet.link}" target="_blank" rel="noopener">Open tweet on Nitter →</a>
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div class="modal-content-html"><p>${tweet.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></div>`;
+
+      overlay.classList.remove('hidden');
+    }
+
+    document.getElementById('modalClose').addEventListener('click', () =>
+      document.getElementById('modalOverlay').classList.add('hidden'));
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modalOverlay'))
+        document.getElementById('modalOverlay').classList.add('hidden');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
