@@ -97,6 +97,35 @@
       color: var(--text3);
     }
 
+    /* ── Stepper buttons ── */
+    .srow .step-btn {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg3, #222);
+      color: var(--text2);
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s, color .15s, border-color .15s;
+      padding: 0;
+    }
+    .srow .step-btn:hover {
+      background: var(--accent, #ff7a14);
+      border-color: var(--accent, #ff7a14);
+      color: #fff;
+    }
+    .srow .step-btn:active {
+      opacity: 0.75;
+    }
+
     /* ── Range input ── */
     input[type=range] {
       -webkit-appearance: none;
@@ -330,17 +359,23 @@
 
           <div class="srow">
             <label>Font size</label>
+            <button class="step-btn" data-target="fontSize" data-dir="-1">−</button>
             <input type="range" id="fontSize" min="20" max="300" step="1" value="107" />
+            <button class="step-btn" data-target="fontSize" data-dir="1">+</button>
             <span class="sval" id="fontSizeVal">107 px</span>
           </div>
           <div class="srow">
             <label>Line spacing</label>
+            <button class="step-btn" data-target="lineSpacing" data-dir="-1">−</button>
             <input type="range" id="lineSpacing" min="-60" max="200" step="1" value="0" />
+            <button class="step-btn" data-target="lineSpacing" data-dir="1">+</button>
             <span class="sval" id="lineSpacingVal">0 px</span>
           </div>
           <div class="srow">
             <label>Text Y position</label>
+            <button class="step-btn" data-target="textY" data-dir="-1">−</button>
             <input type="range" id="textY" min="10" max="100" step="1" value="90" />
+            <button class="step-btn" data-target="textY" data-dir="1">+</button>
             <span class="sval" id="textYVal">90 %</span>
           </div>
 
@@ -348,7 +383,9 @@
 
           <div class="srow">
             <label>Logo Y offset</label>
+            <button class="step-btn" data-target="logoY" data-dir="-1">−</button>
             <input type="range" id="logoY" min="-50" max="50" step="1" value="0" />
+            <button class="step-btn" data-target="logoY" data-dir="1">+</button>
             <span class="sval" id="logoYVal">0 %</span>
           </div>
 
@@ -356,17 +393,23 @@
 
           <div class="srow">
             <label>Zoom</label>
+            <button class="step-btn" data-target="imgZoom" data-dir="-1">−</button>
             <input type="range" id="imgZoom" min="50" max="300" step="1" value="100" />
+            <button class="step-btn" data-target="imgZoom" data-dir="1">+</button>
             <span class="sval" id="imgZoomVal">100 %</span>
           </div>
           <div class="srow">
             <label>X offset</label>
+            <button class="step-btn" data-target="imgX" data-dir="-1">−</button>
             <input type="range" id="imgX" min="-540" max="540" step="1" value="0" />
+            <button class="step-btn" data-target="imgX" data-dir="1">+</button>
             <span class="sval" id="imgXVal">0 px</span>
           </div>
           <div class="srow">
             <label>Y offset</label>
+            <button class="step-btn" data-target="imgY" data-dir="-1">−</button>
             <input type="range" id="imgY" min="-675" max="675" step="1" value="0" />
+            <button class="step-btn" data-target="imgY" data-dir="1">+</button>
             <span class="sval" id="imgYVal">0 px</span>
           </div>
 
@@ -754,6 +797,20 @@
       const sync = () => { out.textContent = el.value + unit; };
       sync();
       el.addEventListener('input', sync);
+    });
+
+    // ── Stepper buttons (+/−) ──
+    document.querySelectorAll('.step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const el  = document.getElementById(btn.dataset.target);
+        const dir = parseInt(btn.dataset.dir, 10);
+        const step = parseFloat(el.step) || 1;
+        const min  = parseFloat(el.min);
+        const max  = parseFloat(el.max);
+        const val  = Math.min(max, Math.max(min, parseFloat(el.value) + dir * step));
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
     });
 
     setMode('fr');
