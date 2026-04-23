@@ -435,7 +435,7 @@ async function fetchFeed(nitterHandle) {
           failed++;
           if (failed === ATTEMPTS.length) reject(new Error('All attempts failed for @' + nitterHandle));
         }
-      }, i * 300);
+      }, i * 500);
     });
   });
 }
@@ -961,9 +961,13 @@ async function updateColumn(col) {
   }
 }
 
-// ── Parallel update loop — each column races its own attempts independently
-async function updateLoop() {
-  await Promise.allSettled(COLUMNS.map(col => updateColumn(col)));
+// ── Staggered update loop ─────────────────────────────────────────────────
+// Columns start 2s apart so the proxy never sees a burst of 5 requests.
+// Each column still races its own proxy attempts independently.
+function updateLoop() {
+  COLUMNS.forEach((col, i) => {
+    setTimeout(() => updateColumn(col), i * 2000);
+  });
   setTimeout(updateLoop, 45000);
 }
 
