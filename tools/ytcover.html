@@ -81,6 +81,7 @@
       <button class="mode-tab" data-mode="footix">⚽ Footix</button>
       <button class="mode-tab" data-mode="sport">🏆 Sport</button>
       <button class="mode-tab" data-mode="website">🌐 Website</button>
+      <button class="mode-tab" data-mode="africa">🌍 Africa</button>
     </div>
 
     <div class="notice" id="modeNotice">
@@ -103,6 +104,24 @@
         <label id="label2">Line 2</label>
         <input type="text" id="txt2" placeholder="SUBTITLE" />
       </div>
+    </div>
+
+    <div class="field" id="countryWrap" style="display:none; margin-top:12px;">
+      <label>Country Flag</label>
+      <select id="countrySelect">
+        <option value="">— Select a country —</option>
+        <option value="../assets/overlayers/acontries/burkinafaso.png">🇧🇫 Burkina Faso</option>
+        <option value="../assets/overlayers/acontries/cameroun.png">🇨🇲 Cameroun</option>
+        <option value="../assets/overlayers/acontries/coteivoire.png">🇨🇮 Côte d'Ivoire</option>
+        <option value="../assets/overlayers/acontries/gabon.png">🇬🇦 Gabon</option>
+        <option value="../assets/overlayers/acontries/guinee.png">🇬🇳 Guinée</option>
+        <option value="../assets/overlayers/acontries/mali.png">🇲🇱 Mali</option>
+        <option value="../assets/overlayers/acontries/mauritanie.png">🇲🇷 Mauritanie</option>
+        <option value="../assets/overlayers/acontries/niger.png">🇳🇪 Niger</option>
+        <option value="../assets/overlayers/acontries/rdcongo.png">🇨🇩 RD Congo</option>
+        <option value="../assets/overlayers/acontries/rwanda.png">🇷🇼 Rwanda</option>
+        <option value="../assets/overlayers/acontries/senegal.png">🇸🇳 Sénégal</option>
+      </select>
     </div>
 
     <div id="dlWrap">
@@ -130,6 +149,8 @@
     const fieldsGrid     = document.getElementById('fieldsGrid');
     const label1         = document.getElementById('label1');
     const label2         = document.getElementById('label2');
+    const countryWrap    = document.getElementById('countryWrap');
+    const countrySelect  = document.getElementById('countrySelect');
 
     const W = 1920, H = 1080;
     let currentFile = null;
@@ -169,6 +190,15 @@
         desc: 'Crop only, no overlay',
         overlay: null, showText: false,
       },
+      africa: {
+        icon: '🌍', label: 'Africa Mode',
+        desc: '2 lines, left-aligned + country name',
+        overlay: '../assets/overlays/afrique.png',
+        showText: true, dir: 'ltr',
+        l1: 'Line 1', l2: 'Line 2',
+        ph1: 'MAIN TITLE', ph2: 'SUBTITLE',
+        hasCountry: true,
+      },
     };
 
     function loadImg(src) {
@@ -195,6 +225,7 @@
       const fonts = [
         { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
         { name: 'CairoBold',        url: '../fonts/Cairo-Bold.ttf' },
+        { name: 'MADEOkineSans',    url: '../fonts/MADEOkineSans-Black.otf' },
       ];
       for (const { name, url } of fonts) {
         try {
@@ -205,6 +236,13 @@
       }
     }
     const fontsReady = loadFonts();
+
+    const countryOverlayCache = {};
+    function getCountryOverlay(src) {
+      if (!src) return Promise.resolve(null);
+      if (!countryOverlayCache[src]) countryOverlayCache[src] = loadImg(src);
+      return countryOverlayCache[src];
+    }
 
     function isReady() {
       if (!currentFile) return false;
@@ -248,6 +286,13 @@
         } catch(e) { console.warn(e.message); }
       }
 
+      if (cfg.hasCountry && countrySelect.value) {
+        try {
+          const co = await getCountryOverlay(countrySelect.value);
+          if (co) ctx.drawImage(co, 0, 0, W, H);
+        } catch(e) { console.warn('Country overlay error:', e.message); }
+      }
+
       if (cfg.showText) {
         await fontsReady;
         drawText();
@@ -289,6 +334,14 @@
           if (t1) ctx.fillText(t1, W - 560, 828);
           if (t2) ctx.fillText(t2, W - 560, 970);
         });
+      } else if (currentMode === 'africa') {
+        ctx.font      = '900 82pt MADEOkineSans, Helvetica';
+        ctx.textAlign = 'left';
+        ctx.direction = 'ltr';
+        withShadow(() => {
+          if (t1) ctx.fillText(t1.toUpperCase(), 68, 834);
+          if (t2) ctx.fillText(t2.toUpperCase(), 68, 970);
+        });
       }
     }
 
@@ -323,6 +376,7 @@
       modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
 
       fieldsGrid.style.display = cfg.showText ? '' : 'none';
+      countryWrap.style.display = cfg.hasCountry ? '' : 'none';
       if (cfg.showText) {
         label1.textContent = cfg.l1;
         label2.textContent = cfg.l2;
@@ -354,6 +408,7 @@
 
     txt1El.addEventListener('input', previewDraw);
     txt2El.addEventListener('input', previewDraw);
+    countrySelect.addEventListener('change', previewDraw);
 
     setMode('fr');
   </script>
