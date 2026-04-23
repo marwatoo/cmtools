@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dual Flag Generator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    /* ── page-specific only ─────────────────────────────────────────────── */
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 560px) {
+      .controls-grid { grid-template-columns: 1fr; }
+      .divider-col   { display: none; }
+    }
+
+    .divider-col {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 12px;
+      color: var(--text3);
+      font-size: 18px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .flag-col .field {
+      margin-bottom: 0;
+    }
+
+    .flag-search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Compact search button — not full-width like global .btn */
+    .btn-search {
+      flex-shrink: 0;
+      padding: 12px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-search:hover  { border-color: var(--accent); color: var(--accent); }
+    .btn-search:active { transform: scale(0.98); }
+    .btn-search:disabled { opacity: 0.35; cursor: default; transform: none; }
+
+    /* Suggestions dropdown */
+    .suggestions {
+      position: absolute;
+      z-index: 200;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      max-height: 220px;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+
+    .suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      font-size: 0.85rem;
+      color: var(--text2);
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .suggestion-item:hover { background: var(--bg3); color: var(--text); }
+    .suggestion-item img {
+      width: 34px;
+      height: 21px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border2);
+      flex-shrink: 0;
+    }
+
+    /* Flag preview chip */
+    .flag-preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 22px;
+      font-size: 0.78rem;
+      color: var(--text3);
+    }
+    .flag-preview.loaded { color: var(--text2); }
+    .flag-preview img {
+      width: 34px;
+      height: 21px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border2);
+    }
+
+    /* ── Zoom controls ───────────────────────────────────────────────────── */
+    .zoom-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .zoom-label {
+      font-size: 0.75rem;
+      color: var(--text3);
+      white-space: nowrap;
+      font-family: 'DM Sans', sans-serif;
+      min-width: 42px;
+    }
+
+    .zoom-btn {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text2);
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+    }
+    .zoom-btn:hover  { border-color: var(--accent); color: var(--accent); }
+    .zoom-btn:active { transform: scale(0.92); }
+
+    .zoom-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border2);
+      outline: none;
+      cursor: pointer;
+    }
+    .zoom-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent, #7c6af7);
+      border: 2px solid var(--bg2);
+      cursor: pointer;
+      box-shadow: 0 0 0 1px var(--accent, #7c6af7);
+    }
+    .zoom-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent, #7c6af7);
+      border: 2px solid var(--bg2);
+      cursor: pointer;
+    }
+
+    .zoom-reset {
+      font-size: 0.72rem;
+      color: var(--text3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+      white-space: nowrap;
+      transition: color 0.15s;
+    }
+    .zoom-reset:hover { color: var(--accent); }
+
+    /* ── Position controls ──────────────────────────────────────────────────── */
+    .pos-grid {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 6px 8px;
+      margin-top: 8px;
+    }
+
+    .pos-axis-label {
+      font-size: 0.72rem;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      width: 12px;
+      text-align: center;
+    }
+
+    .pos-val {
+      font-size: 0.72rem;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .pos-reset {
+      grid-column: 1 / -1;
+      font-size: 0.72rem;
+      color: var(--text3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      padding: 0;
+      text-align: left;
+      transition: color 0.15s;
+      margin-top: 2px;
+    }
+    .pos-reset:hover { color: var(--accent); }
+
+    /* re-use zoom-slider for position sliders */
+
+    /* Download row */
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Override global .btn full-width for this context */
+    #dlBtn {
+      width: auto;
+      margin-bottom: 0;
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--text3);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Dual Flag Generator</span>
+    <span class="nav-num">1920 × 1080</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+
+    <div class="tool-header">
+      <h1>Dual Flag Generator</h1>
+      <p>Search two flags — outputs a 1920×1080 PNG with HD flags from Wikipedia.</p>
+    </div>
+
+    <div class="controls-grid">
+
+      <div class="flag-col">
+        <div class="field">
+          <label>Left flag</label>
+          <div class="search-row">
+            <div class="flag-search-wrap" id="wrapL">
+              <input type="text" id="inputL" placeholder="Morocco, France, Brazil…" autocomplete="off" />
+              <div class="suggestions" id="sugL" style="display:none;"></div>
+            </div>
+            <button class="btn-search" id="btnL">Search</button>
+          </div>
+        </div>
+        <div class="flag-preview" id="previewL">—</div>
+        <!-- Zoom controls for left flag -->
+        <div class="zoom-row" id="zoomRowL">
+          <span class="zoom-label" id="zoomLabelL">100%</span>
+          <button class="zoom-btn" id="zoomOutL" title="Zoom out">−</button>
+          <input type="range" class="zoom-slider" id="sliderL" min="50" max="300" value="100" step="1" />
+          <button class="zoom-btn" id="zoomInL" title="Zoom in">+</button>
+          <button class="zoom-reset" id="zoomResetL">Reset zoom</button>
+        </div>
+        <!-- Position controls for left flag -->
+        <div class="pos-grid" id="posGridL">
+          <span class="pos-axis-label">X</span>
+          <input type="range" class="zoom-slider" id="posXL" min="-100" max="100" value="0" step="1" />
+          <span class="pos-val" id="posXLabelL">0%</span>
+          <span class="pos-axis-label">Y</span>
+          <input type="range" class="zoom-slider" id="posYL" min="-100" max="100" value="0" step="1" />
+          <span class="pos-val" id="posYLabelL">0%</span>
+          <button class="pos-reset" id="posResetL">Reset position</button>
+        </div>
+      </div>
+
+      <div class="divider-col">⇄</div>
+
+      <div class="flag-col">
+        <div class="field">
+          <label>Right flag</label>
+          <div class="search-row">
+            <div class="flag-search-wrap" id="wrapR">
+              <input type="text" id="inputR" placeholder="Honduras, Germany, Japan…" autocomplete="off" />
+              <div class="suggestions" id="sugR" style="display:none;"></div>
+            </div>
+            <button class="btn-search" id="btnR">Search</button>
+          </div>
+        </div>
+        <div class="flag-preview" id="previewR">—</div>
+        <!-- Zoom controls for right flag -->
+        <div class="zoom-row" id="zoomRowR">
+          <span class="zoom-label" id="zoomLabelR">100%</span>
+          <button class="zoom-btn" id="zoomOutR" title="Zoom out">−</button>
+          <input type="range" class="zoom-slider" id="sliderR" min="50" max="300" value="100" step="1" />
+          <button class="zoom-btn" id="zoomInR" title="Zoom in">+</button>
+          <button class="zoom-reset" id="zoomResetR">Reset zoom</button>
+        </div>
+        <!-- Position controls for right flag -->
+        <div class="pos-grid" id="posGridR">
+          <span class="pos-axis-label">X</span>
+          <input type="range" class="zoom-slider" id="posXR" min="-100" max="100" value="0" step="1" />
+          <span class="pos-val" id="posXLabelR">0%</span>
+          <span class="pos-axis-label">Y</span>
+          <input type="range" class="zoom-slider" id="posYR" min="-100" max="100" value="0" step="1" />
+          <span class="pos-val" id="posYLabelR">0%</span>
+          <button class="pos-reset" id="posResetR">Reset position</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="notice" id="statusNotice">
+      Search and select two flags to generate the image.
+    </div>
+
+    <div class="bottom-row">
+      <button class="btn btn-primary" id="dlBtn" disabled>↓ Download 1920×1080 PNG</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="cv" width="1920" height="1080"></canvas>
+    </div>
+
+  </div>
+
+  <script>
+    const CW = 1920, CH = 1080;
+    const cv       = document.getElementById('cv');
+    const ctx      = cv.getContext('2d');
+    const noticeEl = document.getElementById('statusNotice');
+    const statusEl = document.getElementById('status');
+    const dlBtn    = document.getElementById('dlBtn');
+
+    let flagL = null, flagR = null;
+    let zoomL = 1.0, zoomR = 1.0;
+    // Position offsets as fractions of the half-width / height (−1 to +1)
+    let posL = { x: 0, y: 0 }, posR = { x: 0, y: 0 };
+
+    function setStatus(msg) {
+      noticeEl.textContent = msg;
+      statusEl.textContent = msg;
+    }
+
+    function wikiThumbURL(title, px) {
+      return `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${px}&origin=*`;
+    }
+
+    async function fetchThumb(title, px = 800) {
+      try {
+        const r = await fetch(wikiThumbURL(title, px));
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        return p.thumbnail ? p.thumbnail.source : null;
+      } catch { return null; }
+    }
+
+    async function searchFlags(q) {
+      const url = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + q)}&limit=7&namespace=0&format=json&origin=*`;
+      const r   = await fetch(url);
+      const d   = await r.json();
+      const titles = d[1] || [];
+      const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
+      return titles
+        .map((t, i) => ({ title: t, thumb: thumbs[i] }))
+        .filter(x => x.thumb);
+    }
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Failed: ' + src));
+        img.src = src;
+      });
+    }
+
+    function drawCanvas() {
+      ctx.clearRect(0, 0, CW, CH);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, CW, CH);
+
+      const half = CW / 2;
+      const divW = 6;
+
+      function drawHalf(img, x, w, zoom, pos) {
+        if (!img) {
+          ctx.fillStyle = '#1c1c1c';
+          ctx.fillRect(x, 0, w, CH);
+          ctx.fillStyle = '#333';
+          ctx.font = 'bold 40px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('No flag selected', x + w / 2, CH / 2);
+          return;
+        }
+        // Base scale to cover the half, then apply user zoom
+        const baseScale = Math.max(w / img.width, CH / img.height);
+        const scale = baseScale * zoom;
+        const sw = img.width  * scale;
+        const sh = img.height * scale;
+        // Centre + position offset (pos is −1..+1 fraction of half-dimensions)
+        const ox = x + (w - sw) / 2 + pos.x * w * 0.5;
+        const oy = (CH - sh) / 2    + pos.y * CH * 0.5;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, 0, w, CH);
+        ctx.clip();
+        ctx.drawImage(img, ox, oy, sw, sh);
+        ctx.restore();
+      }
+
+      drawHalf(flagL, 0,               half - divW / 2, zoomL, posL);
+      drawHalf(flagR, half + divW / 2, half - divW / 2, zoomR, posR);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(half - divW / 2, 0, divW, CH);
+    }
+
+    // ── Zoom setup ──────────────────────────────────────────────────────────
+    function setupZoom(side) {
+      const slider    = document.getElementById('slider'    + side);
+      const labelEl   = document.getElementById('zoomLabel' + side);
+      const btnIn     = document.getElementById('zoomIn'    + side);
+      const btnOut    = document.getElementById('zoomOut'   + side);
+      const btnReset  = document.getElementById('zoomReset' + side);
+
+      function applyZoom(val) {
+        val = Math.max(50, Math.min(300, Math.round(val)));
+        slider.value = val;
+        labelEl.textContent = val + '%';
+        if (side === 'L') zoomL = val / 100;
+        else              zoomR = val / 100;
+        drawCanvas();
+      }
+
+      slider.addEventListener('input', () => applyZoom(parseInt(slider.value)));
+      btnIn.addEventListener('click',  () => applyZoom(parseInt(slider.value) + 10));
+      btnOut.addEventListener('click', () => applyZoom(parseInt(slider.value) - 10));
+      btnReset.addEventListener('click', () => applyZoom(100));
+    }
+
+    setupZoom('L');
+    setupZoom('R');
+
+    // ── Position setup ──────────────────────────────────────────────────────
+    function setupPosition(side) {
+      const sliderX   = document.getElementById('posX'      + side);
+      const sliderY   = document.getElementById('posY'      + side);
+      const labelX    = document.getElementById('posXLabel' + side);
+      const labelY    = document.getElementById('posYLabel' + side);
+      const btnReset  = document.getElementById('posReset'  + side);
+      const pos       = side === 'L' ? posL : posR;
+
+      function applyPos() {
+        const xVal = parseInt(sliderX.value);
+        const yVal = parseInt(sliderY.value);
+        labelX.textContent = (xVal >= 0 ? '+' : '') + xVal + '%';
+        labelY.textContent = (yVal >= 0 ? '+' : '') + yVal + '%';
+        pos.x = xVal / 100;
+        pos.y = yVal / 100;
+        drawCanvas();
+      }
+
+      sliderX.addEventListener('input', applyPos);
+      sliderY.addEventListener('input', applyPos);
+      btnReset.addEventListener('click', () => {
+        sliderX.value = 0;
+        sliderY.value = 0;
+        applyPos();
+      });
+    }
+
+    setupPosition('L');
+    setupPosition('R');
+
+    // ── Flag side setup ─────────────────────────────────────────────────────
+    function setupSide(side) {
+      const inp     = document.getElementById('input'   + side);
+      const btn     = document.getElementById('btn'     + side);
+      const sug     = document.getElementById('sug'     + side);
+      const preview = document.getElementById('preview' + side);
+
+      let debounce;
+
+      function triggerSearch() {
+        const q = inp.value.trim();
+        if (q.length < 2) return;
+        clearTimeout(debounce);
+        doSearch(q);
+      }
+
+      inp.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = inp.value.trim();
+        if (q.length < 2) { sug.style.display = 'none'; return; }
+        debounce = setTimeout(() => doSearch(q), 420);
+      });
+
+      btn.addEventListener('click', triggerSearch);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') triggerSearch(); });
+
+      document.addEventListener('click', e => {
+        if (!sug.contains(e.target) && e.target !== inp) sug.style.display = 'none';
+      });
+
+      async function doSearch(q) {
+        setStatus('Searching Wikipedia…');
+        btn.disabled = true;
+        try {
+          const results = await searchFlags(q);
+          if (!results.length) {
+            setStatus('No results — try a different spelling.');
+            btn.disabled = false;
+            return;
+          }
+          sug.innerHTML = '';
+          results.forEach(({ title, thumb }) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            const label = title.replace(/^Flag of /i, '');
+            item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
+            item.addEventListener('click', () => selectFlag(title, thumb, label));
+            sug.appendChild(item);
+          });
+          sug.style.display = 'block';
+          setStatus(`${results.length} result(s) found — click to select.`);
+        } catch (err) {
+          setStatus('Search error. Check your connection.');
+          console.error(err);
+        }
+        btn.disabled = false;
+      }
+
+      async function selectFlag(title, previewThumb, label) {
+        sug.style.display = 'none';
+        inp.value = label;
+        preview.className = 'flag-preview';
+        preview.innerHTML = '<span>Loading HD flag…</span>';
+        setStatus('Fetching high-resolution flag…');
+        try {
+          const hdSrc = await fetchThumb(title, 1920) || previewThumb;
+          const img   = await loadImg(hdSrc);
+          if (side === 'L') flagL = img;
+          else              flagR = img;
+          preview.className = 'flag-preview loaded';
+          preview.innerHTML = `<img src="${hdSrc}" alt=""><span>${label}</span>`;
+          drawCanvas();
+          const ready = flagL && flagR;
+          dlBtn.disabled = !ready;
+          setStatus(ready
+            ? 'Ready — 1920×1080 image generated.'
+            : 'Now select the ' + (side === 'L' ? 'right' : 'left') + ' flag.');
+        } catch {
+          preview.innerHTML = '<span>Could not load image.</span>';
+          setStatus('Failed to load flag image.');
+        }
+      }
+    }
+
+    setupSide('L');
+    setupSide('R');
+
+    dlBtn.addEventListener('click', () => {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const a  = document.createElement('a');
+      a.href     = cv.toDataURL('image/png');
+      a.download = `flags_1920x1080_${ts}.png`;
+      a.click();
+    });
+
+    drawCanvas();
+  </script>
+</body>
+</html>
