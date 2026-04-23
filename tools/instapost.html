@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <style>
-    /* ── page-specific only ─────────────────────────────────────────────── */
     .mode-tabs {
       display: flex;
       gap: 6px;
@@ -140,25 +139,25 @@
     const W = 1080, H = 1350;
     const ORANGE = '#ff7a14';
     const MARGIN = 33;
-    const TXT_W  = W - MARGIN * 2; // 1014px
+    const TXT_W  = W - MARGIN * 2;
 
-    const canvas       = document.getElementById('canvas');
-    const ctx          = canvas.getContext('2d');
-    const upload       = document.getElementById('upload');
-    const dropzone     = document.getElementById('dropzone');
-    const uploadText   = document.getElementById('uploadText');
-    const dlWrap       = document.getElementById('dlWrap');
-    const dlBtn        = document.getElementById('dlBtn');
-    const txtMain      = document.getElementById('txtMain');
-    const hlWordEl     = document.getElementById('highlightWord');
-    const fontSizeEl   = document.getElementById('fontSize');
+    const canvas        = document.getElementById('canvas');
+    const ctx           = canvas.getContext('2d');
+    const upload        = document.getElementById('upload');
+    const dropzone      = document.getElementById('dropzone');
+    const uploadText    = document.getElementById('uploadText');
+    const dlWrap        = document.getElementById('dlWrap');
+    const dlBtn         = document.getElementById('dlBtn');
+    const txtMain       = document.getElementById('txtMain');
+    const hlWordEl      = document.getElementById('highlightWord');
+    const fontSizeEl    = document.getElementById('fontSize');
     const lineSpacingEl = document.getElementById('lineSpacing');
     const logoYEl       = document.getElementById('logoY');
     const textYEl       = document.getElementById('textY');
-    const modeTabs     = document.getElementById('modeTabs');
+    const modeTabs      = document.getElementById('modeTabs');
     const modeNoticeIcon = document.getElementById('modeNoticeIcon');
     const modeNoticeText = document.getElementById('modeNoticeText');
-    const labelText    = document.getElementById('labelText');
+    const labelText     = document.getElementById('labelText');
 
     let currentFile = null;
     let currentMode = 'fr';
@@ -213,13 +212,18 @@
 
     const imgCache = {};
     function getCached(key, src) {
-      if (!imgCache[key]) imgCache[key] = loadImg(src);
+      if (!imgCache[key]) {
+        imgCache[key] = loadImg(src).catch(err => {
+          delete imgCache[key];
+          return Promise.reject(err);
+        });
+      }
       return imgCache[key];
     }
     getCached('shadow', '../assets/overlays/shadow.png').catch(() => {});
     getCached('logo',   '../assets/overlays/le360.png').catch(() => {});
 
-    // ── Word-wrap (no mid-word break) ────────────────────────────────────────
+    // ── Word-wrap ────────────────────────────────────────────────────────────
     function wrapText(text, maxW) {
       const words = text.split(' ');
       const lines = [];
@@ -245,12 +249,10 @@
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      // 1. Background — cover-fit
       const bg    = await loadImg(URL.createObjectURL(currentFile));
       const scale = Math.max(W / bg.width, H / bg.height);
       ctx.drawImage(bg, (W - bg.width * scale) / 2, (H - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
 
-      // 2. Shadow overlay — full canvas, no crop
       try {
         const sh = await getCached('shadow', '../assets/overlays/shadow.png');
         ctx.drawImage(sh, 0, 0, W, H);
@@ -263,7 +265,6 @@
         ctx.fillRect(0, 0, W, H);
       }
 
-      // 3. le360 logo — offset by logoY
       const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * H;
       try {
         const logo = await getCached('logo', '../assets/overlays/le360.png');
@@ -278,7 +279,6 @@
         ctx.restore();
       }
 
-      // 4. Text
       await fontsReady;
       drawText();
       updateDlBtn();
@@ -300,10 +300,10 @@
 
       ctx.save();
       ctx.font      = fontStr;
-      ctx.direction = 'ltr'; // always ltr for measureText accuracy
+      ctx.direction = 'ltr';
       ctx.textAlign = 'center';
 
-      const lines   = wrapText(text, TXT_W);
+      const lines  = wrapText(text, TXT_W);
       const anchorY = H * ((parseFloat(textYEl.value) || 90) / 100);
       const startY  = anchorY - lines.length * lineH + lineH;
 
@@ -322,25 +322,83 @@
       ctx.restore();
     }
 
-    // Centred line with per-word colour check — mirrors the Python logic exactly.
-    // Measure the FULL line once → derive start X → step word-by-word.
+    // ── Highlighted line ─────────────────────────────────────────────────────
+    // Render using an off-screen canvas with direction=rtl so the browser
+    // lays out the Arabic text natively. Then scan pixel columns to find
+    // where the highlight word starts, and redraw that region in orange.
+    //
+    // For LTR: use the same word-by-word approach as before (reliable).
+    // For RTL: draw white on offscreen with direction=rtl, then draw
+    //          the highlight word alone on a second offscreen with direction=rtl
+    //          and use its actualBoundingBox to find its position in the full line.
     function drawHighlightedLine(line, hl, cx, y, fontStr) {
       ctx.font      = fontStr;
       ctx.direction = 'ltr';
-      ctx.textAlign = 'left';
+      ctx.textAlign = 'center';
 
-      const words  = line.split(' ');
-      const spaceW = ctx.measureText(' ').width;
-      const fullW  = ctx.measureText(line).width;
-      let x = cx - fullW / 2;   // left edge of the centred line
+      const isRTL = MODES[currentMode].dir === 'rtl';
 
-      for (const w of words) {
-        const isHL = hl && w === hl;   // exact word match (like re.fullmatch in Python)
+      if (!isRTL) {
+        // ── LTR: word-by-word ──────────────────────────────────────────────
+        ctx.textAlign = 'left';
+        const words  = line.split(' ');
+        const spaceW = ctx.measureText(' ').width;
+        const widths = words.map(w => ctx.measureText(w).width);
+        const totalW = widths.reduce((s, w) => s + w, 0) + spaceW * (words.length - 1);
+        let x = cx - totalW / 2;
+        for (let i = 0; i < words.length; i++) {
+          const isHL = hl && words[i] === hl;
+          withShadow(() => {
+            ctx.fillStyle = isHL ? ORANGE : '#fff';
+            ctx.fillText(words[i], x, y);
+          });
+          x += widths[i] + spaceW;
+        }
+      } else {
+        // ── RTL: draw white line, then overdraw highlight word ─────────────
+        // Step 1: draw full line in white (browser handles RTL word order)
         withShadow(() => {
-          ctx.fillStyle = isHL ? ORANGE : '#fff';
-          ctx.fillText(w, x, y);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(line, cx, y);
         });
-        x += ctx.measureText(w).width + spaceW;
+
+        if (!hl || line.indexOf(hl) === -1) return;
+
+        // Step 2: use an offscreen canvas with direction=rtl to measure
+        // where the highlight word lands within the full line.
+        const os  = document.createElement('canvas');
+        os.width  = W; os.height = 1;
+        const oc  = os.getContext('2d');
+        oc.font      = fontStr;
+        oc.direction = 'rtl';
+        oc.textAlign = 'center';
+
+        // measureText on the full line with rtl gives us the total width
+        const fullW = oc.measureText(line).width;
+        const hlW   = oc.measureText(hl).width;
+
+        // Build prefix: in RTL the string is rendered right-to-left,
+        // so "prefix" = text that appears to the RIGHT of our word.
+        // That's everything BEFORE hl in the string (lower char indices).
+        const hlCharIdx = line.indexOf(hl);
+        const before    = line.slice(0, hlCharIdx).trimEnd(); // text right of hl visually
+        const after     = line.slice(hlCharIdx + hl.length).trimStart(); // text left of hl visually
+
+        const beforeW = before.length ? oc.measureText(before).width + oc.measureText(' ').width : 0;
+        const afterW  = after.length  ? oc.measureText(after).width  + oc.measureText(' ').width : 0;
+
+        // In RTL with textAlign=center anchored at cx:
+        // block right edge = cx + fullW/2
+        // word right edge  = blockRight - beforeW   (before is to the right)
+        // word center      = wordRight - hlW/2
+        const blockRight = cx + fullW / 2;
+        const hlCx       = blockRight - beforeW - hlW / 2;
+
+        ctx.textAlign = 'center';
+        withShadow(() => {
+          ctx.fillStyle = ORANGE;
+          ctx.fillText(hl, hlCx, y);
+        });
       }
     }
 
@@ -417,12 +475,12 @@
       draw();
     }
 
-    txtMain.addEventListener('input',      draw);
-    hlWordEl.addEventListener('input',     draw);
-    fontSizeEl.addEventListener('input',   draw);
+    txtMain.addEventListener('input',       draw);
+    hlWordEl.addEventListener('input',      draw);
+    fontSizeEl.addEventListener('input',    draw);
     lineSpacingEl.addEventListener('input', draw);
-    logoYEl.addEventListener('input',      draw);
-    textYEl.addEventListener('input',      draw);
+    logoYEl.addEventListener('input',       draw);
+    textYEl.addEventListener('input',       draw);
 
     setMode('fr');
   </script>
