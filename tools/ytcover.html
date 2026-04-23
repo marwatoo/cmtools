@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -56,15 +56,8 @@
       opacity: 0;
       transition: max-height .25s ease, opacity .25s ease;
     }
-    #dlWrap.visible {
-      max-height: 60px;
-      opacity: 1;
-    }
-    #dlWrap .btn {
-      width: 100%;
-      margin-bottom: 0;
-      justify-content: center;
-    }
+    #dlWrap.visible { max-height: 60px; opacity: 1; }
+    #dlWrap .btn { width: 100%; margin-bottom: 0; justify-content: center; }
   </style>
 </head>
 <body>
@@ -79,12 +72,12 @@
   <div class="tool-page">
     <div class="tool-header">
       <h1>YouTube Cover</h1>
-      <p>Générez des miniatures 1920×1080 — Français, Arabe, Footix, Sport ou recadrage Website.</p>
+      <p>Generate 1920×1080 thumbnails — French, Arabic, Footix, Sport or Website crop.</p>
     </div>
 
     <div class="mode-tabs" id="modeTabs">
       <button class="mode-tab active" data-mode="fr">🇫🇷 Français</button>
-      <button class="mode-tab" data-mode="ar">🇲🇦 Arabe</button>
+      <button class="mode-tab" data-mode="ar">🇲🇦 Arabic</button>
       <button class="mode-tab" data-mode="footix">⚽ Footix</button>
       <button class="mode-tab" data-mode="sport">🏆 Sport</button>
       <button class="mode-tab" data-mode="website">🌐 Website</button>
@@ -92,28 +85,28 @@
 
     <div class="notice" id="modeNotice">
       <span id="modeNoticeIcon">🇫🇷</span>&nbsp;
-      <span id="modeNoticeText"><strong>Mode Français</strong> — 2 lignes gauche</span>
+      <span id="modeNoticeText"><strong>French Mode</strong> — 2 lines, left-aligned</span>
     </div>
 
     <div class="upload-zone" id="dropzone">
       <div class="upload-icon">⬆</div>
-      <div class="upload-text" id="uploadText">Glisser une image ici ou <span class="upload-browse">choisir un fichier</span></div>
+      <div class="upload-text" id="uploadText">Drag an image here or <span class="upload-browse">choose a file</span></div>
       <input type="file" id="upload" accept="image/*" />
     </div>
 
     <div class="fields-grid" id="fieldsGrid">
       <div class="field">
-        <label id="label1">Ligne 1</label>
-        <input type="text" id="txt1" placeholder="TITRE PRINCIPAL" />
+        <label id="label1">Line 1</label>
+        <input type="text" id="txt1" placeholder="MAIN TITLE" />
       </div>
       <div class="field">
-        <label id="label2">Ligne 2</label>
-        <input type="text" id="txt2" placeholder="SOUS-TITRE" />
+        <label id="label2">Line 2</label>
+        <input type="text" id="txt2" placeholder="SUBTITLE" />
       </div>
     </div>
 
     <div id="dlWrap">
-      <button class="btn btn-success" id="dlBtn">↓ Télécharger</button>
+      <button class="btn btn-success" id="dlBtn">↓ Download</button>
     </div>
 
     <div class="canvas-wrap" style="aspect-ratio:16/9; margin-top:16px;">
@@ -144,52 +137,50 @@
 
     const MODES = {
       fr: {
-        icon: '🇫🇷', label: 'Mode Français',
-        desc: 'Francçais',
+        icon: '🇫🇷', label: 'French Mode',
+        desc: '2 lines, left-aligned',
         overlay: '../assets/overlays/FR.png',
         showText: true, dir: 'ltr',
-        l1: 'Ligne 1', l2: 'Ligne 2',
-        ph1: 'TITRE PRINCIPAL', ph2: 'SOUS-TITRE',
+        l1: 'Line 1', l2: 'Line 2',
+        ph1: 'MAIN TITLE', ph2: 'SUBTITLE',
       },
       ar: {
-        icon: '🇲🇦', label: 'Mode Arabe',
-        desc: 'Arabic',
+        icon: '🇲🇦', label: 'Arabic Mode',
+        desc: '2 lines, right-aligned',
         overlay: '../assets/overlays/AR.png',
         showText: true, dir: 'rtl',
-        l1: 'السطر الأول', l2: 'السطر الثاني',
-        ph1: 'العنوان الرئيسي', ph2: 'العنوان الفرعي',
+        l1: 'Line 1', l2: 'Line 2',
+        ph1: 'Main title in Arabic', ph2: 'Subtitle in Arabic',
       },
       footix: {
-        icon: '⚽', label: 'Mode Footix',
-        desc: 'Footix',
+        icon: '⚽', label: 'Footix Mode',
+        desc: 'Overlay only, no text',
         overlay: '../assets/overlays/footix.png',
         showText: false,
       },
       sport: {
-        icon: '🏆', label: 'Mode Sport',
-        desc: 'Sport',
+        icon: '🏆', label: 'Sport Mode',
+        desc: 'Overlay only, no text',
         overlay: '../assets/overlays/sport.png',
         showText: false,
       },
       website: {
-        icon: '🌐', label: 'Mode Website',
-        desc: 'Cover',
+        icon: '🌐', label: 'Website Mode',
+        desc: 'Crop only, no overlay',
         overlay: null, showText: false,
       },
     };
 
-    // Simple image loader — no crossOrigin, no fetch tricks
     function loadImg(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';   // ← this line
-    img.onload  = () => resolve(img);
-    img.onerror = () => reject(new Error('Cannot load: ' + src));
-    img.src = src;
-  });
-}
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => resolve(img);
+        img.onerror = () => reject(new Error('Cannot load: ' + src));
+        img.src = src;
+      });
+    }
 
-    // Cache: key → Promise<Image>
     const overlayCache = {};
     function getOverlay(mode) {
       const src = MODES[mode].overlay;
@@ -198,10 +189,8 @@
       return overlayCache[mode];
     }
 
-    // Preload all overlays on page load
     Object.keys(MODES).forEach(k => { if (MODES[k].overlay) getOverlay(k); });
 
-    // Font loading
     async function loadFonts() {
       const fonts = [
         { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
@@ -217,7 +206,6 @@
     }
     const fontsReady = loadFonts();
 
-    // ── Readiness check ───────────────────────────────────────────────────────
     function isReady() {
       if (!currentFile) return false;
       if (MODES[currentMode].showText) {
@@ -230,7 +218,6 @@
       dlWrap.classList.toggle('visible', isReady());
     }
 
-    // ── File handling ─────────────────────────────────────────────────────────
     function enableFile(file) {
       currentFile = file;
       dropzone.classList.add('has-file');
@@ -243,7 +230,6 @@
       loadImg(URL.createObjectURL(currentFile)).then(drawAll);
     }
 
-    // ── Draw ──────────────────────────────────────────────────────────────────
     async function drawAll(img) {
       const cfg = MODES[currentMode];
 
@@ -251,12 +237,10 @@
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      // Base image — cover fit
       const scale = Math.max(W / img.width, H / img.height);
       const iw = img.width * scale, ih = img.height * scale;
       ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
 
-      // Overlay
       if (cfg.overlay) {
         try {
           const ov = await getOverlay(currentMode);
@@ -264,7 +248,6 @@
         } catch(e) { console.warn(e.message); }
       }
 
-      // Text
       if (cfg.showText) {
         await fontsReady;
         drawText();
@@ -274,15 +257,15 @@
     }
 
     function withShadow(fn) {
-      ctx.shadowColor    = 'rgba(0,0,0,0.75)';
-      ctx.shadowOffsetX  = 4;
-      ctx.shadowOffsetY  = 4;
-      ctx.shadowBlur     = 14;
+      ctx.shadowColor   = 'rgba(0,0,0,0.75)';
+      ctx.shadowOffsetX = 4;
+      ctx.shadowOffsetY = 4;
+      ctx.shadowBlur    = 14;
       fn();
-      ctx.shadowColor    = 'transparent';
-      ctx.shadowOffsetX  = 0;
-      ctx.shadowOffsetY  = 0;
-      ctx.shadowBlur     = 0;
+      ctx.shadowColor   = 'transparent';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur    = 0;
     }
 
     function drawText() {
@@ -309,7 +292,6 @@
       }
     }
 
-    // ── Download ──────────────────────────────────────────────────────────────
     dlBtn.addEventListener('click', () => {
       try {
         const now = new Date();
@@ -325,11 +307,10 @@
         a.click();
       } catch(e) {
         console.error('Download error:', e);
-        alert('Erreur lors du téléchargement : ' + e.message);
+        alert('Download error: ' + e.message);
       }
     });
 
-    // ── Mode switching ────────────────────────────────────────────────────────
     function setMode(mode) {
       currentMode = mode;
       const cfg   = MODES[mode];
@@ -343,20 +324,19 @@
 
       fieldsGrid.style.display = cfg.showText ? '' : 'none';
       if (cfg.showText) {
-        label1.textContent  = cfg.l1;
-        label2.textContent  = cfg.l2;
-        txt1El.placeholder  = cfg.ph1;
-        txt2El.placeholder  = cfg.ph2;
-        const rtl           = cfg.dir === 'rtl';
-        txt1El.dir          = rtl ? 'rtl' : 'ltr';
-        txt2El.dir          = rtl ? 'rtl' : 'ltr';
+        label1.textContent = cfg.l1;
+        label2.textContent = cfg.l2;
+        txt1El.placeholder = cfg.ph1;
+        txt2El.placeholder = cfg.ph2;
+        const rtl          = cfg.dir === 'rtl';
+        txt1El.dir         = rtl ? 'rtl' : 'ltr';
+        txt2El.dir         = rtl ? 'rtl' : 'ltr';
       }
 
       dlWrap.classList.remove('visible');
       previewDraw();
     }
 
-    // ── Events ────────────────────────────────────────────────────────────────
     modeTabs.addEventListener('click', e => {
       const tab = e.target.closest('.mode-tab');
       if (tab) setMode(tab.dataset.mode);
@@ -375,7 +355,6 @@
     txt1El.addEventListener('input', previewDraw);
     txt2El.addEventListener('input', previewDraw);
 
-    // Init
     setMode('fr');
   </script>
 </body>

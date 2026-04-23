@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -24,22 +24,20 @@
       <p>Create 1080×1920 Instagram Sport covers with branding overlay and Arabic text.</p>
     </div>
 
-    <!-- Upload -->
     <div class="upload-zone" id="dropzone">
       <div class="upload-icon">⬆</div>
-      <div class="upload-text" id="uploadText">اسحب الصورة هنا أو <span class="upload-browse">اضغط للاختيار</span></div>
+      <div class="upload-text" id="uploadText">Drag an image here or <span class="upload-browse">choose a file</span></div>
       <input type="file" id="upload" accept="image/*" />
     </div>
 
-    <!-- Arabic text -->
     <div class="field">
-      <label>النص العربي (سطرين كحد أقصى)</label>
-      <textarea id="arabicText" placeholder="اكتب النص العربي هنا…" rows="3" dir="rtl"></textarea>
+      <label>Arabic text (2 lines max)</label>
+      <textarea id="arabicText" placeholder="Type Arabic text here…" rows="3" dir="rtl"></textarea>
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-primary" id="processBtn">◈ إنشاء الصورة</button>
-      <a class="btn btn-success" id="downloadLink" style="display:none;">↓ تنزيل الصورة</a>
+      <button class="btn btn-primary" id="processBtn">◈ Generate Image</button>
+      <a class="btn btn-success" id="downloadLink" style="display:none;">↓ Download Image</a>
     </div>
 
     <div class="canvas-wrap" style="aspect-ratio:9/16">
@@ -136,7 +134,6 @@
       ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
     }
 
-    // Drag & drop
     dropzone.addEventListener('click', () => upload.click());
     dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
@@ -147,9 +144,9 @@
     upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
 
     processBtn.addEventListener('click', () => {
-      if (!currentFile) { alert('يرجى اختيار صورة'); return; }
+      if (!currentFile) { alert('Please select an image first.'); return; }
       processBtn.disabled = true;
-      processBtn.textContent = 'جاري المعالجة…';
+      processBtn.textContent = 'Processing…';
       const img = new Image();
       img.onload = async () => {
         await drawAll(img);
@@ -160,7 +157,7 @@
         dlLink.download = `ig_cover_${ts}.png`;
         dlLink.style.display = 'flex';
         processBtn.disabled = false;
-        processBtn.textContent = '◈ إنشاء الصورة';
+        processBtn.textContent = '◈ Generate Image';
       };
       img.src = URL.createObjectURL(currentFile);
     });

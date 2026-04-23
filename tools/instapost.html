@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Insta Post — MediaTools Studio</title>
+  <title>Le360 Post — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
@@ -36,6 +36,86 @@
     .mode-tab:hover  { color: var(--text); background: var(--bg3); }
     .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
 
+    .field textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    /* ── Slider rows — follow global.css design system ── */
+    .srow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .srow label {
+      width: 130px;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+    .srow .sval {
+      width: 54px;
+      flex-shrink: 0;
+      text-align: right;
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text3);
+    }
+    .srow-group-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin: 20px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Range input — accent track + thumb, matches theme */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      min-width: 0;
+      height: 4px;
+      border-radius: 100px;
+      background: var(--border2);
+      outline: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--accent);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--accent);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+    input[type=range]:hover::-moz-range-thumb     { transform: scale(1.15); }
+    input[type=range]:focus { outline: none; }
+
     .row2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -44,95 +124,156 @@
     }
     @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
 
-    .field textarea {
-      resize: vertical;
-      min-height: 80px;
-      line-height: 1.5;
+    /* ── Two-column editor layout ── */
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 28px;
+      align-items: start;
+      padding: 28px 24px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .editor-controls {
+      min-width: 0;
+    }
+
+    .editor-preview {
+      position: sticky;
+      top: 73px;
+      min-width: 0;
     }
 
     #dlWrap {
-      margin-top: 16px;
       overflow: hidden;
       max-height: 0;
       opacity: 0;
-      transition: max-height .25s ease, opacity .25s ease;
+      transition: max-height .35s ease, opacity .35s ease;
+      margin-top: 12px;
     }
     #dlWrap.visible { max-height: 60px; opacity: 1; }
     #dlWrap .btn    { width: 100%; margin-bottom: 0; justify-content: center; }
+
+    @media (max-width: 860px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+        padding: 20px 16px 60px;
+      }
+      .editor-preview {
+        position: static;
+        order: -1;
+      }
+    }
   </style>
 </head>
 <body>
 
   <nav class="nav">
     <a href="../index.html" class="nav-back">← Back</a>
-    <span class="nav-title">Insta Post</span>
+    <span class="nav-title">Le360 Post</span>
     <span class="nav-num">1080 × 1350</span>
     <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
   </nav>
 
-  <div class="tool-page">
-    <div class="tool-header">
-      <h1>Instagram Post</h1>
-      <p>Visuels 1080×1350 — shadow + le360 auto, texte centré, marges 33px, mot en couleur.</p>
-    </div>
+  <div class="tool-page wide">
+    <div style="padding: 28px 24px 0; max-width: 1200px; margin: 0 auto;">
+      <div class="tool-header" style="margin-bottom:20px;">
+        <h1>Le360 Post</h1>
+        <p>1080×1350 visuals — shadow + le360 auto, centered text, 33px margins, word in color.</p>
+      </div>
 
-    <div class="mode-tabs" id="modeTabs">
-      <button class="mode-tab active" data-mode="fr">🇫🇷 Français</button>
-      <button class="mode-tab"        data-mode="ar">🇲🇦 Arabe</button>
+      <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="fr">🇫🇷 French</button>
+      <button class="mode-tab"        data-mode="ar">🇲🇦 Arabic</button>
     </div>
 
     <div class="notice" id="modeNotice">
       <span id="modeNoticeIcon">🇫🇷</span>&nbsp;
-      <span id="modeNoticeText"><strong>Mode Français</strong> — DIN Condensed Bold, centré, marges 33px</span>
+      <span id="modeNoticeText"><strong>French Mode</strong> — DIN Condensed Bold, centered</span>
     </div>
+    </div><!-- /top section -->
+
+    <div class="editor-layout">
+    <div class="editor-controls">
 
     <div class="upload-zone" id="dropzone">
       <div class="upload-icon">⬆</div>
-      <div class="upload-text" id="uploadText">Glisser une image ici ou <span class="upload-browse">choisir un fichier</span></div>
+      <div class="upload-text" id="uploadText">Drag an image here or <span class="upload-browse">choose a file</span></div>
       <input type="file" id="upload" accept="image/*" />
     </div>
 
     <div class="field">
-      <label id="labelText">Texte</label>
-      <textarea id="txtMain" placeholder="PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026"></textarea>
+      <label id="labelText">Text</label>
+      <textarea id="txtMain" placeholder="GRAIN PRODUCTION: NEARLY 90 MILLION QUINTALS EXPECTED IN 2025-2026"></textarea>
     </div>
 
     <div class="row2">
       <div class="field">
-        <label>Mot(s) en couleur <span style="color:#ff7a14">█</span></label>
-        <input type="text" id="highlightWord" placeholder="ex: 90 MILLIONS" />
-      </div>
-      <div class="field">
-        <label>Taille de police (px)</label>
-        <input type="number" id="fontSize" value="107" min="20" max="300" step="1" />
+        <label>Highlighted word(s) <span style="color:#ff7a14">█</span></label>
+        <input type="text" id="highlightWord" placeholder="e.g. 90 MILLION" />
       </div>
     </div>
 
-    <div class="row2">
-      <div class="field">
-        <label>Interligne (px)</label>
-        <input type="number" id="lineSpacing" value="0" min="-60" max="200" step="1" />
-      </div>
-      <div class="field">
-        <label>Position logo Y (%)</label>
-        <input type="number" id="logoY" value="0" min="-50" max="50" step="1" />
-      </div>
+    <p class="srow-group-title">Text</p>
+
+    <div class="srow">
+      <label>Font size</label>
+      <input type="range" id="fontSize" min="20" max="300" step="1" value="107" />
+      <span class="sval" id="fontSizeVal">107 px</span>
+    </div>
+    <div class="srow">
+      <label>Line spacing</label>
+      <input type="range" id="lineSpacing" min="-60" max="200" step="1" value="0" />
+      <span class="sval" id="lineSpacingVal">0 px</span>
+    </div>
+    <div class="srow">
+      <label>Text Y position</label>
+      <input type="range" id="textY" min="10" max="100" step="1" value="90" />
+      <span class="sval" id="textYVal">90 %</span>
     </div>
 
-    <div class="row2">
-      <div class="field">
-        <label>Position texte Y (%)</label>
-        <input type="number" id="textY" value="90" min="10" max="100" step="1" />
+    <p class="srow-group-title">Logo</p>
+
+    <div class="srow">
+      <label>Logo Y position</label>
+      <input type="range" id="logoY" min="-50" max="50" step="1" value="0" />
+      <span class="sval" id="logoYVal">0 %</span>
+    </div>
+
+    <p class="srow-group-title">Image</p>
+
+    <div class="srow">
+      <label>Zoom</label>
+      <input type="range" id="imgZoom" min="50" max="300" step="1" value="100" />
+      <span class="sval" id="imgZoomVal">100 %</span>
+    </div>
+    <div class="srow">
+      <label>X offset</label>
+      <input type="range" id="imgX" min="-540" max="540" step="1" value="0" />
+      <span class="sval" id="imgXVal">0 px</span>
+    </div>
+    <div class="srow">
+      <label>Y offset</label>
+      <input type="range" id="imgY" min="-675" max="675" step="1" value="0" />
+      <span class="sval" id="imgYVal">0 px</span>
+    </div>
+    <div style="margin-bottom:16px;">
+      <button class="btn" id="resetImg" style="width:100%;justify-content:center;">↺ Reset image</button>
+    </div>
+
+    </div><!-- /editor-controls -->
+
+    <div class="editor-preview">
+      <div class="canvas-wrap" style="aspect-ratio:4/5;">
+        <canvas id="canvas" width="1080" height="1350" style="width:100%;height:auto;display:block;"></canvas>
       </div>
-    </div>
+      <div id="dlWrap">
+        <button class="btn btn-success" id="dlBtn">↓ Download Instagram post</button>
+      </div>
+    </div><!-- /editor-preview -->
 
-    <div id="dlWrap">
-      <button class="btn btn-success" id="dlBtn">↓ Télécharger le post Instagram</button>
-    </div>
-
-    <div class="canvas-wrap" style="aspect-ratio:4/5; margin-top:16px;">
-      <canvas id="canvas" width="1080" height="1350" style="width:100%;height:auto;display:block;"></canvas>
-    </div>
+    </div><!-- /editor-layout -->
   </div>
 
   <script>
@@ -154,31 +295,35 @@
     const lineSpacingEl = document.getElementById('lineSpacing');
     const logoYEl       = document.getElementById('logoY');
     const textYEl       = document.getElementById('textY');
-    const modeTabs      = document.getElementById('modeTabs');
+    const imgZoomEl      = document.getElementById('imgZoom');
+    const imgXEl         = document.getElementById('imgX');
+    const imgYEl         = document.getElementById('imgY');
+    const resetImgBtn    = document.getElementById('resetImg');
+    const modeTabs       = document.getElementById('modeTabs');
     const modeNoticeIcon = document.getElementById('modeNoticeIcon');
     const modeNoticeText = document.getElementById('modeNoticeText');
-    const labelText     = document.getElementById('labelText');
+    const labelText      = document.getElementById('labelText');
 
     let currentFile = null;
     let currentMode = 'fr';
 
     const MODES = {
       fr: {
-        icon: '🇫🇷', label: 'Mode Français',
-        desc: 'DIN Condensed Bold, centré, marges 33px',
+        icon: '🇫🇷', label: 'French Mode',
+        desc: 'DIN Condensed Bold, centered, 33px margins',
         font: 'DINCondensedBold',
         fallback: 'Impact, Helvetica Neue, Helvetica',
         dir: 'ltr', upper: true,
-        lbl: 'Texte',
-        ph: 'PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026',
+        lbl: 'Text',
+        ph: 'GRAIN PRODUCTION: NEARLY 90 MILLION QUINTALS EXPECTED IN 2025-2026',
       },
       ar: {
-        icon: '🇲🇦', label: 'Mode Arabe',
-        desc: 'Somar Bold, centré, marges 33px',
+        icon: '🇲🇦', label: 'Arabic Mode',
+        desc: 'Somar Bold, centered',
         font: 'SomarBold',
         fallback: 'Arial',
         dir: 'rtl', upper: false,
-        lbl: 'النص',
+        lbl: 'Text',
         ph: 'مندوبية التخطيط: أسعار الخضر والمحروقات ارتفعت بأزيد من 9% في شهر واحد',
       },
     };
@@ -249,9 +394,15 @@
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      const bg    = await loadImg(URL.createObjectURL(currentFile));
-      const scale = Math.max(W / bg.width, H / bg.height);
-      ctx.drawImage(bg, (W - bg.width * scale) / 2, (H - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+      const bg       = await loadImg(URL.createObjectURL(currentFile));
+      const baseScale = Math.max(W / bg.width, H / bg.height);
+      const zoom      = (parseFloat(imgZoomEl.value) || 100) / 100;
+      const scale     = baseScale * zoom;
+      const offsetX   = parseFloat(imgXEl.value) || 0;
+      const offsetY   = parseFloat(imgYEl.value) || 0;
+      const drawW     = bg.width  * scale;
+      const drawH     = bg.height * scale;
+      ctx.drawImage(bg, (W - drawW) / 2 + offsetX, (H - drawH) / 2 + offsetY, drawW, drawH);
 
       try {
         const sh = await getCached('shadow', '../assets/overlays/shadow.png');
@@ -323,14 +474,6 @@
     }
 
     // ── Highlighted line ─────────────────────────────────────────────────────
-    // Render using an off-screen canvas with direction=rtl so the browser
-    // lays out the Arabic text natively. Then scan pixel columns to find
-    // where the highlight word starts, and redraw that region in orange.
-    //
-    // For LTR: use the same word-by-word approach as before (reliable).
-    // For RTL: draw white on offscreen with direction=rtl, then draw
-    //          the highlight word alone on a second offscreen with direction=rtl
-    //          and use its actualBoundingBox to find its position in the full line.
     function drawHighlightedLine(line, hl, cx, y, fontStr) {
       ctx.font      = fontStr;
       ctx.direction = 'ltr';
@@ -339,7 +482,6 @@
       const isRTL = MODES[currentMode].dir === 'rtl';
 
       if (!isRTL) {
-        // ── LTR: word-by-word ──────────────────────────────────────────────
         ctx.textAlign = 'left';
         const words  = line.split(' ');
         const spaceW = ctx.measureText(' ').width;
@@ -355,8 +497,6 @@
           x += widths[i] + spaceW;
         }
       } else {
-        // ── RTL: draw white line, then overdraw highlight word ─────────────
-        // Step 1: draw full line in white (browser handles RTL word order)
         withShadow(() => {
           ctx.fillStyle = '#fff';
           ctx.fillText(line, cx, y);
@@ -364,8 +504,6 @@
 
         if (!hl || line.indexOf(hl) === -1) return;
 
-        // Step 2: use an offscreen canvas with direction=rtl to measure
-        // where the highlight word lands within the full line.
         const os  = document.createElement('canvas');
         os.width  = W; os.height = 1;
         const oc  = os.getContext('2d');
@@ -373,24 +511,16 @@
         oc.direction = 'rtl';
         oc.textAlign = 'center';
 
-        // measureText on the full line with rtl gives us the total width
         const fullW = oc.measureText(line).width;
         const hlW   = oc.measureText(hl).width;
 
-        // Build prefix: in RTL the string is rendered right-to-left,
-        // so "prefix" = text that appears to the RIGHT of our word.
-        // That's everything BEFORE hl in the string (lower char indices).
         const hlCharIdx = line.indexOf(hl);
-        const before    = line.slice(0, hlCharIdx).trimEnd(); // text right of hl visually
-        const after     = line.slice(hlCharIdx + hl.length).trimStart(); // text left of hl visually
+        const before    = line.slice(0, hlCharIdx).trimEnd();
+        const after     = line.slice(hlCharIdx + hl.length).trimStart();
 
         const beforeW = before.length ? oc.measureText(before).width + oc.measureText(' ').width : 0;
         const afterW  = after.length  ? oc.measureText(after).width  + oc.measureText(' ').width : 0;
 
-        // In RTL with textAlign=center anchored at cx:
-        // block right edge = cx + fullW/2
-        // word right edge  = blockRight - beforeW   (before is to the right)
-        // word center      = wordRight - hlW/2
         const blockRight = cx + fullW / 2;
         const hlCx       = blockRight - beforeW - hlW / 2;
 
@@ -449,7 +579,7 @@
         a.href     = canvas.toDataURL('image/jpeg', 0.94);
         a.download = `insta_post_${currentMode}_${ts}.jpeg`;
         a.click();
-      } catch(e) { alert('Erreur : ' + e.message); }
+      } catch(e) { alert('Error: ' + e.message); }
     });
 
     // ── Events ───────────────────────────────────────────────────────────────
@@ -481,6 +611,35 @@
     lineSpacingEl.addEventListener('input', draw);
     logoYEl.addEventListener('input',       draw);
     textYEl.addEventListener('input',       draw);
+    imgZoomEl.addEventListener('input',     draw);
+    imgXEl.addEventListener('input',        draw);
+    imgYEl.addEventListener('input',        draw);
+
+    resetImgBtn.addEventListener('click', () => {
+      imgZoomEl.value = 100;
+      imgXEl.value    = 0;
+      imgYEl.value    = 0;
+      document.getElementById('imgZoomVal').textContent = '100 %';
+      document.getElementById('imgXVal').textContent    = '0 px';
+      document.getElementById('imgYVal').textContent    = '0 px';
+      draw();
+    });
+
+    // ── Slider live readouts ─────────────────────────────────────────────────
+    const sliders = [
+      { el: fontSizeEl,    out: document.getElementById('fontSizeVal'),    unit: ' px' },
+      { el: lineSpacingEl, out: document.getElementById('lineSpacingVal'), unit: ' px' },
+      { el: textYEl,       out: document.getElementById('textYVal'),       unit: ' %'  },
+      { el: logoYEl,       out: document.getElementById('logoYVal'),       unit: ' %'  },
+      { el: imgZoomEl,     out: document.getElementById('imgZoomVal'),     unit: ' %'  },
+      { el: imgXEl,        out: document.getElementById('imgXVal'),        unit: ' px' },
+      { el: imgYEl,        out: document.getElementById('imgYVal'),        unit: ' px' },
+    ];
+    sliders.forEach(({ el, out, unit }) => {
+      const sync = () => { out.textContent = el.value + unit; };
+      sync();
+      el.addEventListener('input', sync);
+    });
 
     setMode('fr');
   </script>
