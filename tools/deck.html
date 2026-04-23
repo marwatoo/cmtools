@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Le360 Nitter Deck — MediaTools Studio</title>
+  <title>Le360 Nitter Deck – Reloaded</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
@@ -43,18 +43,25 @@
     .deck-col-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600;
-      font-family: 'Syne', sans-serif; flex-shrink: 0;
+      font-family: 'Syne', sans-serif; flex-shrink: 0; gap: 8px;
     }
     .deck-col-badge {
       font-size: 0.7rem; background: var(--border2); padding: 3px 8px; border-radius: 12px;
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: center; gap: 4px; white-space: nowrap;
     }
     .deck-pulse { width: 8px; height: 8px; background: #4f9; border-radius: 50%; display: inline-block; }
     .deck-col-feed {
       flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px;
       scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
     }
-    .deck-loading { color: var(--text2); font-size: 0.8rem; padding: 16px; text-align: center; }
+    .deck-loading, .deck-error {
+      color: var(--text2); font-size: 0.8rem; padding: 16px; text-align: center;
+    }
+    .deck-error { color: var(--danger, #f25c5c); }
+    .retry-btn {
+      background: var(--accent); color: #000; border: none; padding: 4px 12px;
+      border-radius: 4px; cursor: pointer; font-size: 0.7rem; margin-left: 8px;
+    }
     .deck-card {
       background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
       overflow: hidden; cursor: pointer; transition: border 0.2s; flex-shrink: 0;
@@ -102,10 +109,9 @@
 <body>
   <nav class="nav">
     <a href="../index.html" class="nav-back">← Back</a>
-    <span class="nav-title">Le360 Nitter Deck ⚡</span>
+    <span class="nav-title">Le360 Nitter Deck 🔄</span>
     <span class="nav-num">🐦 RSS</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-      <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
       <button class="theme-toggle" id="themeToggle">☽</button>
     </div>
   </nav>
@@ -131,26 +137,35 @@
         toggle.textContent = next === 'dark' ? '☽' : '☀';
       });
 
-      // Nitter configuration – direct usage of nitter.net
-      const NITTER_BASE = 'https://nitter.net';
-      const NITTER_FALLBACKS = ['https://nitter.poast.org','https://nitter.1d4.us'];
-      // Proxies only used as fallback when direct fetch fails
+      // --- Nitter instances with CORS-friendly behaviour ---
+      const NITTER_INSTANCES = [
+        'https://nitter.net',
+        'https://nitter.poast.org',
+        'https://nitter.1d4.us',
+        'https://nitter.space',
+        'https://nitter.privacydev.net',
+        'https://nitter.mstdn.social'
+      ];
+
+      // --- Reliable CORS proxies (in order of preference) ---
       const PROXIES = [
+        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,   // usually very reliable
         url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
         url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        url => `https://proxy.cors.sh/${url}`
+        url => `https://proxy.cors.sh/${url}`,
       ];
 
       const accounts = {
-        le360fr:      { handle:'le360fr',      label:'Français 🇫🇷', nitter:NITTER_BASE },
-        le360ar:      { handle:'le360ar',      label:'Arabe 🇲🇦',   nitter:NITTER_BASE },
-        le360sport:   { handle:'le360sport',   label:'Sport ⚽',    nitter:NITTER_BASE },
-        le360afrique: { handle:'le360afrique', label:'Afrique 🌍',  nitter:NITTER_BASE },
-        le360es:      { handle:'le360es',      label:'Espagnol 🇪🇸', nitter:NITTER_BASE }
+        le360fr:      { handle:'le360fr',      label:'Français 🇫🇷' },
+        le360ar:      { handle:'le360ar',      label:'Arabe 🇲🇦' },
+        le360sport:   { handle:'le360sport',   label:'Sport ⚽' },
+        le360afrique: { handle:'le360afrique', label:'Afrique 🌍' },
+        le360es:      { handle:'le360es',      label:'Espagnol 🇪🇸' }
       };
 
       const cache = {};
-      const instanceIdx = {};
+      // Keep track of which nitter instance works per account
+      const instanceMap = {};
 
       // Build columns
       const container = document.getElementById('deckContainer');
@@ -168,36 +183,55 @@
             <div class="deck-loading">⏳ Loading…</div>
           </div>`;
         container.appendChild(col);
+        // Initialize instance index
+        instanceMap[key] = 0;
+        cache[key] = new Set();
       });
 
-      // ---------- Fetch with direct nitter.net attempt first ----------
-      async function smartFetch(accountKey) {
-        const url = `${accounts[accountKey].nitter}/${accounts[accountKey].handle}/rss`;
-        const busted = url + (url.includes('?')?'&':'?') + '_t=' + Date.now();
+      // ---------- Smart fetch: try direct → proxies, with fallback instances ----------
+      async function fetchWithFallback(accountKey) {
+        const handle = accounts[accountKey].handle;
+        let lastError = null;
 
-        // 1) Try direct fetch (fastest, no proxy)
-        try {
-          const directResp = await fetch(busted, { signal: AbortSignal.timeout(5000) });
-          if (directResp.ok) {
-            const text = await directResp.text();
-            if (text.includes('<rss') || text.includes('<feed') || text.includes('<item') || text.includes('<entry'))
-              return text;
+        // Try each nitter instance
+        for (let i = 0; i < NITTER_INSTANCES.length; i++) {
+          const instance = NITTER_INSTANCES[instanceMap[accountKey] % NITTER_INSTANCES.length];
+          const rssUrl = `${instance}/${handle}/rss`;
+          const busted = rssUrl + (rssUrl.includes('?')?'&':'?') + '_t=' + Date.now();
+
+          // 1) Direct attempt (fastest)
+          try {
+            const resp = await fetch(busted, { signal: AbortSignal.timeout(8000) });
+            if (resp.ok) {
+              const text = await resp.text();
+              if (text.includes('<rss') || text.includes('<feed') || text.includes('<item') || text.includes('<entry')) {
+                // success – remember this working instance
+                instanceMap[accountKey] = NITTER_INSTANCES.indexOf(instance);
+                return text;
+              }
+            }
+          } catch (e) { /* direct blocked */ }
+
+          // 2) Proxy fallback for this instance
+          for (const proxy of PROXIES) {
+            try {
+              const proxyUrl = proxy(busted);
+              const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+              if (resp.ok) {
+                const text = await resp.text();
+                if (text.includes('<rss') || text.includes('<feed') || text.includes('<item') || text.includes('<entry')) {
+                  instanceMap[accountKey] = NITTER_INSTANCES.indexOf(instance);
+                  return text;
+                }
+              }
+            } catch (e) { lastError = e; }
           }
-        } catch (e) { /* direct failed, fallback to proxies */ }
 
-        // 2) Proxy fallback with race
-        const proxyPromises = PROXIES.map(proxy =>
-          fetch(proxy(busted), { signal: AbortSignal.timeout(5000) })
-            .then(r => { if(!r.ok) throw new Error('proxy fail'); return r.text(); })
-        );
-        try {
-          const txt = await Promise.any(proxyPromises);
-          if (txt.includes('<rss') || txt.includes('<feed') || txt.includes('<item') || txt.includes('<entry'))
-            return txt;
-          throw new Error('Not a feed');
-        } catch (proxyErr) {
-          throw new Error('Direct & proxies failed');
+          // Move to next instance for next attempt
+          instanceMap[accountKey]++;
         }
+
+        throw new Error(`All instances & proxies failed. Last error: ${lastError?.message || 'unknown'}`);
       }
 
       function extractImages(html) {
@@ -207,7 +241,7 @@
       }
 
       async function fetchTweets(accountKey) {
-        const xml = await smartFetch(accountKey);
+        const xml = await fetchWithFallback(accountKey);
         const doc = new DOMParser().parseFromString(xml, 'text/xml');
         if (doc.querySelector('parsererror')) throw new Error('XML parse error');
         let items = [...doc.querySelectorAll('item')];
@@ -278,47 +312,51 @@
         return card;
       }
 
+      // Update a single column
       async function updateColumn(key) {
         const feed = document.getElementById(`feed-${key}`);
         if (!cache[key]) cache[key] = new Set();
         try {
           const tweets = await fetchTweets(key);
           const fresh = tweets.filter(t => !cache[key].has(t.link));
+          // Remove loading/error messages
+          feed.querySelectorAll('.deck-loading, .deck-error').forEach(el => el.remove());
           if (fresh.length === 0) {
-            const loader = feed.querySelector('.deck-loading');
-            if (loader) loader.textContent = '✓ Up to date';
+            if (!feed.querySelector('.deck-loading')) {
+              const msg = document.createElement('div'); msg.className = 'deck-loading'; msg.textContent = '✓ Up to date';
+              feed.appendChild(msg);
+            }
             return;
           }
-          const loader = feed.querySelector('.deck-loading');
-          if (loader) loader.remove();
           const frag = document.createDocumentFragment();
           fresh.reverse().forEach(t => { frag.appendChild(createCard(t)); cache[key].add(t.link); });
           feed.insertBefore(frag, feed.firstChild);
           while (feed.children.length > 30) feed.removeChild(feed.lastChild);
         } catch (e) {
           console.warn(key, e);
-          const loader = feed.querySelector('.deck-loading');
-          if (loader) loader.textContent = '⚠ ' + (e.message.substring(0,30) || 'Error');
-          if (!instanceIdx[key]) instanceIdx[key] = 0;
-          instanceIdx[key]++;
-          if (instanceIdx[key] < NITTER_FALLBACKS.length) {
-            accounts[key].nitter = NITTER_FALLBACKS[instanceIdx[key]];
-            cache[key] = new Set();
-          } else {
-            accounts[key].nitter = NITTER_BASE;
-            instanceIdx[key] = 0;
-            cache[key] = new Set();
-          }
+          feed.querySelectorAll('.deck-loading, .deck-error').forEach(el => el.remove());
+          const errDiv = document.createElement('div');
+          errDiv.className = 'deck-error';
+          errDiv.innerHTML = `⚠ ${e.message.substring(0,40)} <button class="retry-btn" data-key="${key}">↻ Retry</button>`;
+          feed.appendChild(errDiv);
+          // Attach retry listener
+          errDiv.querySelector('.retry-btn').addEventListener('click', () => {
+            errDiv.remove();
+            const loader = document.createElement('div'); loader.className = 'deck-loading'; loader.textContent = '⏳ Retrying…';
+            feed.appendChild(loader);
+            updateColumn(key);
+          });
         }
       }
 
+      // Global refresh
       function refreshAll() {
         Object.keys(accounts).forEach(k => updateColumn(k));
-        setTimeout(refreshAll, 20000);
+        setTimeout(refreshAll, 30000); // 30 seconds (slower to avoid rate limits)
       }
       refreshAll();
 
-      // Modal
+      // Modal (unchanged)
       function openModal(tweet) {
         const overlay = document.getElementById('modalOverlay');
         const body = document.getElementById('modalBody');
