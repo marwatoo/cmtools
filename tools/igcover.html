@@ -1,169 +1,444 @@
 <!DOCTYPE html>
-<html lang="ar" data-theme="dark">
+<html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IG Sport Cover — MediaTools Studio</title>
+  <title>Insta Post — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
+  <style>
+    /* ── page-specific only ─────────────────────────────────────────────── */
+    .mode-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 9px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: var(--radius-xs);
+      transition: all .2s;
+    }
+    .mode-tab:hover  { color: var(--text); background: var(--bg3); }
+    .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    #dlWrap {
+      margin-top: 16px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height .25s ease, opacity .25s ease;
+    }
+    #dlWrap.visible { max-height: 60px; opacity: 1; }
+    #dlWrap .btn    { width: 100%; margin-bottom: 0; justify-content: center; }
+  </style>
 </head>
 <body>
 
   <nav class="nav">
     <a href="../index.html" class="nav-back">← Back</a>
-    <span class="nav-title">IG Sport Cover</span>
-    <span class="nav-num">02 / 04</span>
+    <span class="nav-title">Insta Post</span>
+    <span class="nav-num">1080 × 1350</span>
     <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
   </nav>
 
   <div class="tool-page">
     <div class="tool-header">
-      <h1>IG Sport Cover</h1>
-      <p>Create 1080×1920 Instagram Sport covers with branding overlay and Arabic text.</p>
+      <h1>Instagram Post</h1>
+      <p>Visuels 1080×1350 — shadow + le360 auto, texte centré, marges 33px, mot en couleur.</p>
     </div>
 
-    <!-- Upload -->
+    <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="fr">🇫🇷 Français</button>
+      <button class="mode-tab"        data-mode="ar">🇲🇦 Arabe</button>
+    </div>
+
+    <div class="notice" id="modeNotice">
+      <span id="modeNoticeIcon">🇫🇷</span>&nbsp;
+      <span id="modeNoticeText"><strong>Mode Français</strong> — DIN Condensed Bold, centré, marges 33px</span>
+    </div>
+
     <div class="upload-zone" id="dropzone">
       <div class="upload-icon">⬆</div>
-      <div class="upload-text" id="uploadText">اسحب الصورة هنا أو <span class="upload-browse">اضغط للاختيار</span></div>
+      <div class="upload-text" id="uploadText">Glisser une image ici ou <span class="upload-browse">choisir un fichier</span></div>
       <input type="file" id="upload" accept="image/*" />
     </div>
 
-    <!-- Arabic text -->
     <div class="field">
-      <label>النص العربي (سطرين كحد أقصى)</label>
-      <textarea id="arabicText" placeholder="اكتب النص العربي هنا…" rows="3" dir="rtl"></textarea>
+      <label id="labelText">Texte</label>
+      <textarea id="txtMain" placeholder="PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026"></textarea>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-primary" id="processBtn">◈ إنشاء الصورة</button>
-      <a class="btn btn-success" id="downloadLink" style="display:none;">↓ تنزيل الصورة</a>
+    <div class="row2">
+      <div class="field">
+        <label>Mot(s) en couleur <span style="color:#ff7a14">█</span></label>
+        <input type="text" id="highlightWord" placeholder="ex: 90 MILLIONS" />
+      </div>
+      <div class="field">
+        <label>Taille de police (px)</label>
+        <input type="number" id="fontSize" value="107" min="20" max="300" step="1" />
+      </div>
     </div>
 
-    <div class="canvas-wrap" style="aspect-ratio:9/16">
-      <canvas id="canvas" width="1080" height="1920" style="width:100%;height:auto;display:block;"></canvas>
+    <div class="row2">
+      <div class="field">
+        <label>Interligne (px)</label>
+        <input type="number" id="lineSpacing" value="0" min="-60" max="200" step="1" />
+      </div>
+      <div class="field">
+        <label>Position logo Y (%)</label>
+        <input type="number" id="logoY" value="0" min="-50" max="50" step="1" />
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Position texte Y (%)</label>
+        <input type="number" id="textY" value="90" min="10" max="100" step="1" />
+      </div>
+    </div>
+
+    <div id="dlWrap">
+      <button class="btn btn-success" id="dlBtn">↓ Télécharger le post Instagram</button>
+    </div>
+
+    <div class="canvas-wrap" style="aspect-ratio:4/5; margin-top:16px;">
+      <canvas id="canvas" width="1080" height="1350" style="width:100%;height:auto;display:block;"></canvas>
     </div>
   </div>
 
   <script>
-    const upload     = document.getElementById('upload');
-    const processBtn = document.getElementById('processBtn');
-    const canvas     = document.getElementById('canvas');
-    const ctx        = canvas.getContext('2d');
-    const dlLink     = document.getElementById('downloadLink');
-    const arabicText = document.getElementById('arabicText');
-    const dropzone   = document.getElementById('dropzone');
-    const uploadText = document.getElementById('uploadText');
+    const W = 1080, H = 1350;
+    const ORANGE = '#ff7a14';
+    const MARGIN = 33;
+    const TXT_W  = W - MARGIN * 2; // 1014px
 
-    const W = 1080, H = 1920;
+    const canvas       = document.getElementById('canvas');
+    const ctx          = canvas.getContext('2d');
+    const upload       = document.getElementById('upload');
+    const dropzone     = document.getElementById('dropzone');
+    const uploadText   = document.getElementById('uploadText');
+    const dlWrap       = document.getElementById('dlWrap');
+    const dlBtn        = document.getElementById('dlBtn');
+    const txtMain      = document.getElementById('txtMain');
+    const hlWordEl     = document.getElementById('highlightWord');
+    const fontSizeEl   = document.getElementById('fontSize');
+    const lineSpacingEl = document.getElementById('lineSpacing');
+    const logoYEl       = document.getElementById('logoY');
+    const textYEl       = document.getElementById('textY');
+    const modeTabs     = document.getElementById('modeTabs');
+    const modeNoticeIcon = document.getElementById('modeNoticeIcon');
+    const modeNoticeText = document.getElementById('modeNoticeText');
+    const labelText    = document.getElementById('labelText');
+
     let currentFile = null;
+    let currentMode = 'fr';
 
-    const brandingImg = new Image();
-    brandingImg.src = '../assets/ig/branding.png';
+    const MODES = {
+      fr: {
+        icon: '🇫🇷', label: 'Mode Français',
+        desc: 'DIN Condensed Bold, centré, marges 33px',
+        font: 'DINCondensedBold',
+        fallback: 'Impact, Helvetica Neue, Helvetica',
+        dir: 'ltr', upper: true,
+        lbl: 'Texte',
+        ph: 'PRODUCTION CÉRÉALIÈRE: PRÈS DE 90 MILLIONS DE QUINTAUX ATTENDUS EN 2025-2026',
+      },
+      ar: {
+        icon: '🇲🇦', label: 'Mode Arabe',
+        desc: 'Somar Bold, centré, marges 33px',
+        font: 'SomarBold',
+        fallback: 'Arial',
+        dir: 'rtl', upper: false,
+        lbl: 'النص',
+        ph: 'مندوبية التخطيط: أسعار الخضر والمحروقات ارتفعت بأزيد من 9% في شهر واحد',
+      },
+    };
 
-    async function loadFont() {
-      try {
-        const f = new FontFace('LamaSans', `url(../fonts/LamaSans-ExtraBold.ttf)`);
-        await f.load();
-        document.fonts.add(f);
-      } catch(e) { console.warn('LamaSans not found, using fallback.'); }
+    // ── Fonts ────────────────────────────────────────────────────────────────
+    async function loadFonts() {
+      const list = [
+        { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
+        { name: 'SomarBold',        url: '../fonts/Somar-Bold.otf' },
+      ];
+      for (const { name, url } of list) {
+        try {
+          const f = new FontFace(name, `url(${url})`);
+          await f.load();
+          document.fonts.add(f);
+        } catch(e) { console.warn('Font not loaded:', name); }
+      }
     }
-    const fontReady = loadFont();
+    const fontsReady = loadFonts();
 
-    function loadImage(src) {
+    // ── Image helpers ────────────────────────────────────────────────────────
+    function loadImg(src) {
       return new Promise((res, rej) => {
         const img = new Image();
-        img.onload = () => res(img);
-        img.onerror = rej;
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Cannot load: ' + src));
         img.src = src;
       });
     }
+
+    const imgCache = {};
+    function getCached(key, src) {
+      // Only cache fulfilled promises; discard rejected ones so we retry next draw
+      if (!imgCache[key]) {
+        imgCache[key] = loadImg(src).catch(err => {
+          delete imgCache[key]; // remove rejected entry so next call retries
+          return Promise.reject(err);
+        });
+      }
+      return imgCache[key];
+    }
+    getCached('shadow', '../assets/overlays/shadow.png').catch(() => {});
+    getCached('logo',   '../assets/overlays/le360.png').catch(() => {});
+
+    // ── Word-wrap (no mid-word break) ────────────────────────────────────────
+    function wrapText(text, maxW) {
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for (const word of words) {
+        const candidate = line ? line + ' ' + word : word;
+        if (ctx.measureText(candidate).width <= maxW) {
+          line = candidate;
+        } else {
+          if (line) lines.push(line);
+          line = word;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    // ── Draw ─────────────────────────────────────────────────────────────────
+    async function draw() {
+      if (!currentFile) { updateDlBtn(); return; }
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      // 1. Background — cover-fit
+      const bg    = await loadImg(URL.createObjectURL(currentFile));
+      const scale = Math.max(W / bg.width, H / bg.height);
+      ctx.drawImage(bg, (W - bg.width * scale) / 2, (H - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+
+      // 2. Shadow overlay — full canvas, no crop
+      try {
+        const sh = await getCached('shadow', '../assets/overlays/shadow.png');
+        ctx.drawImage(sh, 0, 0, W, H);
+      } catch(_) {
+        const g = ctx.createLinearGradient(0, H * 0.4, 0, H);
+        g.addColorStop(0,   'rgba(0,0,0,0)');
+        g.addColorStop(0.4, 'rgba(0,0,0,0.65)');
+        g.addColorStop(1,   'rgba(0,0,0,0.92)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // 3. le360 logo — offset by logoY
+      const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * H;
+      try {
+        const logo = await getCached('logo', '../assets/overlays/le360.png');
+        ctx.drawImage(logo, 0, logoOffsetY, W, H);
+      } catch(_) {
+        ctx.save();
+        ctx.font = 'bold 38px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.direction = 'ltr';
+        ctx.fillText('le360', W / 2, H * 0.775 + logoOffsetY);
+        ctx.restore();
+      }
+
+      // 4. Text
+      await fontsReady;
+      drawText();
+      updateDlBtn();
+    }
+
+    // ── Text ─────────────────────────────────────────────────────────────────
+    function drawText() {
+      const cfg  = MODES[currentMode];
+      const raw  = txtMain.value.trim();
+      if (!raw) return;
+
+      const text    = cfg.upper ? raw.toUpperCase() : raw;
+      const hlRaw   = hlWordEl.value.trim();
+      const hl      = hlRaw ? (cfg.upper ? hlRaw.toUpperCase() : hlRaw) : '';
+      const px      = Math.max(20, parseInt(fontSizeEl.value, 10) || 107);
+      const spacing = parseInt(lineSpacingEl.value, 10) || 0;
+      const lineH   = Math.round(px * 1.16) + spacing;
+      const fontStr = `normal ${px}px ${cfg.font}, ${cfg.fallback}`;
+
+      ctx.save();
+      ctx.font      = fontStr;
+      ctx.direction = 'ltr'; // always ltr for measureText accuracy
+      ctx.textAlign = 'center';
+
+      const lines   = wrapText(text, TXT_W);
+      const anchorY = H * ((parseFloat(textYEl.value) || 90) / 100);
+      const startY  = anchorY - lines.length * lineH + lineH;
+
+      lines.forEach((line, i) => {
+        const y = startY + i * lineH;
+        if (hl) {
+          drawHighlightedLine(line, hl, W / 2, y, fontStr);
+        } else {
+          withShadow(() => {
+            ctx.fillStyle = '#fff';
+            ctx.fillText(line, W / 2, y);
+          });
+        }
+      });
+
+      ctx.restore();
+    }
+
+    // Centred line with per-word colour check — mirrors the Python logic exactly.
+    // Measure the FULL line once → derive start X → step word-by-word.
+    function drawHighlightedLine(line, hl, cx, y, fontStr) {
+      ctx.font      = fontStr;
+      ctx.direction = 'ltr';
+      ctx.textAlign = 'left';
+
+      const isRTL  = MODES[currentMode].dir === 'rtl';
+      const spaceW = ctx.measureText(' ').width;
+      const fullW  = ctx.measureText(line).width;
+
+      // For RTL (Arabic): reverse word order so they render right-to-left visually.
+      // We still paint each word with textAlign='left' and step x forward,
+      // but we iterate from the last word to the first.
+      const words = line.split(' ');
+      const orderedWords = isRTL ? [...words].reverse() : words;
+
+      let x = cx - fullW / 2;   // left edge of the centred line
+
+      for (const w of orderedWords) {
+        // For highlight matching in RTL, compare against the original word list
+        const isHL = hl && w === hl;
+        withShadow(() => {
+          ctx.fillStyle = isHL ? ORANGE : '#fff';
+          ctx.fillText(w, x, y);
+        });
+        x += ctx.measureText(w).width + spaceW;
+      }
+    }
+
+    function withShadow(fn) {
+      ctx.shadowColor   = 'rgba(0,0,0,0.85)';
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur    = 14;
+      fn();
+      ctx.shadowColor   = 'transparent';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur    = 0;
+    }
+
+    // ── Mode ─────────────────────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      const cfg   = MODES[mode];
+      document.querySelectorAll('.mode-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.mode === mode)
+      );
+      modeNoticeIcon.textContent = cfg.icon;
+      modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
+      labelText.textContent      = cfg.lbl;
+      txtMain.placeholder        = cfg.ph;
+      txtMain.dir                = cfg.dir;
+      hlWordEl.dir               = cfg.dir;
+      dlWrap.classList.remove('visible');
+      draw();
+    }
+
+    function updateDlBtn() {
+      dlWrap.classList.toggle('visible', !!(currentFile && txtMain.value.trim()));
+    }
+
+    // ── Download ─────────────────────────────────────────────────────────────
+    dlBtn.addEventListener('click', () => {
+      try {
+        const now = new Date();
+        const ts  = now.getFullYear()
+          + String(now.getMonth()+1).padStart(2,'0')
+          + String(now.getDate()).padStart(2,'0')
+          + '_' + String(now.getHours()).padStart(2,'0')
+          + String(now.getMinutes()).padStart(2,'0')
+          + String(now.getSeconds()).padStart(2,'0');
+        const a   = document.createElement('a');
+        a.href     = canvas.toDataURL('image/jpeg', 0.94);
+        a.download = `insta_post_${currentMode}_${ts}.jpeg`;
+        a.click();
+      } catch(e) { alert('Erreur : ' + e.message); }
+    });
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    modeTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (tab) setMode(tab.dataset.mode);
+    });
+
+    dropzone.addEventListener('click',    () => upload.click());
+    dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
 
     function enableFile(file) {
       currentFile = file;
       dropzone.classList.add('has-file');
       uploadText.textContent = '✓ ' + file.name;
-      previewFile(file);
+      draw();
     }
 
-    function previewFile(file) {
-      const img = new Image();
-      img.onload = () => drawAll(img);
-      img.src = URL.createObjectURL(file);
-    }
+    txtMain.addEventListener('input',      draw);
+    hlWordEl.addEventListener('input',     draw);
+    fontSizeEl.addEventListener('input',   draw);
+    lineSpacingEl.addEventListener('input', draw);
+    logoYEl.addEventListener('input',      draw);
+    textYEl.addEventListener('input',      draw);
 
-    async function drawAll(img) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
-      const scale = Math.max(W / img.width, H / img.height);
-      const iw = img.width * scale, ih = img.height * scale;
-      ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
-
-      if (brandingImg.complete && brandingImg.naturalWidth) {
-        ctx.drawImage(brandingImg, 0, 0, W, H);
-      } else {
-        await new Promise(r => { brandingImg.onload = r; });
-        ctx.drawImage(brandingImg, 0, 0, W, H);
-      }
-
-      await fontReady;
-      drawArabicText();
-    }
-
-    function drawArabicText() {
-      const text = arabicText.value.trim();
-      if (!text) return;
-      const marginX = 65, maxWidth = W - 2 * marginX;
-      ctx.font = '900 48pt LamaSans, Arial';
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.direction = 'rtl';
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3; ctx.shadowBlur = 8;
-
-      const words = text.split(' ');
-      let line = '', lines = [];
-      words.forEach(word => {
-        const test = line ? line + ' ' + word : word;
-        if (ctx.measureText(test).width > maxWidth) { if (line) lines.push(line); line = word; }
-        else line = test;
-      });
-      if (line) lines.push(line);
-      lines = lines.slice(0, 2);
-      lines.forEach((l, i) => ctx.fillText(l, W / 2, 1480 + i * 110));
-      ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
-    }
-
-    // Drag & drop
-    dropzone.addEventListener('click', () => upload.click());
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault(); dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
-    });
-    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
-
-    processBtn.addEventListener('click', () => {
-      if (!currentFile) { alert('يرجى اختيار صورة'); return; }
-      processBtn.disabled = true;
-      processBtn.textContent = 'جاري المعالجة…';
-      const img = new Image();
-      img.onload = async () => {
-        await drawAll(img);
-        const now = new Date();
-        const ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') +
-                   '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
-        dlLink.href = canvas.toDataURL('image/png');
-        dlLink.download = `ig_cover_${ts}.png`;
-        dlLink.style.display = 'flex';
-        processBtn.disabled = false;
-        processBtn.textContent = '◈ إنشاء الصورة';
-      };
-      img.src = URL.createObjectURL(currentFile);
-    });
+    setMode('fr');
   </script>
 </body>
 </html>
