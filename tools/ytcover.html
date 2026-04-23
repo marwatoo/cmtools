@@ -192,7 +192,7 @@
       },
       africa: {
         icon: '🌍', label: 'Africa Mode',
-        desc: '2 lines, left-aligned + country name',
+        desc: '2 lines, left-aligned + country flag',
         overlay: '../assets/overlays/afrique.png',
         showText: true, dir: 'ltr',
         l1: 'Line 1', l2: 'Line 2',
@@ -201,12 +201,19 @@
       },
     };
 
-    function loadImg(src) {
+    function loadImg(src, useCors = true) {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (useCors) img.crossOrigin = 'anonymous';
         img.onload  = () => resolve(img);
-        img.onerror = () => reject(new Error('Cannot load: ' + src));
+        img.onerror = () => {
+          if (useCors) {
+            // retry without CORS
+            loadImg(src, false).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Cannot load: ' + src));
+          }
+        };
         img.src = src;
       });
     }
@@ -237,11 +244,16 @@
     }
     const fontsReady = loadFonts();
 
-    const countryOverlayCache = {};
-    function getCountryOverlay(src) {
-      if (!src) return Promise.resolve(null);
-      if (!countryOverlayCache[src]) countryOverlayCache[src] = loadImg(src);
-      return countryOverlayCache[src];
+    // Country overlay: load fresh each time (no persistent cache) to avoid stale failures
+    function loadCountryOverlay(src) {
+      return new Promise((resolve) => {
+        if (!src) return resolve(null);
+        const img = new Image();
+        // No crossOrigin — local files don't need it and it can cause issues
+        img.onload  = () => resolve(img);
+        img.onerror = () => { console.warn('Country overlay failed:', src); resolve(null); };
+        img.src = src + '?t=' + Date.now(); // bust any cache
+      });
     }
 
     function isReady() {
@@ -286,11 +298,10 @@
         } catch(e) { console.warn(e.message); }
       }
 
+      // Draw country flag layer (Africa mode)
       if (cfg.hasCountry && countrySelect.value) {
-        try {
-          const co = await getCountryOverlay(countrySelect.value);
-          if (co) ctx.drawImage(co, 0, 0, W, H);
-        } catch(e) { console.warn('Country overlay error:', e.message); }
+        const co = await loadCountryOverlay(countrySelect.value);
+        if (co) ctx.drawImage(co, 0, 0, W, H);
       }
 
       if (cfg.showText) {
@@ -375,7 +386,7 @@
       modeNoticeIcon.textContent = cfg.icon;
       modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
 
-      fieldsGrid.style.display = cfg.showText ? '' : 'none';
+      fieldsGrid.style.display  = cfg.showText ? '' : 'none';
       countryWrap.style.display = cfg.hasCountry ? '' : 'none';
       if (cfg.showText) {
         label1.textContent = cfg.l1;
