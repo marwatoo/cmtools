@@ -167,6 +167,12 @@
       copyLink.dataset.link = article.link;
       btns.appendChild(copyLink);
 
+      const copyTitle = document.createElement('button');
+      copyTitle.className = 'deck-btn copy-title';
+      copyTitle.textContent = 'Copy Title';
+      copyTitle.dataset.title = article.title;
+      btns.appendChild(copyTitle);
+
       const copyBoth = document.createElement('button');
       copyBoth.className = 'deck-btn copy-both';
       copyBoth.textContent = 'Copy Title + Link';
@@ -192,6 +198,11 @@
       copyLink.addEventListener('click', e => {
         e.stopPropagation();
         copyToClipboard(copyLink.dataset.link, copyLink);
+      });
+
+      copyTitle.addEventListener('click', e => {
+        e.stopPropagation();
+        copyToClipboard(copyTitle.dataset.title, copyTitle);
       });
       
       copyBoth.addEventListener('click', e => {
