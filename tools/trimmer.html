@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Trimmer — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --shadow:0 4px 32px rgba(0,0,0,0.5);
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+      --shadow:0 4px 32px rgba(0,0,0,0.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+
+    /* Nav */
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* Layout */
+    .tool-header{padding:28px 24px 0;max-width:1140px;margin:0 auto}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:4px}
+    .tool-header p{color:var(--text2);font-size:.9rem;margin-bottom:20px}
+
+    .editor-layout{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start;padding:24px 24px 80px;max-width:1140px;margin:0 auto}
+    .controls-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:73px}
+    .editor-preview{min-width:0}
+
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:18px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    .field{margin-bottom:13px}
+    .field label{display:block;font-size:.75rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+    .field select,.field input[type=number]{width:100%;padding:9px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+    .field select:focus,.field input[type=number]:focus{border-color:var(--accent)}
+    .field input[type=range]{width:100%;accent-color:var(--accent);margin-top:4px}
+
+    .upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+    .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--card-hover)}
+    .upload-icon{font-size:2rem;margin-bottom:8px;opacity:.5}
+    .upload-text{font-size:.85rem;color:var(--text2)}
+    .upload-text strong{color:var(--accent)}
+    .upload-input{display:none}
+
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.92rem;cursor:pointer;transition:all .2s;width:100%}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2);margin-top:8px}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+    /* Preview card */
+    .preview-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .preview-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+    .preview-label{font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
+    .preview-meta{font-size:.72rem;color:var(--text3);font-variant-numeric:tabular-nums}
+    .video-wrap{padding:16px;display:flex;flex-direction:column;gap:16px;min-height:360px;background:repeating-conic-gradient(var(--bg3) 0% 25%, transparent 0% 50%) 0 0/20px 20px;justify-content:center;align-items:center}
+    #mainVideo{max-width:100%;max-height:460px;display:none;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.4);width:100%}
+    .video-placeholder{text-align:center;color:var(--text3);font-size:.85rem;pointer-events:none}
+    .video-placeholder-icon{font-size:3rem;opacity:.3;margin-bottom:8px}
+
+    /* Timeline */
+    .timeline-section{display:none;width:100%;padding:0 16px 16px}
+    .timeline-section.visible{display:block}
+    .timeline-label{display:flex;justify-content:space-between;font-size:.72rem;color:var(--text3);margin-bottom:6px;font-variant-numeric:tabular-nums}
+    .timeline-track{position:relative;height:56px;background:var(--bg3);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border2)}
+    .timeline-fill{position:absolute;top:0;height:100%;background:rgba(232,255,71,0.15);border-left:2px solid var(--accent);border-right:2px solid var(--accent);pointer-events:none}
+    [data-theme="light"] .timeline-fill{background:rgba(58,47,255,0.08)}
+    .timeline-thumb{position:absolute;top:0;width:3px;height:100%;background:var(--accent3);pointer-events:none;transition:left .05s linear}
+    .timeline-waveform{position:absolute;inset:0;display:flex;align-items:center;gap:1px;padding:4px 2px;pointer-events:none}
+    .waveform-bar{flex:1;background:var(--border2);border-radius:1px;min-height:4px;transition:background .2s}
+    .waveform-bar.active{background:var(--accent);opacity:.5}
+
+    .handle{position:absolute;top:0;width:14px;height:100%;cursor:ew-resize;display:flex;align-items:center;justify-content:center;z-index:5}
+    .handle-inner{width:4px;height:32px;background:var(--accent);border-radius:2px;box-shadow:0 0 8px rgba(232,255,71,.5)}
+    [data-theme="light"] .handle-inner{box-shadow:0 0 8px rgba(58,47,255,.4)}
+    .handle-start{left:0;transform:translateX(-50%)}
+    .handle-end{right:0;transform:translateX(50%)}
+
+    .time-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .time-input-group{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);padding:8px 12px}
+    .time-input-label{font-size:.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+    .time-input-val{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
+    /* Format tabs */
+    .mode-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius-sm);padding:4px;margin-bottom:14px}
+    .mode-tab{flex:1;padding:7px 10px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border-radius:calc(var(--radius-sm) - 2px);transition:background .18s,color .18s}
+    .mode-tab.active{background:var(--btn-bg);color:var(--btn-text)}
+    .mode-tab:hover:not(.active){color:var(--text);background:var(--bg2)}
+
+    /* Notice */
+    .notice{padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg3);border-left:3px solid var(--accent2);font-size:.78rem;color:var(--text2);margin-bottom:14px;line-height:1.5}
+
+    /* Progress */
+    .progress-bar-wrap{display:none;margin-top:8px}
+    .progress-bar-wrap.visible{display:block}
+    .progress-bar-bg{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+    .progress-bar-fill{height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .2s}
+    .progress-label{font-size:.72rem;color:var(--text2);margin-top:5px;text-align:center}
+
+    /* Stats row */
+    .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+    .stat-box{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);padding:10px;text-align:center}
+    .stat-val{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--accent)}
+    .stat-key{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+
+    @media(max-width:760px){.editor-layout{grid-template-columns:1fr}.controls-card{position:static}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Video Trimmer</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-header">
+  <h1>Video Trimmer</h1>
+  <p>Load a video, drag the handles to set in/out points, then export as WebM or MP4.</p>
+</div>
+
+<div class="editor-layout">
+
+  <!-- Controls -->
+  <div class="controls-card">
+
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">🎬</div>
+      <div class="upload-text"><strong>Click or drag</strong> a video file here</div>
+      <input type="file" id="videoInput" class="upload-input" accept="video/*" />
+    </div>
+
+    <div class="section-head">Trim Points</div>
+
+    <div class="time-inputs" id="trimDisplay" style="margin-bottom:14px">
+      <div class="time-input-group">
+        <div class="time-input-label">Start</div>
+        <div class="time-input-val" id="startDisplay">0:00.00</div>
+      </div>
+      <div class="time-input-group">
+        <div class="time-input-label">End</div>
+        <div class="time-input-val" id="endDisplay">—</div>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-box">
+        <div class="stat-val" id="statDuration">—</div>
+        <div class="stat-key">Duration</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statClip">—</div>
+        <div class="stat-key">Clip</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statFps">—</div>
+        <div class="stat-key">Format</div>
+      </div>
+    </div>
+
+    <div class="section-head">Export Format</div>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-fmt="webm">WebM</button>
+      <button class="mode-tab" data-fmt="mp4">MP4</button>
+    </div>
+
+    <div class="notice" id="formatNotice">
+      <strong>WebM</strong> — native browser recording, fast and lossless. Best for web use.
+    </div>
+
+    <div class="field">
+      <label>Quality</label>
+      <select id="qualitySelect">
+        <option value="high">High (slower)</option>
+        <option value="med" selected>Medium (balanced)</option>
+        <option value="low">Low (fast)</option>
+      </select>
+    </div>
+
+    <div style="margin-top:4px">
+      <button class="btn btn-primary" id="exportBtn" disabled>⬇ Export Clip</button>
+      <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
+    </div>
+
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Processing…</div>
+    </div>
+
+  </div>
+
+  <!-- Preview -->
+  <div class="editor-preview">
+    <div class="preview-card">
+      <div class="preview-topbar">
+        <span class="preview-label">Preview</span>
+        <span class="preview-meta" id="videoDim">—</span>
+      </div>
+      <div class="video-wrap" id="videoWrap">
+        <video id="mainVideo" controls></video>
+        <div class="video-placeholder" id="videoPlaceholder">
+          <div class="video-placeholder-icon">▶</div>
+          Load a video to begin trimming
+        </div>
+      </div>
+      <div class="timeline-section" id="timelineSection">
+        <div class="timeline-label">
+          <span id="tlStart">0:00</span>
+          <span id="tlCurrent">—</span>
+          <span id="tlEnd">—</span>
+        </div>
+        <div class="timeline-track" id="timelineTrack">
+          <div class="timeline-waveform" id="waveform"></div>
+          <div class="timeline-fill" id="timelineFill"></div>
+          <div class="handle handle-start" id="handleStart"><div class="handle-inner"></div></div>
+          <div class="handle handle-end" id="handleEnd"><div class="handle-inner"></div></div>
+          <div class="timeline-thumb" id="playThumb"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Theme
+(function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+
+const video = document.getElementById('mainVideo');
+const uploadZone = document.getElementById('uploadZone');
+const videoInput = document.getElementById('videoInput');
+const exportBtn = document.getElementById('exportBtn');
+const clearBtn = document.getElementById('clearBtn');
+const timelineSection = document.getElementById('timelineSection');
+const timelineFill = document.getElementById('timelineFill');
+const handleStart = document.getElementById('handleStart');
+const handleEnd = document.getElementById('handleEnd');
+const playThumb = document.getElementById('playThumb');
+const timelineTrack = document.getElementById('timelineTrack');
+const waveformEl = document.getElementById('waveform');
+
+let trimStart = 0, trimEnd = 0, duration = 0;
+let dragging = null;
+let exportFormat = 'webm';
+let videoFile = null;
+
+// Upload
+uploadZone.addEventListener('click', () => videoInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag'); loadVideo(e.dataTransfer.files[0]); });
+videoInput.addEventListener('change', e => loadVideo(e.target.files[0]));
+
+function loadVideo(file) {
+  if (!file || !file.type.startsWith('video/')) return;
+  videoFile = file;
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  video.style.display = 'block';
+  document.getElementById('videoPlaceholder').style.display = 'none';
+  video.onloadedmetadata = () => {
+    duration = video.duration;
+    trimStart = 0;
+    trimEnd = duration;
+    document.getElementById('videoDim').textContent = `${video.videoWidth}×${video.videoHeight} · ${formatTime(duration)}`;
+    document.getElementById('statDuration').textContent = formatTime(duration);
+    document.getElementById('statFps').textContent = file.type.includes('mp4') ? 'MP4' : file.type.includes('webm') ? 'WebM' : 'Video';
+    timelineSection.classList.add('visible');
+    document.getElementById('tlEnd').textContent = formatTime(duration);
+    exportBtn.disabled = false;
+    updateHandles();
+    generateWaveform();
+  };
+}
+
+function generateWaveform() {
+  waveformEl.innerHTML = '';
+  const bars = 80;
+  for (let i = 0; i < bars; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'waveform-bar';
+    const h = 20 + Math.random() * 60;
+    bar.style.height = h + '%';
+    waveformEl.appendChild(bar);
+  }
+  updateWaveformActive();
+}
+
+function updateWaveformActive() {
+  const bars = waveformEl.querySelectorAll('.waveform-bar');
+  const total = bars.length;
+  const startPct = trimStart / duration;
+  const endPct = trimEnd / duration;
+  bars.forEach((b, i) => {
+    const pos = i / total;
+    b.classList.toggle('active', pos >= startPct && pos <= endPct);
+  });
+}
+
+function formatTime(s) {
+  if (isNaN(s)) return '—';
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(2).padStart(5, '0');
+  return `${m}:${sec}`;
+}
+
+function formatTimeShort(s) {
+  if (isNaN(s)) return '—';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function updateHandles() {
+  const w = timelineTrack.offsetWidth;
+  const startPct = (trimStart / duration) * 100;
+  const endPct = (trimEnd / duration) * 100;
+  handleStart.style.left = startPct + '%';
+  handleEnd.style.left = endPct + '%';
+  timelineFill.style.left = startPct + '%';
+  timelineFill.style.width = (endPct - startPct) + '%';
+  document.getElementById('startDisplay').textContent = formatTime(trimStart);
+  document.getElementById('endDisplay').textContent = formatTime(trimEnd);
+  document.getElementById('statClip').textContent = formatTime(trimEnd - trimStart);
+  document.getElementById('tlCurrent').textContent = formatTimeShort(video.currentTime);
+  updateWaveformActive();
+}
+
+// Drag handles
+function getTrackX(e) {
+  const rect = timelineTrack.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+}
+
+function onDragStart(e, which) {
+  e.preventDefault();
+  dragging = which;
+}
+handleStart.addEventListener('mousedown', e => onDragStart(e, 'start'));
+handleEnd.addEventListener('mousedown', e => onDragStart(e, 'end'));
+handleStart.addEventListener('touchstart', e => onDragStart(e, 'start'), {passive:false});
+handleEnd.addEventListener('touchstart', e => onDragStart(e, 'end'), {passive:false});
+
+document.addEventListener('mousemove', e => {
+  if (!dragging || !duration) return;
+  const pct = getTrackX(e);
+  const t = pct * duration;
+  if (dragging === 'start') trimStart = Math.min(t, trimEnd - 0.1);
+  else trimEnd = Math.max(t, trimStart + 0.1);
+  updateHandles();
+});
+document.addEventListener('touchmove', e => {
+  if (!dragging || !duration) return;
+  const pct = getTrackX(e);
+  const t = pct * duration;
+  if (dragging === 'start') trimStart = Math.min(t, trimEnd - 0.1);
+  else trimEnd = Math.max(t, trimStart + 0.1);
+  updateHandles();
+}, {passive:true});
+document.addEventListener('mouseup', () => { dragging = null; });
+document.addEventListener('touchend', () => { dragging = null; });
+
+// Click on track to seek
+timelineTrack.addEventListener('click', e => {
+  if (!duration || dragging) return;
+  const pct = getTrackX(e);
+  video.currentTime = pct * duration;
+});
+
+// Play thumb update
+video.addEventListener('timeupdate', () => {
+  if (!duration) return;
+  const pct = (video.currentTime / duration) * 100;
+  playThumb.style.left = pct + '%';
+  document.getElementById('tlCurrent').textContent = formatTimeShort(video.currentTime);
+  if (video.currentTime >= trimEnd) { video.pause(); video.currentTime = trimStart; }
+});
+
+// Loop within trim
+video.addEventListener('play', () => {
+  if (video.currentTime < trimStart || video.currentTime > trimEnd) video.currentTime = trimStart;
+});
+
+// Format tabs
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    exportFormat = tab.dataset.fmt;
+    const notice = document.getElementById('formatNotice');
+    if (exportFormat === 'webm') {
+      notice.innerHTML = '<strong>WebM</strong> — native browser recording, fast and lossless. Best for web use.';
+    } else {
+      notice.innerHTML = '<strong>MP4</strong> — wider compatibility. Recorded as WebM then converted via re-mux. Some browsers may vary.';
+    }
+  });
+});
+
+// Export using MediaRecorder
+exportBtn.addEventListener('click', async () => {
+  if (!videoFile) return;
+  exportBtn.disabled = true;
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  progressWrap.classList.add('visible');
+
+  // Method: play video through canvas, record canvas stream
+  const clipDuration = trimEnd - trimStart;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = video.videoWidth || 1280;
+  offCanvas.height = video.videoHeight || 720;
+  const offCtx = offCanvas.getContext('2d');
+
+  const qualityMap = { high: 8000000, med: 4000000, low: 1500000 };
+  const bitsPerSec = qualityMap[document.getElementById('qualitySelect').value];
+
+  // Pick supported mime
+  let mimeType = 'video/webm;codecs=vp9';
+  if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+  if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+  const stream = offCanvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitsPerSec });
+  const chunks = [];
+
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  // Seek video to trimStart
+  video.muted = false;
+  video.currentTime = trimStart;
+  await new Promise(r => video.onseeked = r);
+
+  recorder.start(100);
+  video.play();
+
+  const startRealTime = performance.now();
+  let rafId;
+
+  function drawFrame() {
+    const elapsed = (performance.now() - startRealTime) / 1000;
+    const pct = Math.min(elapsed / clipDuration, 1);
+    progressFill.style.width = (pct * 100) + '%';
+    progressLabel.textContent = `Recording… ${(pct * 100).toFixed(0)}%`;
+    offCtx.drawImage(video, 0, 0, offCanvas.width, offCanvas.height);
+    if (elapsed < clipDuration && !video.paused && !video.ended) {
+      rafId = requestAnimationFrame(drawFrame);
+    } else {
+      video.pause();
+      video.currentTime = trimStart;
+      recorder.stop();
+    }
+  }
+  rafId = requestAnimationFrame(drawFrame);
+
+  recorder.onstop = () => {
+    cancelAnimationFrame(rafId);
+    const blob = new Blob(chunks, { type: mimeType });
+    const ext = exportFormat === 'mp4' ? 'mp4' : 'webm';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `clip_${formatTime(trimStart).replace(/[:\.]/g,'-')}_to_${formatTime(trimEnd).replace(/[:\.]/g,'-')}.${ext}`;
+    a.click();
+    progressFill.style.width = '100%';
+    progressLabel.textContent = 'Done! File downloaded.';
+    setTimeout(() => {
+      progressWrap.classList.remove('visible');
+      progressFill.style.width = '0%';
+    }, 2500);
+    exportBtn.disabled = false;
+  };
+});
+
+clearBtn.addEventListener('click', () => {
+  video.src = '';
+  video.style.display = 'none';
+  document.getElementById('videoPlaceholder').style.display = '';
+  timelineSection.classList.remove('visible');
+  document.getElementById('videoDim').textContent = '—';
+  document.getElementById('startDisplay').textContent = '0:00.00';
+  document.getElementById('endDisplay').textContent = '—';
+  document.getElementById('statDuration').textContent = '—';
+  document.getElementById('statClip').textContent = '—';
+  document.getElementById('statFps').textContent = '—';
+  exportBtn.disabled = true;
+  videoInput.value = '';
+  videoFile = null;
+  waveformEl.innerHTML = '';
+  document.getElementById('progressWrap').classList.remove('visible');
+});
+</script>
+</body>
+</html>
