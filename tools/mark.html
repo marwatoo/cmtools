@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Viewer — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    .md-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
+    }
+    @media (max-width: 700px) {
+      .md-layout { grid-template-columns: 1fr; }
+    }
+    .md-editor textarea {
+      width: 100%;
+      height: 70vh;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      color: var(--text);
+      resize: vertical;
+    }
+    .md-preview {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      overflow-y: auto;
+      height: 70vh;
+    }
+    .md-preview h1, .md-preview h2 { font-family: 'Syne', sans-serif; }
+    .md-preview code {
+      background: var(--bg3);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.85em;
+    }
+    .md-preview pre {
+      background: var(--bg3);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+    }
+    .md-preview blockquote {
+      border-left: 3px solid var(--accent);
+      margin: 0;
+      padding-left: 16px;
+      color: var(--text2);
+    }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Markdown Viewer</span>
+    <span class="nav-num">live preview</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Markdown Viewer</h1>
+      <p>Write Markdown, see rendered HTML instantly. Supports tables, code blocks, etc.</p>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-secondary btn-sm" id="loadExampleBtn">📄 Load Example</button>
+      <button class="btn btn-secondary btn-sm" id="clearBtn">🗑 Clear</button>
+      <button class="btn btn-secondary btn-sm" id="copyHTMLBtn">📋 Copy HTML</button>
+    </div>
+
+    <div class="md-layout">
+      <div class="md-editor">
+        <label>📝 Markdown source</label>
+        <textarea id="markdownInput" placeholder="# Hello \n\nWrite **Markdown** here..."></textarea>
+      </div>
+      <div class="md-preview" id="previewPane">
+        <em>Preview will appear here...</em>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mdInput = document.getElementById('markdownInput');
+    const previewDiv = document.getElementById('previewPane');
+    const loadExampleBtn = document.getElementById('loadExampleBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyHTMLBtn = document.getElementById('copyHTMLBtn');
+
+    const exampleMarkdown = `# MediaTools Studio ✨
+
+## Markdown support
+- **Bold**, *italic*, ~~strikethrough~~
+- [Links](https://example.com)
+- Inline \`code\` and blocks:
+
+\`\`\`javascript
+function hello() {
+  console.log("Hello, world!");
+}
+\`\`\`
+
+| Feature | Status |
+|---------|--------|
+| Tables  | ✅     |
+| Lists   | ✅     |
+
+> Quote: Design meets function.
+
+![Placeholder](https://placehold.co/600x200?text=Image+Placeholder)`;
+
+    function renderMarkdown() {
+      const raw = mdInput.value;
+      if (!raw.trim()) {
+        previewDiv.innerHTML = '<em>Nothing to preview — type some markdown →</em>';
+        return;
+      }
+      try {
+        const html = marked.parse(raw);
+        previewDiv.innerHTML = html;
+      } catch(e) {
+        previewDiv.innerHTML = `<span style="color: red;">Error parsing markdown: ${e.message}</span>`;
+      }
+    }
+
+    mdInput.addEventListener('input', renderMarkdown);
+    loadExampleBtn.addEventListener('click', () => {
+      mdInput.value = exampleMarkdown;
+      renderMarkdown();
+    });
+    clearBtn.addEventListener('click', () => {
+      mdInput.value = '';
+      renderMarkdown();
+    });
+    copyHTMLBtn.addEventListener('click', async () => {
+      const htmlContent = previewDiv.innerHTML;
+      try {
+        await navigator.clipboard.writeText(htmlContent);
+        alert('HTML copied to clipboard!');
+      } catch(err) {
+        alert('Could not copy, select manually.');
+      }
+    });
+    // initial example
+    mdInput.value = exampleMarkdown;
+    renderMarkdown();
+  </script>
+</body>
+</html>
