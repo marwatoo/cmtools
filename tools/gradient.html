@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gradient Generator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .editor-layout{display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start;padding:24px 24px 80px;max-width:1100px;margin:0 auto}
+    .controls-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:73px}
+
+    .tool-header{padding:28px 24px 0;max-width:1100px;margin:0 auto}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:4px}
+    .tool-header p{color:var(--text2);font-size:.9rem;margin-bottom:20px}
+
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:18px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    .field{margin-bottom:13px}
+    .field label{display:block;font-size:.75rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+    .field input[type=number],.field select{width:100%;padding:9px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+    .field input:focus,.field select:focus{border-color:var(--accent)}
+    .field input[type=range]{width:100%;accent-color:var(--accent)}
+
+    .type-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius-sm);padding:4px;margin-bottom:14px}
+    .type-tab{flex:1;padding:7px 10px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border-radius:calc(var(--radius-sm) - 2px);transition:background .18s,color .18s}
+    .type-tab.active{background:var(--btn-bg);color:var(--btn-text)}
+    .type-tab:hover:not(.active){color:var(--text);background:var(--bg2)}
+
+    /* Color stops */
+    .stops-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+    .stop-row{display:flex;align-items:center;gap:8px}
+    .stop-row input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--border2);border-radius:var(--radius-xs);background:var(--input-bg);cursor:pointer;outline:none;flex-shrink:0}
+    .stop-row input[type=text]{flex:1;padding:8px 10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Mono',monospace;font-size:.82rem;outline:none;transition:border-color .2s}
+    .stop-row input[type=text]:focus{border-color:var(--accent)}
+    .stop-row input[type=range]{flex:1;accent-color:var(--accent)}
+    .stop-pos-val{font-size:.75rem;color:var(--text3);min-width:34px;text-align:right;font-family:'DM Mono',monospace}
+    .stop-del{background:none;border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text3);cursor:pointer;padding:4px 7px;font-size:.75rem;transition:all .15s}
+    .stop-del:hover{border-color:var(--accent3);color:var(--accent3)}
+
+    .btn-add{width:100%;padding:9px;border:1px dashed var(--border2);border-radius:var(--radius-xs);background:transparent;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;transition:all .2s;margin-bottom:6px}
+    .btn-add:hover{border-color:var(--accent);color:var(--accent)}
+
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.92rem;cursor:pointer;transition:all .2s;width:100%}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-row{display:flex;gap:8px;margin-top:6px}
+    .btn-row .btn{margin:0}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* Preview */
+    .preview-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .grad-preview{height:280px;width:100%;transition:background .25s;border-radius:0}
+    .preview-info{padding:16px 18px;border-top:1px solid var(--border)}
+    .preview-label{font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+    
+    /* Code output */
+    .code-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:16px}
+    .code-block{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--text2);background:var(--bg3);border-radius:var(--radius-xs);padding:14px;white-space:pre-wrap;word-break:break-all;line-height:1.6;min-height:54px;max-height:200px;overflow-y:auto}
+    .copy-feedback{font-size:.75rem;color:var(--accent);margin-top:6px;min-height:16px}
+
+    /* Presets */
+    .presets-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+    .preset-swatch{height:44px;border-radius:var(--radius-xs);cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
+    .preset-swatch:hover{border-color:var(--accent);transform:scale(1.05)}
+
+    /* Angle wheel visual */
+    .angle-row{display:flex;align-items:center;gap:12px}
+    .angle-wheel{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;cursor:pointer}
+    .angle-needle{width:2px;height:16px;background:var(--accent);border-radius:2px;transform-origin:50% 100%;position:absolute;bottom:50%;left:calc(50% - 1px)}
+    .angle-row input[type=range]{flex:1;accent-color:var(--accent)}
+    .angle-val{font-family:'DM Mono',monospace;font-size:.8rem;color:var(--text2);min-width:36px;text-align:right}
+
+    @media(max-width:760px){.editor-layout{grid-template-columns:1fr}.controls-card{position:static}.presets-grid{grid-template-columns:repeat(5,1fr)}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Gradient Generator</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-header">
+  <h1>Gradient Generator</h1>
+  <p>Build beautiful CSS gradients visually — linear, radial, or conic. Copy ready-to-use CSS in one click.</p>
+</div>
+
+<div class="editor-layout">
+  <!-- Controls -->
+  <div class="controls-card">
+    <div class="type-tabs" id="typeTabs">
+      <button class="type-tab active" data-type="linear">Linear</button>
+      <button class="type-tab" data-type="radial">Radial</button>
+      <button class="type-tab" data-type="conic">Conic</button>
+    </div>
+
+    <!-- Linear angle -->
+    <div id="angleSection" class="field">
+      <label>Angle</label>
+      <div class="angle-row">
+        <div class="angle-wheel" id="angleWheel">
+          <div class="angle-needle" id="angleNeedle"></div>
+        </div>
+        <input type="range" id="angleRange" min="0" max="360" value="135" />
+        <span class="angle-val" id="angleVal">135°</span>
+      </div>
+    </div>
+
+    <!-- Radial shape -->
+    <div id="radialSection" class="field" style="display:none">
+      <label>Shape</label>
+      <select id="radialShape">
+        <option value="circle">Circle</option>
+        <option value="ellipse">Ellipse</option>
+      </select>
+    </div>
+
+    <!-- Color Stops -->
+    <div class="section-head">Color Stops</div>
+    <div class="stops-list" id="stopsList"></div>
+    <button class="btn-add" id="addStopBtn">+ Add Color Stop</button>
+
+    <!-- Presets -->
+    <div class="section-head">Presets</div>
+    <div class="presets-grid" id="presetsGrid"></div>
+  </div>
+
+  <!-- Preview + Code -->
+  <div>
+    <div class="preview-card">
+      <div class="grad-preview" id="gradPreview"></div>
+      <div class="preview-info">
+        <div class="preview-label">Preview</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="copyCssBtn" style="flex:1">⎘ Copy CSS</button>
+          <button class="btn btn-secondary" id="randomBtn" style="flex:1;border:1px solid var(--border2)">⟳ Random</button>
+        </div>
+        <div class="copy-feedback" id="copyFeedback"></div>
+      </div>
+    </div>
+
+    <div class="code-card">
+      <div class="preview-label">CSS Output</div>
+      <div class="code-block" id="cssOutput">background: linear-gradient(...);</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+
+const PRESETS = [
+  { name:'Sunset', stops: [{c:'#ff6b6b',p:0},{c:'#feca57',p:50},{c:'#ff9ff3',p:100}], angle:135, type:'linear' },
+  { name:'Ocean', stops: [{c:'#0652DD',p:0},{c:'#1289A7',p:50},{c:'#c0ffd8',p:100}], angle:180, type:'linear' },
+  { name:'Neon', stops: [{c:'#e8ff47',p:0},{c:'#7c6bff',p:100}], angle:90, type:'linear' },
+  { name:'Aurora', stops: [{c:'#00b09b',p:0},{c:'#96c93d',p:100}], angle:45, type:'linear' },
+  { name:'Fire', stops: [{c:'#f7971e',p:0},{c:'#ffd200',p:100}], angle:45, type:'linear' },
+  { name:'Galaxy', stops: [{c:'#2c3e50',p:0},{c:'#4ca1af',p:100}], angle:135, type:'radial' },
+  { name:'Peach', stops: [{c:'#ed4264',p:0},{c:'#ffedbc',p:100}], angle:135, type:'linear' },
+  { name:'Mint', stops: [{c:'#f093fb',p:0},{c:'#f5576c',p:50},{c:'#4facfe',p:100}], angle:315, type:'linear' },
+];
+
+let gradType = 'linear';
+let angle = 135;
+let stops = [{c:'#e8ff47',p:0},{c:'#7c6bff',p:100}];
+
+function buildStopsUI() {
+  const list = document.getElementById('stopsList');
+  list.innerHTML = '';
+  stops.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+    row.innerHTML = `
+      <input type="color" class="sc" value="${s.c}" data-i="${i}" />
+      <input type="text" class="sh" value="${s.c}" data-i="${i}" maxlength="7" />
+      <input type="range" class="sp" min="0" max="100" value="${s.p}" data-i="${i}" />
+      <span class="stop-pos-val" id="spv${i}">${s.p}%</span>
+      ${stops.length > 2 ? `<button class="stop-del" data-i="${i}">✕</button>` : ''}
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('.sc').forEach(el => {
+    el.addEventListener('input', e => {
+      const i = +e.target.dataset.i;
+      stops[i].c = e.target.value;
+      list.querySelector(`.sh[data-i="${i}"]`).value = e.target.value;
+      render();
+    });
+  });
+  list.querySelectorAll('.sh').forEach(el => {
+    el.addEventListener('input', e => {
+      const i = +e.target.dataset.i, v = e.target.value;
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        stops[i].c = v;
+        list.querySelector(`.sc[data-i="${i}"]`).value = v;
+        render();
+      }
+    });
+  });
+  list.querySelectorAll('.sp').forEach(el => {
+    el.addEventListener('input', e => {
+      const i = +e.target.dataset.i;
+      stops[i].p = +e.target.value;
+      document.getElementById(`spv${i}`).textContent = e.target.value + '%';
+      render();
+    });
+  });
+  list.querySelectorAll('.stop-del').forEach(el => {
+    el.addEventListener('click', e => {
+      const i = +e.target.dataset.i;
+      stops.splice(i, 1);
+      buildStopsUI(); render();
+    });
+  });
+}
+
+function gradientCSS() {
+  const sorted = [...stops].sort((a,b) => a.p - b.p);
+  const stopsStr = sorted.map(s => `${s.c} ${s.p}%`).join(', ');
+  if (gradType === 'linear') return `linear-gradient(${angle}deg, ${stopsStr})`;
+  if (gradType === 'radial') {
+    const shape = document.getElementById('radialShape').value;
+    return `radial-gradient(${shape} at center, ${stopsStr})`;
+  }
+  return `conic-gradient(from ${angle}deg at center, ${stopsStr})`;
+}
+
+function render() {
+  const css = gradientCSS();
+  document.getElementById('gradPreview').style.background = css;
+  document.getElementById('cssOutput').textContent = `background: ${css};\nbackground-image: ${css};`;
+}
+
+// Type tabs
+document.getElementById('typeTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.type-tab'); if (!tab) return;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  gradType = tab.dataset.type;
+  document.getElementById('angleSection').style.display = gradType === 'radial' ? 'none' : '';
+  document.getElementById('radialSection').style.display = gradType === 'radial' ? '' : 'none';
+  render();
+});
+
+// Angle range
+document.getElementById('angleRange').addEventListener('input', e => {
+  angle = +e.target.value;
+  document.getElementById('angleVal').textContent = angle + '°';
+  document.getElementById('angleNeedle').style.transform = `rotate(${angle}deg)`;
+  render();
+});
+document.getElementById('angleNeedle').style.transform = `rotate(${angle}deg)`;
+
+// Radial shape
+document.getElementById('radialShape').addEventListener('change', render);
+
+// Add stop
+document.getElementById('addStopBtn').addEventListener('click', () => {
+  const newPos = stops.length > 0 ? Math.round((stops[stops.length-1].p + stops[0].p) / 2 + 10) : 50;
+  stops.push({ c: '#ffffff', p: Math.min(100, newPos) });
+  buildStopsUI(); render();
+});
+
+// Presets
+const presetsGrid = document.getElementById('presetsGrid');
+PRESETS.forEach(pr => {
+  const sw = document.createElement('div');
+  sw.className = 'preset-swatch';
+  sw.title = pr.name;
+  const sorted = [...pr.stops].sort((a,b) => a.p - b.p);
+  const str = sorted.map(s => `${s.c} ${s.p}%`).join(', ');
+  sw.style.background = pr.type === 'radial'
+    ? `radial-gradient(circle at center, ${str})`
+    : `linear-gradient(${pr.angle}deg, ${str})`;
+  sw.addEventListener('click', () => {
+    stops = pr.stops.map(s => ({...s}));
+    angle = pr.angle;
+    gradType = pr.type;
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === gradType));
+    document.getElementById('angleRange').value = angle;
+    document.getElementById('angleVal').textContent = angle + '°';
+    document.getElementById('angleNeedle').style.transform = `rotate(${angle}deg)`;
+    document.getElementById('angleSection').style.display = gradType === 'radial' ? 'none' : '';
+    document.getElementById('radialSection').style.display = gradType === 'radial' ? '' : 'none';
+    buildStopsUI(); render();
+  });
+  presetsGrid.appendChild(sw);
+});
+
+// Copy
+document.getElementById('copyCssBtn').addEventListener('click', () => {
+  const css = `background: ${gradientCSS()};`;
+  navigator.clipboard.writeText(css).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.textContent = '✓ Copied to clipboard!';
+    setTimeout(() => { fb.textContent = ''; }, 2000);
+  });
+});
+
+// Random
+document.getElementById('randomBtn').addEventListener('click', () => {
+  const rand = () => '#' + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
+  const n = 2 + Math.floor(Math.random() * 3);
+  stops = Array.from({length:n}, (_,i) => ({ c: rand(), p: Math.round(i * 100 / (n-1)) }));
+  angle = Math.floor(Math.random() * 360);
+  document.getElementById('angleRange').value = angle;
+  document.getElementById('angleVal').textContent = angle + '°';
+  document.getElementById('angleNeedle').style.transform = `rotate(${angle}deg)`;
+  buildStopsUI(); render();
+});
+
+// Angle wheel click drag
+const wheel = document.getElementById('angleWheel');
+wheel.addEventListener('click', e => {
+  const rect = wheel.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  let a = Math.round(Math.atan2(dx, -dy) * 180 / Math.PI);
+  if (a < 0) a += 360;
+  angle = a;
+  document.getElementById('angleRange').value = angle;
+  document.getElementById('angleVal').textContent = angle + '°';
+  document.getElementById('angleNeedle').style.transform = `rotate(${angle}deg)`;
+  render();
+});
+
+buildStopsUI();
+render();
+</script>
+</body>
+</html>
