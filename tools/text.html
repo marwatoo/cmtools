@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Transformer — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #e8e8f0; --text2: #8888a8; --text3: #555570;
+      --accent: #e8ff47; --accent2: #7c6bff; --accent3: #ff6b6b;
+      --card-bg: #13131c; --card-hover: #1e1e2e; --input-bg: #1a1a26;
+      --btn-bg: #e8ff47; --btn-text: #0a0a0f;
+      --shadow: 0 4px 32px rgba(0,0,0,0.5); --shadow2: 0 2px 12px rgba(0,0,0,0.4);
+      --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
+    }
+    [data-theme="light"] {
+      --bg: #f4f4f0; --bg2: #ffffff; --bg3: #ebebeb;
+      --border: rgba(0,0,0,0.07); --border2: rgba(0,0,0,0.13);
+      --text: #111118; --text2: #555570; --text3: #aaaacc;
+      --accent: #3a2fff; --accent2: #7c6bff; --accent3: #ff4444;
+      --card-bg: #ffffff; --card-hover: #f0f0ff; --input-bg: #f8f8fc;
+      --btn-bg: #111118; --btn-text: #ffffff;
+      --shadow: 0 4px 32px rgba(0,0,0,0.12); --shadow2: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px; background: var(--bg); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px; color: var(--text2);
+      text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
+    .theme-toggle {
+      margin-left: auto; width: 38px; height: 38px;
+      border: 1px solid var(--border2); border-radius: 50%;
+      background: transparent; color: var(--text2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Tool page layout ── */
+    .tool-page {
+      max-width: 780px; margin: 0 auto; padding: 32px 24px 80px;
+    }
+    .tool-header { margin-bottom: 28px; }
+    .tool-header h1 {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .tool-header p { color: var(--text2); font-size: 0.9rem; }
+
+    /* ── Section head ── */
+    .section-head {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--text3);
+      margin: 22px 0 10px; padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-head::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 12px; background: var(--accent);
+      border-radius: 2px; flex-shrink: 0;
+    }
+
+    /* ── Textarea ── */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 0.8rem; font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text2); margin-bottom: 7px;
+    }
+    .field textarea {
+      width: 100%; padding: 14px 16px;
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+      resize: vertical; min-height: 130px; line-height: 1.6;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field textarea:focus { border-color: var(--accent); }
+
+    /* ── Transform buttons grid ── */
+    .transform-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px; margin-bottom: 16px;
+    }
+    .xform-btn {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 14px 16px;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: all 0.15s; text-align: left; position: relative;
+      overflow: hidden;
+    }
+    .xform-btn:hover {
+      border-color: var(--accent); background: var(--card-hover);
+      transform: translateY(-2px);
+    }
+    .xform-btn.active-transform {
+      border-color: var(--accent); background: var(--card-hover);
+    }
+    .xform-btn .xb-label {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 0.78rem; letter-spacing: 0.03em; color: var(--text);
+    }
+    .xform-btn .xb-preview {
+      font-size: 0.7rem; color: var(--text3); letter-spacing: 0.01em;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .xform-btn .xb-icon {
+      position: absolute; top: 10px; right: 12px;
+      font-size: 1.1rem; opacity: 0.5;
+    }
+
+    /* ── Output box ── */
+    .output-wrap {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px; margin-top: 24px;
+    }
+    .output-label {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .output-label .ol-title {
+      font-family: 'Syne', sans-serif; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.09em; text-transform: uppercase; color: var(--text3);
+    }
+    .output-label .ol-mode {
+      font-size: 0.72rem; color: var(--accent);
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+    }
+    #outputText {
+      width: 100%; padding: 14px 16px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+      resize: vertical; min-height: 130px; line-height: 1.6;
+      outline: none; transition: border-color 0.2s;
+    }
+    #outputText:focus { border-color: var(--accent); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+    }
+    .stat-item {
+      font-size: 0.75rem; color: var(--text3);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-item strong { color: var(--text2); margin-right: 3px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 18px; border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-primary { background: var(--btn-bg); color: var(--btn-text); }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Find & Replace ── */
+    .fnr-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+    }
+    .fnr-row input {
+      padding: 9px 12px;
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      outline: none; width: 100%; transition: border-color 0.2s;
+    }
+    .fnr-row input:focus { border-color: var(--accent); }
+    .fnr-row input::placeholder { color: var(--text3); }
+
+    .copy-feedback {
+      font-size: 0.78rem; color: var(--accent); margin-left: auto; height: 18px;
+      display: flex; align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .tool-page { padding: 20px 16px 60px; }
+      .transform-grid { grid-template-columns: 1fr 1fr; }
+      .fnr-row { grid-template-columns: 1fr; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Text Transformer</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Text Transformer</h1>
+    <p>Instantly convert text case, remove extra spaces, reverse, encode, and more.</p>
+  </div>
+
+  <div class="field">
+    <label>Input Text</label>
+    <textarea id="inputText" placeholder="Paste or type your text here…"></textarea>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <span class="stat-item"><strong id="statChars">0</strong> chars</span>
+    <span class="stat-item"><strong id="statWords">0</strong> words</span>
+    <span class="stat-item"><strong id="statLines">0</strong> lines</span>
+    <span class="stat-item"><strong id="statSentences">0</strong> sentences</span>
+  </div>
+
+  <p class="section-head">Case Transforms</p>
+  <div class="transform-grid" id="caseGrid">
+    <button class="xform-btn" data-fn="upper">
+      <span class="xb-label">UPPERCASE</span>
+      <span class="xb-preview">HELLO WORLD</span>
+      <span class="xb-icon">⬆</span>
+    </button>
+    <button class="xform-btn" data-fn="lower">
+      <span class="xb-label">lowercase</span>
+      <span class="xb-preview">hello world</span>
+      <span class="xb-icon">⬇</span>
+    </button>
+    <button class="xform-btn" data-fn="title">
+      <span class="xb-label">Title Case</span>
+      <span class="xb-preview">Hello World</span>
+      <span class="xb-icon">Tt</span>
+    </button>
+    <button class="xform-btn" data-fn="sentence">
+      <span class="xb-label">Sentence case</span>
+      <span class="xb-preview">Hello world.</span>
+      <span class="xb-icon">Aa</span>
+    </button>
+    <button class="xform-btn" data-fn="camel">
+      <span class="xb-label">camelCase</span>
+      <span class="xb-preview">helloWorld</span>
+      <span class="xb-icon">↔</span>
+    </button>
+    <button class="xform-btn" data-fn="pascal">
+      <span class="xb-label">PascalCase</span>
+      <span class="xb-preview">HelloWorld</span>
+      <span class="xb-icon">↕</span>
+    </button>
+    <button class="xform-btn" data-fn="snake">
+      <span class="xb-label">snake_case</span>
+      <span class="xb-preview">hello_world</span>
+      <span class="xb-icon">_</span>
+    </button>
+    <button class="xform-btn" data-fn="kebab">
+      <span class="xb-label">kebab-case</span>
+      <span class="xb-preview">hello-world</span>
+      <span class="xb-icon">—</span>
+    </button>
+    <button class="xform-btn" data-fn="alternating">
+      <span class="xb-label">aLtErNaTiNg</span>
+      <span class="xb-preview">hElLo WoRlD</span>
+      <span class="xb-icon">~</span>
+    </button>
+    <button class="xform-btn" data-fn="inverse">
+      <span class="xb-label">iNVERSE cASE</span>
+      <span class="xb-preview">hELLO wORLD</span>
+      <span class="xb-icon">⇅</span>
+    </button>
+  </div>
+
+  <p class="section-head">Text Operations</p>
+  <div class="transform-grid">
+    <button class="xform-btn" data-fn="reverse">
+      <span class="xb-label">Reverse</span>
+      <span class="xb-preview">dlroW olleH</span>
+      <span class="xb-icon">↩</span>
+    </button>
+    <button class="xform-btn" data-fn="reverseWords">
+      <span class="xb-label">Reverse Words</span>
+      <span class="xb-preview">World Hello</span>
+      <span class="xb-icon">⇄</span>
+    </button>
+    <button class="xform-btn" data-fn="trimSpaces">
+      <span class="xb-label">Trim Spaces</span>
+      <span class="xb-preview">Remove extra</span>
+      <span class="xb-icon">⚌</span>
+    </button>
+    <button class="xform-btn" data-fn="removeLines">
+      <span class="xb-label">Remove Empty Lines</span>
+      <span class="xb-preview">Clean lines</span>
+      <span class="xb-icon">≡</span>
+    </button>
+    <button class="xform-btn" data-fn="sortLines">
+      <span class="xb-label">Sort Lines A→Z</span>
+      <span class="xb-preview">Alphabetical</span>
+      <span class="xb-icon">↕</span>
+    </button>
+    <button class="xform-btn" data-fn="sortLinesDesc">
+      <span class="xb-label">Sort Lines Z→A</span>
+      <span class="xb-preview">Reverse sort</span>
+      <span class="xb-icon">↓</span>
+    </button>
+    <button class="xform-btn" data-fn="dedupe">
+      <span class="xb-label">Remove Duplicates</span>
+      <span class="xb-preview">Unique lines</span>
+      <span class="xb-icon">◈</span>
+    </button>
+    <button class="xform-btn" data-fn="addNumbers">
+      <span class="xb-label">Number Lines</span>
+      <span class="xb-preview">1. Hello…</span>
+      <span class="xb-icon">#</span>
+    </button>
+    <button class="xform-btn" data-fn="removeNumbers">
+      <span class="xb-label">Remove Numbers</span>
+      <span class="xb-preview">Strip digits</span>
+      <span class="xb-icon">∅</span>
+    </button>
+    <button class="xform-btn" data-fn="urlEncode">
+      <span class="xb-label">URL Encode</span>
+      <span class="xb-preview">Hello%20World</span>
+      <span class="xb-icon">%</span>
+    </button>
+    <button class="xform-btn" data-fn="urlDecode">
+      <span class="xb-label">URL Decode</span>
+      <span class="xb-preview">Hello World</span>
+      <span class="xb-icon">←%</span>
+    </button>
+    <button class="xform-btn" data-fn="base64enc">
+      <span class="xb-label">Base64 Encode</span>
+      <span class="xb-preview">SGVsbG8=</span>
+      <span class="xb-icon">64</span>
+    </button>
+    <button class="xform-btn" data-fn="base64dec">
+      <span class="xb-label">Base64 Decode</span>
+      <span class="xb-preview">Hello World</span>
+      <span class="xb-icon">←64</span>
+    </button>
+  </div>
+
+  <p class="section-head">Find &amp; Replace</p>
+  <div class="fnr-row">
+    <input type="text" id="fnrFind" placeholder="Find…" />
+    <input type="text" id="fnrReplace" placeholder="Replace with…" />
+  </div>
+  <button class="xform-btn" data-fn="findReplace" style="width:100%;flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <span class="xb-label">Apply Find & Replace</span>
+    <span style="font-size:1.1rem;opacity:0.5;">⇌</span>
+  </button>
+
+  <!-- Output -->
+  <div class="output-wrap">
+    <div class="output-label">
+      <span class="ol-title">Output</span>
+      <span class="ol-mode" id="activeMode">—</span>
+      <span class="copy-feedback" id="copyFeedback"></span>
+    </div>
+    <textarea id="outputText" placeholder="Transformed text will appear here…" readonly></textarea>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-primary" id="copyBtn">⧉ Copy Output</button>
+      <button class="btn btn-secondary" id="swapBtn">⇅ Use as Input</button>
+      <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── Theme ── */
+  (function () {
+    const KEY = 'mts-theme';
+    function getTheme() {
+      return localStorage.getItem(KEY) ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(KEY, theme);
+      const icon = document.querySelector('.theme-icon');
+      if (icon) icon.textContent = theme === 'dark' ? '☽' : '○';
+    }
+    applyTheme(getTheme());
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      });
+    });
+  })();
+
+  const inputEl  = document.getElementById('inputText');
+  const outputEl = document.getElementById('outputText');
+  const activeEl = document.getElementById('activeMode');
+
+  /* ── Stats ── */
+  function updateStats() {
+    const t = inputEl.value;
+    document.getElementById('statChars').textContent = t.length;
+    document.getElementById('statWords').textContent = t.trim() ? t.trim().split(/\s+/).length : 0;
+    document.getElementById('statLines').textContent = t ? t.split('\n').length : 0;
+    document.getElementById('statSentences').textContent = t.trim() ? (t.match(/[.!?]+/g) || []).length : 0;
+  }
+  inputEl.addEventListener('input', updateStats);
+
+  /* ── Transform functions ── */
+  function toTitleCase(str) {
+    return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+  function toSentenceCase(str) {
+    return str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+  }
+  function toCamelCase(str) {
+    return str.trim().toLowerCase().replace(/[\s_-]+(.)/g, (_, c) => c.toUpperCase());
+  }
+  function toPascalCase(str) {
+    const c = toCamelCase(str);
+    return c.charAt(0).toUpperCase() + c.slice(1);
+  }
+  function toSnakeCase(str) {
+    return str.trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  }
+  function toKebabCase(str) {
+    return str.trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+  }
+  function toAlternating(str) {
+    return str.split('').map((c, i) => i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()).join('');
+  }
+  function toInverse(str) {
+    return str.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
+  }
+
+  const TRANSFORMS = {
+    upper:        t => t.toUpperCase(),
+    lower:        t => t.toLowerCase(),
+    title:        t => toTitleCase(t),
+    sentence:     t => toSentenceCase(t),
+    camel:        t => toCamelCase(t),
+    pascal:       t => toPascalCase(t),
+    snake:        t => toSnakeCase(t),
+    kebab:        t => toKebabCase(t),
+    alternating:  t => toAlternating(t),
+    inverse:      t => toInverse(t),
+    reverse:      t => t.split('').reverse().join(''),
+    reverseWords: t => t.split(' ').reverse().join(' '),
+    trimSpaces:   t => t.replace(/[ \t]+/g, ' ').replace(/\n\s+/g, '\n').trim(),
+    removeLines:  t => t.split('\n').filter(l => l.trim() !== '').join('\n'),
+    sortLines:    t => t.split('\n').sort((a, b) => a.localeCompare(b)).join('\n'),
+    sortLinesDesc:t => t.split('\n').sort((a, b) => b.localeCompare(a)).join('\n'),
+    dedupe:       t => [...new Set(t.split('\n'))].join('\n'),
+    addNumbers:   t => t.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n'),
+    removeNumbers:t => t.replace(/\d/g, ''),
+    urlEncode:    t => encodeURIComponent(t),
+    urlDecode:    t => { try { return decodeURIComponent(t); } catch { return t; } },
+    base64enc:    t => btoa(unescape(encodeURIComponent(t))),
+    base64dec:    t => { try { return decodeURIComponent(escape(atob(t))); } catch { return '⚠ Invalid Base64'; } },
+    findReplace:  t => {
+      const f = document.getElementById('fnrFind').value;
+      const r = document.getElementById('fnrReplace').value;
+      if (!f) return t;
+      return t.split(f).join(r);
+    },
+  };
+
+  const LABELS = {
+    upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case',
+    camel: 'camelCase', pascal: 'PascalCase', snake: 'snake_case', kebab: 'kebab-case',
+    alternating: 'aLtErNaTiNg', inverse: 'iNVERSE cASE',
+    reverse: 'Reverse', reverseWords: 'Reverse Words', trimSpaces: 'Trim Spaces',
+    removeLines: 'Remove Empty Lines', sortLines: 'Sort A→Z', sortLinesDesc: 'Sort Z→A',
+    dedupe: 'Remove Duplicates', addNumbers: 'Number Lines', removeNumbers: 'Remove Numbers',
+    urlEncode: 'URL Encode', urlDecode: 'URL Decode', base64enc: 'Base64 Encode', base64dec: 'Base64 Decode',
+    findReplace: 'Find & Replace',
+  };
+
+  /* ── Apply transform ── */
+  function applyTransform(fn) {
+    const input = inputEl.value;
+    if (!input.trim()) { outputEl.value = ''; activeEl.textContent = '—'; return; }
+    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
+    document.querySelector(`[data-fn="${fn}"]`)?.classList.add('active-transform');
+    outputEl.value = TRANSFORMS[fn](input);
+    activeEl.textContent = LABELS[fn] || fn;
+  }
+
+  document.querySelectorAll('.xform-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyTransform(btn.dataset.fn));
+  });
+
+  /* ── Copy ── */
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    if (!outputEl.value) return;
+    navigator.clipboard.writeText(outputEl.value).then(() => {
+      const fb = document.getElementById('copyFeedback');
+      fb.textContent = '✓ Copied!';
+      setTimeout(() => { fb.textContent = ''; }, 2000);
+    });
+  });
+
+  /* ── Swap ── */
+  document.getElementById('swapBtn').addEventListener('click', () => {
+    if (!outputEl.value) return;
+    inputEl.value = outputEl.value;
+    outputEl.value = '';
+    activeEl.textContent = '—';
+    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
+    updateStats();
+  });
+
+  /* ── Clear ── */
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    inputEl.value = '';
+    outputEl.value = '';
+    activeEl.textContent = '—';
+    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
+    updateStats();
+  });
+
+  updateStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iFrame Generator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* Inlined global.css design tokens */
+    :root {
+      --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #e8e8f0; --text2: #8888a8; --text3: #555570;
+      --accent: #e8ff47; --accent2: #7c6bff; --accent3: #ff6b6b;
+      --card-bg: #13131c; --card-hover: #1e1e2e; --input-bg: #1a1a26;
+      --btn-bg: #e8ff47; --btn-text: #0a0a0f;
+      --shadow: 0 4px 32px rgba(0,0,0,0.5); --shadow2: 0 2px 12px rgba(0,0,0,0.4);
+      --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
+    }
+    [data-theme="light"] {
+      --bg: #f4f4f0; --bg2: #ffffff; --bg3: #ebebeb;
+      --border: rgba(0,0,0,0.07); --border2: rgba(0,0,0,0.13);
+      --text: #111118; --text2: #555570; --text3: #aaaacc;
+      --accent: #3a2fff; --accent2: #7c6bff; --accent3: #ff4444;
+      --card-bg: #ffffff; --card-hover: #f0f0ff; --input-bg: #f8f8fc;
+      --btn-bg: #111118; --btn-text: #ffffff;
+      --shadow: 0 4px 32px rgba(0,0,0,0.12); --shadow2: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text2); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
+    .theme-toggle {
+      margin-left: auto; width: 38px; height: 38px;
+      border: 1px solid var(--border2); border-radius: 50%;
+      background: transparent; color: var(--text2);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* MODE TABS */
+    .mode-tabs {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 4px; margin-bottom: 20px;
+    }
+    .mode-tab {
+      flex: 1; min-width: 80px;
+      padding: 8px 12px; border: none;
+      background: transparent; color: var(--text2);
+      font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      cursor: pointer; border-radius: calc(var(--radius-sm) - 2px);
+      transition: background .18s, color .18s; white-space: nowrap;
+    }
+    .mode-tab:hover { color: var(--text); background: var(--bg3); }
+    .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
+
+    /* SECTION HEAD */
+    .section-head {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--text3);
+      margin: 22px 0 10px; padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-head::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 12px; background: var(--accent);
+      border-radius: 2px; flex-shrink: 0;
+    }
+
+    /* FIELD */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 0.8rem; font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text2); margin-bottom: 7px;
+    }
+    .field input[type=text], .field input[type=url], .field input[type=number], .field select {
+      width: 100%; padding: 10px 14px;
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field select { cursor: pointer; }
+
+    /* CHECKBOX ROW */
+    .check-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px; margin-bottom: 16px;
+    }
+    .check-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); cursor: pointer;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    .check-item:hover { border-color: var(--accent); background: var(--card-hover); }
+    .check-item input[type=checkbox] { display: none; }
+    .check-box {
+      width: 16px; height: 16px; flex-shrink: 0;
+      border: 1.5px solid var(--border2); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, border-color .15s;
+      font-size: 0.7rem;
+    }
+    .check-item input:checked ~ .check-box {
+      background: var(--accent); border-color: var(--accent); color: var(--btn-text);
+    }
+    .check-label { font-size: 0.8rem; font-weight: 500; color: var(--text2); }
+    .check-item input:checked ~ .check-label { color: var(--text); }
+
+    /* EDITOR LAYOUT */
+    .editor-layout {
+      display: grid; grid-template-columns: 360px 1fr;
+      gap: 32px; align-items: start;
+      padding: 0 24px 80px; max-width: 1160px; margin: 0 auto;
+    }
+    .editor-controls { min-width: 0; }
+    .controls-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px;
+    }
+    .editor-preview { position: sticky; top: 73px; min-width: 0; }
+    .preview-outer {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; overflow: hidden;
+    }
+    .preview-label {
+      font-family: 'Syne', sans-serif; font-size: 0.68rem;
+      font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .preview-frame-wrap {
+      border-radius: calc(var(--radius) - 4px); overflow: hidden;
+      background: #000; position: relative;
+    }
+    .preview-frame-wrap iframe {
+      display: block; width: 100%; border: none;
+      aspect-ratio: 16/9;
+    }
+    .preview-frame-wrap.portrait iframe { aspect-ratio: 4/5; }
+    .preview-placeholder {
+      width: 100%; aspect-ratio: 16/9;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--text3);
+      background: var(--bg3); border-radius: calc(var(--radius) - 4px);
+      font-size: 0.85rem;
+    }
+    .preview-placeholder .ph-icon { font-size: 2.5rem; }
+
+    /* CODE OUTPUT */
+    .code-area {
+      margin-top: 14px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 14px;
+      font-family: 'DM Mono', 'Fira Code', monospace; font-size: 0.8rem;
+      color: var(--text2); word-break: break-all; white-space: pre-wrap;
+      min-height: 80px; max-height: 180px; overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    /* BUTTON */
+    .btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 20px;
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+      font-size: 0.95rem; cursor: pointer; transition: all 0.2s;
+      text-decoration: none; width: 100%; margin-bottom: 10px;
+    }
+    .btn-primary { background: var(--btn-bg); color: var(--btn-text); }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--bg3); color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .btn-row .btn { margin-bottom: 0; }
+
+    /* NOTICE */
+    .notice {
+      padding: 14px 18px; border-radius: var(--radius-sm);
+      background: var(--bg3); border-left: 3px solid var(--accent);
+      font-size: 0.85rem; color: var(--text2); margin-bottom: 20px; line-height: 1.5;
+    }
+
+    /* PAGE HEADER */
+    .page-header { padding: 24px 24px 20px; max-width: 1160px; margin: 0 auto; }
+    .page-header h1 { margin: 0 0 4px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; }
+    .page-header p { margin: 0; color: var(--text2); font-size: 0.9rem; }
+
+    /* TOOL PANEL visibility */
+    .tool-panel { display: none; }
+    .tool-panel.active { display: block; }
+
+    /* SIZE ROW */
+    .size-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+
+    /* COPY FEEDBACK */
+    .copy-feedback {
+      text-align: center; font-size: 0.78rem; color: var(--accent);
+      margin-top: 6px; height: 16px; transition: opacity 0.3s;
+    }
+
+    @media (max-width: 900px) {
+      .editor-layout { grid-template-columns: 1fr; gap: 20px; padding: 0 16px 60px; }
+      .editor-preview { position: static; order: -1; }
+    }
+    @media (max-width: 520px) {
+      .page-header { padding: 16px 16px 14px; }
+      .controls-card { padding: 14px; }
+      .check-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">iFrame Generator</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-page wide" style="max-width:100%;padding:0;">
+  <div class="page-header">
+    <div class="tool-header" style="margin-bottom:18px;">
+      <h1>iFrame Generator</h1>
+      <p>Embed YouTube, PDFs, Obsidian, Twitter, Facebook & Instagram — copy the iframe code instantly.</p>
+    </div>
+
+    <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="youtube">▶ YouTube</button>
+      <button class="mode-tab" data-mode="pdf">📄 PDF</button>
+      <button class="mode-tab" data-mode="obsidian">🔮 Obsidian</button>
+      <button class="mode-tab" data-mode="twitter">🐦 Twitter</button>
+      <button class="mode-tab" data-mode="facebook">👤 Facebook</button>
+      <button class="mode-tab" data-mode="instagram">📷 Instagram</button>
+    </div>
+
+    <div class="notice" id="modeNotice">
+      ▶&nbsp; <strong>YouTube</strong> — Paste a YouTube URL and configure playback options.
+    </div>
+  </div>
+
+  <div class="editor-layout">
+
+    <!-- CONTROLS -->
+    <div class="editor-controls">
+      <div class="controls-card">
+
+        <!-- YOUTUBE -->
+        <div class="tool-panel active" id="panel-youtube">
+          <div class="field">
+            <label>YouTube URL</label>
+            <input type="url" id="yt-url" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />
+          </div>
+          <p class="section-head">Playback Options</p>
+          <div class="check-grid">
+            <label class="check-item">
+              <input type="checkbox" id="yt-autoplay">
+              <span class="check-box">✓</span>
+              <span class="check-label">Autoplay</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="yt-loop">
+              <span class="check-box">✓</span>
+              <span class="check-label">Loop</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="yt-mute">
+              <span class="check-box">✓</span>
+              <span class="check-label">Mute</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="yt-controls" checked>
+              <span class="check-box">✓</span>
+              <span class="check-label">Show Controls</span>
+            </label>
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Width</label>
+              <input type="text" id="yt-w" value="100%" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="yt-h" value="480" />
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF -->
+        <div class="tool-panel" id="panel-pdf">
+          <div class="field">
+            <label>PDF URL (online)</label>
+            <input type="url" id="pdf-url" placeholder="https://example.com/document.pdf" />
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Width</label>
+              <input type="text" id="pdf-w" value="100%" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="pdf-h" value="600" />
+            </div>
+          </div>
+          <div class="notice" style="margin-top:8px;">Some PDFs may block embedding due to CORS. Use Google Drive or Dropbox share links for best results.</div>
+        </div>
+
+        <!-- OBSIDIAN -->
+        <div class="tool-panel" id="panel-obsidian">
+          <div class="field">
+            <label>Obsidian Publish URL</label>
+            <input type="url" id="obs-url" placeholder="https://publish.obsidian.md/your-vault/note" />
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Width</label>
+              <input type="text" id="obs-w" value="100%" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="obs-h" value="600" />
+            </div>
+          </div>
+          <div class="notice" style="margin-top:8px;">Only works with <strong>Obsidian Publish</strong> pages. Local vault files cannot be embedded.</div>
+        </div>
+
+        <!-- TWITTER -->
+        <div class="tool-panel" id="panel-twitter">
+          <div class="field">
+            <label>Tweet URL</label>
+            <input type="url" id="tw-url" placeholder="https://twitter.com/user/status/123456789" />
+          </div>
+          <div class="field">
+            <label>Theme</label>
+            <select id="tw-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Max Width</label>
+              <input type="text" id="tw-w" value="550" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="tw-h" value="300" />
+            </div>
+          </div>
+          <div class="notice" style="margin-top:8px;">Twitter embeds use their official oEmbed API wrapper. The iframe wraps <code>platform.twitter.com/embed</code>.</div>
+        </div>
+
+        <!-- FACEBOOK -->
+        <div class="tool-panel" id="panel-facebook">
+          <div class="field">
+            <label>Facebook Post URL</label>
+            <input type="url" id="fb-url" placeholder="https://www.facebook.com/user/posts/123456" />
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Width</label>
+              <input type="text" id="fb-w" value="500" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="fb-h" value="400" />
+            </div>
+          </div>
+          <div class="notice" style="margin-top:8px;">Uses Facebook's official embed endpoint. You may need to add your domain to Facebook App settings for production use.</div>
+        </div>
+
+        <!-- INSTAGRAM -->
+        <div class="tool-panel" id="panel-instagram">
+          <div class="field">
+            <label>Instagram Post URL</label>
+            <input type="url" id="ig-url" placeholder="https://www.instagram.com/p/ABC123/" />
+          </div>
+          <p class="section-head">Size</p>
+          <div class="size-row">
+            <div class="field">
+              <label>Width</label>
+              <input type="text" id="ig-w" value="400" />
+            </div>
+            <div class="field">
+              <label>Height</label>
+              <input type="text" id="ig-h" value="480" />
+            </div>
+          </div>
+          <div class="notice" style="margin-top:8px;">Instagram embeds require their embed script. The generated code includes the blockquote + script approach.</div>
+        </div>
+
+        <!-- ACTION BUTTONS (always visible) -->
+        <div style="margin-top:18px;">
+          <div class="btn-row">
+            <button class="btn btn-primary" id="generateBtn">⚡ Generate Code</button>
+            <button class="btn btn-secondary" id="previewBtn">👁 Preview</button>
+          </div>
+          <button class="btn btn-secondary" id="copyBtn" style="margin-top:4px;">⧉ Copy Code</button>
+          <div class="copy-feedback" id="copyFeedback"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="editor-preview">
+      <div class="preview-outer">
+        <div class="preview-label">
+          <span>Preview</span>
+          <span style="font-size:0.65rem;color:var(--text3);opacity:0.6;font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:0.02em;" id="previewDim">—</span>
+        </div>
+        <div class="preview-frame-wrap" id="previewWrap">
+          <div class="preview-placeholder" id="previewPlaceholder">
+            <div class="ph-icon">🖼</div>
+            <div>Click <strong>Preview</strong> to render the embed</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-head" style="margin-top:18px;">Generated Code</p>
+      <div class="code-area" id="codeOutput">// Generated iframe code will appear here…</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* ── Theme ── */
+  (function () {
+    const KEY = 'mts-theme';
+    function getTheme() {
+      return localStorage.getItem(KEY) ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(KEY, theme);
+      const icon = document.querySelector('.theme-icon');
+      if (icon) icon.textContent = theme === 'dark' ? '☽' : '○';
+    }
+    applyTheme(getTheme());
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      });
+    });
+  })();
+
+  /* ── Mode tabs ── */
+  let currentMode = 'youtube';
+
+  const NOTICES = {
+    youtube: '▶&nbsp; <strong>YouTube</strong> — Paste a YouTube URL and configure playback options.',
+    pdf: '📄&nbsp; <strong>PDF</strong> — Embed any publicly accessible PDF file.',
+    obsidian: '🔮&nbsp; <strong>Obsidian Publish</strong> — Embed a published Obsidian note.',
+    twitter: '🐦&nbsp; <strong>Twitter / X</strong> — Embed a tweet using platform.twitter.com.',
+    facebook: '👤&nbsp; <strong>Facebook</strong> — Embed a Facebook post via the official plugin.',
+    instagram: '📷&nbsp; <strong>Instagram</strong> — Embed an Instagram post (blockquote + script).',
+  };
+
+  document.getElementById('modeTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.mode-tab');
+    if (!tab) return;
+    const mode = tab.dataset.mode;
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + mode).classList.add('active');
+    document.getElementById('modeNotice').innerHTML = NOTICES[mode];
+    clearPreview();
+    generateCode();
+  });
+
+  function clearPreview() {
+    const wrap = document.getElementById('previewWrap');
+    wrap.innerHTML = '<div class="preview-placeholder" id="previewPlaceholder"><div class="ph-icon">🖼</div><div>Click <strong>Preview</strong> to render the embed</div></div>';
+    document.getElementById('previewDim').textContent = '—';
+  }
+
+  /* ── Code generation ── */
+  function ytVideoId(url) {
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+      return u.searchParams.get('v') || '';
+    } catch { return ''; }
+  }
+
+  function generateCode() {
+    let code = '';
+    switch (currentMode) {
+      case 'youtube': {
+        const url = document.getElementById('yt-url').value.trim();
+        const w = document.getElementById('yt-w').value || '100%';
+        const h = document.getElementById('yt-h').value || '480';
+        const autoplay = document.getElementById('yt-autoplay').checked ? 1 : 0;
+        const loop = document.getElementById('yt-loop').checked ? 1 : 0;
+        const mute = document.getElementById('yt-mute').checked ? 1 : 0;
+        const controls = document.getElementById('yt-controls').checked ? 1 : 0;
+        const vid = url ? ytVideoId(url) : 'VIDEO_ID';
+        const params = new URLSearchParams({ autoplay, loop, mute, controls });
+        if (loop) params.set('playlist', vid);
+        code = `<iframe\n  width="${w}"\n  height="${h}"\n  src="https://www.youtube.com/embed/${vid}?${params.toString()}"\n  frameborder="0"\n  allow="autoplay; encrypted-media"\n  allowfullscreen\n></iframe>`;
+        break;
+      }
+      case 'pdf': {
+        const url = document.getElementById('pdf-url').value.trim() || 'https://example.com/document.pdf';
+        const w = document.getElementById('pdf-w').value || '100%';
+        const h = document.getElementById('pdf-h').value || '600';
+        code = `<iframe\n  src="${url}"\n  width="${w}"\n  height="${h}"\n  type="application/pdf"\n  frameborder="0"\n></iframe>`;
+        break;
+      }
+      case 'obsidian': {
+        const url = document.getElementById('obs-url').value.trim() || 'https://publish.obsidian.md/your-vault/note';
+        const w = document.getElementById('obs-w').value || '100%';
+        const h = document.getElementById('obs-h').value || '600';
+        code = `<iframe\n  src="${url}"\n  width="${w}"\n  height="${h}"\n  frameborder="0"\n  style="border:none;"\n></iframe>`;
+        break;
+      }
+      case 'twitter': {
+        const url = document.getElementById('tw-url').value.trim() || 'https://twitter.com/user/status/ID';
+        const theme = document.getElementById('tw-theme').value;
+        const w = document.getElementById('tw-w').value || '550';
+        const h = document.getElementById('tw-h').value || '300';
+        const tweetId = url.split('/').pop().split('?')[0] || 'TWEET_ID';
+        code = `<iframe\n  src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=${theme}"\n  width="${w}"\n  height="${h}"\n  frameborder="0"\n  scrolling="no"\n></iframe>`;
+        break;
+      }
+      case 'facebook': {
+        const url = document.getElementById('fb-url').value.trim() || 'https://www.facebook.com/post';
+        const w = document.getElementById('fb-w').value || '500';
+        const h = document.getElementById('fb-h').value || '400';
+        const enc = encodeURIComponent(url);
+        code = `<iframe\n  src="https://www.facebook.com/plugins/post.php?href=${enc}&width=${w}&show_text=true"\n  width="${w}"\n  height="${h}"\n  style="border:none;overflow:hidden"\n  scrolling="no"\n  frameborder="0"\n  allowfullscreen="true"\n></iframe>`;
+        break;
+      }
+      case 'instagram': {
+        const url = (document.getElementById('ig-url').value.trim() || 'https://www.instagram.com/p/POST_ID/').replace(/\/$/, '');
+        const w = document.getElementById('ig-w').value || '400';
+        const h = document.getElementById('ig-h').value || '480';
+        code = `<blockquote\n  class="instagram-media"\n  data-instgrm-permalink="${url}/"\n  data-instgrm-version="14"\n  style="width:${w}px;min-width:326px;"\n>\n  <a href="${url}/">View on Instagram</a>\n</blockquote>\n<script async src="https://www.instagram.com/embed.js"><\/script>`;
+        break;
+      }
+    }
+    document.getElementById('codeOutput').textContent = code;
+    return code;
+  }
+
+  /* ── Inputs auto-regenerate ── */
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', () => generateCode());
+    el.addEventListener('change', () => generateCode());
+  });
+
+  /* ── Generate button ── */
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    generateCode();
+  });
+
+  /* ── Preview button ── */
+  document.getElementById('previewBtn').addEventListener('click', () => {
+    const code = generateCode();
+    const wrap = document.getElementById('previewWrap');
+    // Remove placeholder
+    const ph = document.getElementById('previewPlaceholder');
+    if (ph) ph.remove();
+
+    // For YouTube, render iframe directly
+    if (currentMode === 'youtube') {
+      const w = document.getElementById('yt-w').value || '100%';
+      const h = document.getElementById('yt-h').value || '480';
+      document.getElementById('previewDim').textContent = `${w} × ${h}px`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(code, 'text/html');
+      const iframeEl = doc.querySelector('iframe');
+      if (iframeEl) {
+        // Clone attributes
+        const newIframe = document.createElement('iframe');
+        [...iframeEl.attributes].forEach(a => newIframe.setAttribute(a.name, a.value));
+        newIframe.style.width = '100%';
+        newIframe.style.height = '100%';
+        newIframe.style.minHeight = '280px';
+        wrap.innerHTML = '';
+        wrap.appendChild(newIframe);
+      }
+    } else if (currentMode === 'instagram') {
+      wrap.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:0.85rem;background:var(--bg3);border-radius:10px;">Instagram embeds require their JS to load.<br>Copy the code and paste it into your webpage.</div>`;
+    } else {
+      // For others, render in iframe via srcdoc
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(code, 'text/html');
+      const iframeEl = doc.querySelector('iframe');
+      if (iframeEl) {
+        const src = iframeEl.getAttribute('src');
+        const w = iframeEl.getAttribute('width') || '100%';
+        const h = iframeEl.getAttribute('height') || '400';
+        document.getElementById('previewDim').textContent = `${w} × ${h}px`;
+        const newIframe = document.createElement('iframe');
+        newIframe.src = src;
+        newIframe.style.width = '100%';
+        newIframe.style.minHeight = '320px';
+        newIframe.style.border = 'none';
+        newIframe.style.display = 'block';
+        // forward attributes
+        [...iframeEl.attributes].forEach(a => {
+          if (a.name !== 'width' && a.name !== 'height') newIframe.setAttribute(a.name, a.value);
+        });
+        wrap.innerHTML = '';
+        wrap.appendChild(newIframe);
+      }
+    }
+  });
+
+  /* ── Copy button ── */
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const code = document.getElementById('codeOutput').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      const fb = document.getElementById('copyFeedback');
+      fb.textContent = '✓ Copied to clipboard!';
+      setTimeout(() => { fb.textContent = ''; }, 2000);
+    });
+  });
+
+  generateCode();
+</script>
+</body>
+</html>
