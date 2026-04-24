@@ -1,6 +1,6 @@
 # MediaTools Studio
 
-A unified web app combining 4 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
+A unified web app combining 22 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
 
 ---
 
@@ -13,13 +13,30 @@ A unified web app combining 4 media production tools into one beautiful, respons
 
 ## 🧰 Tools Included
 
-| # | Tool | Format | Purpose |
-|---|------|--------|---------|
-| 01 | **YT Cover Creator** | 1920×1080 | YouTube cover with AR/FR/Footix/Sport overlays |
-| 02 | **IG Sport Cover** | 1080×1920 | Instagram Sport cover with branding + Arabic text |
-| 03 | **Le360 Deck** | Dashboard | Live TweetDeck-style news reader for Le360 feeds |
-| 04 | **Diapo Overlay** | 1080×1350 | Batch image overlay with logo, auto-download |
-| ⌨ | **Snippets** | Utility | Click-to-copy social media caption snippets |
+| # | Tool | Purpose |
+|---|------|---------|
+| 01 | **YT Cover Creator** | YouTube cover with AR/FR/Footix/Sport overlays (1920×1080) |
+| 02 | **IG Sport Cover** | Instagram Sport cover with branding + Arabic (1080×1920) |
+| 03 | **Le360 Deck** | TweetDeck-style news reader for Le360 feeds |
+| 04 | **Diapo Overlay** | Batch image overlay with logo, auto-download (1080×1350) |
+| 05 | **Le360 Post** | Design 360 posts with color highlights (1080×1350) |
+| 06 | **Dual Flag Generator** | Side-by-side country flags export (1920×1080) |
+| 07 | **IG Flag Post** | Stacked flags for Instagram (1080×1350) |
+| 08 | **X Deck (BETA)** | TweetDeck-style X feed dashboard |
+| 09 | **iFrame Generator** | Embed YouTube, PDFs, Twitter, Instagram posts |
+| 10 | **Text Transformer** | Case convert, URL encode, find & replace |
+| 11 | **Password Generator** | Secure cryptographically-strong passwords |
+| 12 | **Color Palette Generator** | Extract colors from images, export CSS |
+| 13 | **Image Converter** | JPG ↔ PNG ↔ WebP conversion |
+| 14 | **Image Resizer** | Resize to preset social dimensions |
+| 15 | **Video Thumbnail Extractor** | Grab YouTube frame timestamps as images |
+| 16 | **Watermark Tool** | Add text or logo watermarks to images |
+| 17 | **Markdown Viewer** | Write/paste markdown, live preview, load files |
+| 18 | **OG Card Preview** | Preview link cards for X, Facebook, LinkedIn |
+| 19 | **Character Counter** | Check limits for Twitter, LinkedIn, Instagram |
+| 20 | **Color Converter** | Convert HEX, RGB, HSL with sliders + palettes |
+| 21 | **Le360 Brandbook** | Figma-embedded brand guidelines |
+| 22 | **Text Sorter** | Sort lines A-Z/Z-A, remove duplicates |
 
 ---
 
@@ -28,63 +45,55 @@ A unified web app combining 4 media production tools into one beautiful, respons
 ```
 mediatools/
 │
-├── index.html                  ← Hub / landing page (project switcher)
+├── index.html                  ← Hub / landing page
 │
 ├── assets/
-│   ├── global.css              ← Shared design system (dark/light, all components)
-│   ├── theme.js                ← Dark/light mode toggle (persisted in localStorage)
-│   │
-│   ├── ig/
-│   │   └── branding.png        ← ⚠️ YOU MUST ADD THIS (IG Sport overlay)
-│   │
-│   └── diapo/
-│   │  └── logo.png            ← ⚠️ YOU MUST ADD THIS (Diapo logo overlay)
-├── overlays/                   ← ⚠️ YOU MUST ADD THESE (YT Cover overlays)
-│   ├── ar.png
-│   ├── fr.png
-│   ├── footix.png
-│   └── sport.png
+│   ├── global.css            ← Shared design system (dark/light theme)
+│   └── theme.js              ← Dark/light mode toggle
 │
-│
-├── fonts/                      ← ⚠️ YOU MUST ADD THESE (YT Cover fonts)
-│   ├── Cairo-Bold.ttf
-│   └── DINCondensed-Bold.ttf
-│   └── LamaSans-ExtraBold.ttf  ← ⚠️ YOU MUST ADD THIS (Arabic font)
+├── fonts/                    ← Required fonts (YT Cover)
 │
 └── tools/
-    ├── ytcover.html            ← Tool 01: YT Cover Creator
-    ├── igcover.html            ← Tool 02: IG Sport Cover
-    ├── le360deck.html          ← Tool 03: Le360 News Deck
-    ├── diapo.html              ← Tool 04: Diapo Batch Overlay
-    └── snippets.html           ← Bonus: Snippets Copy Pad
+│   ├── ytcover.html          ← Tool 01
+│   ├── igcover.html          ← Tool 02
+│   ├── le360deck.html       ← Tool 03
+│   ├── diapo.html          ← Tool 04
+│   ├── instapost.html      ← Tool 05
+│   ├── flags.html          ← Tool 06
+│   ├── flagig.html         ← Tool 07
+│   ├── xdeck.html          ← Tool 08
+│   ├── iframe.html         ← Tool 09
+│   ├── text.html          ← Tool 10
+│   ├── password.html       ← Tool 11
+│   ├── colors.html         ← Tool 12
+│   ├── imgconv.html        ← Tool 13
+│   ├── imgres.html         ← Tool 14
+│   ├── ytthumbnail.html   ← Tool 15
+│   ├── water.html         ← Tool 16
+│   ├── mark.html          ← Tool 17
+│   ├── ogcard.html        ← Tool 18
+│   ├── charcount.html     ← Tool 19
+│   ├── color.html         ← Tool 20
+│   ├── brandbook.html     ← Tool 21
+│   ├── sort.html          ← Tool 22
+│   ├── gradient.html     ← Utility
+│   ├── trimmer.html       ← Utility
+│   ├── snippets.html     ← Snippets pad
+│   └── zflags.html        ← Flag database
 ```
 
 ---
 
 ## ⚠️ Required Assets (Not Included)
 
-You must copy your own proprietary assets into the correct folders before deploying:
+Some tools require proprietary assets:
 
-### YT Cover Creator (`/overlays/` + `/fonts/`)
-| File | Purpose |
-|------|---------|
-| `assets/overlays/ar.png` | Arabic overlay template |
-| `assets/overlays/fr.png` | French overlay template |
-| `assets/overlays/footix.png` | Footix overlay template |
-| `assets/overlays/sport.png` | Sport overlay template |
-| `fonts/Cairo-Bold.ttf` | Arabic text font |
-| `fonts/DINCondensed-Bold.ttf` | French/Latin text font |
-
-### IG Sport Cover (`/assets/ig/`)
-| File | Purpose |
-|------|---------|
-| `assets/ig/branding.png` | Branding overlay (1080×1920) |
-| `assets/ig/LamaSans-ExtraBold.ttf` | Arabic canvas font |
-
-### Diapo Overlay (`/assets/diapo/`)
-| File | Purpose |
-|------|---------|
-| `assets/diapo/logo.png` | Logo overlay (1080×1350) |
+| File | Folder | Tool |
+|------|--------|------|
+| ar.png, fr.png, footix.png, sport.png | /overlays/ | YT Cover Creator |
+| Cairo-Bold.ttf, DINCondensed-Bold.ttf | /fonts/ | YT Cover Creator |
+| branding.png | /assets/ig/ | IG Sport Cover |
+| logo.png | /assets/diapo/ | Diapo Overlay |
 
 ---
 
@@ -164,12 +173,12 @@ Then open `http://localhost:8080`
 
 ## 📌 Notes
 
-- **Le360 Deck** fetches live RSS feeds via CORS proxies (`corsproxy.io` + `allorigins.win` as fallback). If both fail, the column will show an error.
-- **Canvas tools** (YT Cover, IG Cover, Diapo) run entirely in the browser — no server needed, no data is uploaded.
-- **Snippets** are hardcoded in `tools/snippets.html` — edit the `snippets` array in the `<script>` tag to customize.
+- **Deck tools** (Le360 Deck, X Deck) fetch live RSS/feed data via CORS proxies. If proxies fail, the column will show an error.
+- **Canvas tools** run entirely in the browser — no server needed, no data is uploaded.
+- **Brandbook** embeds Figma — may require Figma login for full access.
 
 ---
 
 ## 📄 License
 
-This project contains your proprietary overlay/font assets — keep the repo **private** or ensure you have the rights to distribute those files publicly.
+This project contains your proprietary assets — keep the repo **private** or ensure you have the rights to distribute files publicly.

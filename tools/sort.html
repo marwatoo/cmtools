@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Sorter — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .sort-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    @media (max-width: 750px) {
+      .sort-layout { grid-template-columns: 1fr; }
+    }
+    .sort-panel {
+      display: flex;
+      flex-direction: column;
+    }
+    .sort-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sort-panel-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+    .sort-textarea {
+      width: 100%;
+      height: calc(100vh - 320px);
+      min-height: 250px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      resize: none;
+    }
+    .sort-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .sort-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .btn {
+      padding: 8px 14px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.secondary {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn.secondary:hover { border-color: var(--accent); }
+    .btn.active {
+      background: var(--accent);
+      color: var(--btn-text);
+    }
+    .options-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text2);
+      cursor: pointer;
+    }
+    .checkbox input {
+      accent-color: var(--accent);
+    }
+    .stats {
+      font-size: 0.75rem;
+      color: var(--text3);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Text Sorter</span>
+    <span class="nav-num">A-Z / Z-A</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Text Sorter</h1>
+      <p>Sort lines of text alphabetically or remove duplicates.</p>
+    </div>
+
+    <div class="sort-controls">
+      <button class="btn" id="sortAZ">A → Z</button>
+      <button class="btn" id="sortZA">Z → A</button>
+      <button class="btn secondary" id="removeDup">Remove Duplicates</button>
+    </div>
+
+    <div class="options-row">
+      <label class="checkbox">
+        <input type="checkbox" id="caseInsensitive" checked>
+        Case insensitive
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" id="trimLines">
+        Trim whitespace
+      </label>
+    </div>
+
+    <div class="sort-layout">
+      <div class="sort-panel">
+        <div class="sort-panel-header">
+          <span class="sort-panel-title">Input</span>
+        </div>
+        <textarea class="sort-textarea" id="inputText" placeholder="Paste your text here (one item per line)..."></textarea>
+        <div class="stats" id="inputStats">0 lines</div>
+      </div>
+
+      <div class="sort-panel">
+        <div class="sort-panel-header">
+          <span class="sort-panel-title">Sorted Output</span>
+        </div>
+        <textarea class="sort-textarea" id="outputText" placeholder="Sorted results will appear here..."></textarea>
+        <div class="stats" id="outputStats">0 lines</div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top: 12px;">
+      <button class="btn" id="copyBtn">📋 Copy Result</button>
+      <button class="btn secondary" id="clearBtn">🗑 Clear All</button>
+      <button class="btn secondary" id="swapBtn">⇄ Swap</button>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('inputText');
+    const outputEl = document.getElementById('outputText');
+    const caseInsensitive = document.getElementById('caseInsensitive');
+    const trimLines = document.getElementById('trimLines');
+
+    function getLines() {
+      let text = inputEl.value;
+      if (trimLines.checked) {
+        text = text.split('\n').map(l => l.trim()).join('\n');
+      }
+      return text.split('\n').filter(l => l.length > 0);
+    }
+
+    function sortAZ() {
+      const lines = getLines();
+      const cmp = caseInsensitive.checked 
+        ? (a, b) => a.localeCompare(b)
+        : (a, b) => a.localeCompare(b, undefined, { sensitivity: 'variant' });
+      lines.sort(cmp);
+      outputEl.value = lines.join('\n');
+      updateStats();
+    }
+
+    function sortZA() {
+      const lines = getLines();
+      const cmp = caseInsensitive.checked 
+        ? (a, b) => a.localeCompare(b)
+        : (a, b) => a.localeCompare(b, undefined, { sensitivity: 'variant' });
+      lines.sort(cmp).reverse();
+      outputEl.value = lines.join('\n');
+      updateStats();
+    }
+
+    function removeDup() {
+      const lines = getLines();
+      const seen = new Set();
+      const unique = lines.filter(line => {
+        const key = caseInsensitive.checked ? line.toLowerCase() : line;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      outputEl.value = unique.join('\n');
+      updateStats();
+    }
+
+    function updateStats() {
+      const inputLines = inputEl.value.split('\n').filter(l => l.trim()).length;
+      const outputLines = outputEl.value.split('\n').filter(l => l.trim()).length;
+      document.getElementById('inputStats').textContent = inputLines + ' line' + (inputLines !== 1 ? 's' : '');
+      document.getElementById('outputStats').textContent = outputLines + ' line' + (outputLines !== 1 ? 's' : '');
+    }
+
+    document.getElementById('sortAZ').addEventListener('click', sortAZ);
+    document.getElementById('sortZA').addEventListener('click', sortZA);
+    document.getElementById('removeDup').addEventListener('click', removeDup);
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(outputEl.value);
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy Result', 1000);
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.value = '';
+      updateStats();
+    });
+
+    document.getElementById('swapBtn').addEventListener('click', () => {
+      const temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateStats();
+    });
+
+    inputEl.addEventListener('input', updateStats);
+    outputEl.addEventListener('input', updateStats);
+    caseInsensitive.addEventListener('change', () => { if (outputEl.value) sortAZ(); });
+    trimLines.addEventListener('change', () => { if (outputEl.value) sortAZ(); });
+  </script>
+</body>
+</html>

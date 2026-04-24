@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Converter — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .color-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 20px;
+      margin-top: 16px;
+    }
+    @media (max-width: 750px) {
+      .color-layout { grid-template-columns: 1fr; }
+    }
+    .color-main {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .color-preview {
+      height: 120px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 1.2rem;
+    }
+    .color-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      padding: 10px 12px;
+    }
+    .color-field:focus-within {
+      border-color: var(--accent);
+    }
+    .color-field label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text2);
+      min-width: 32px;
+    }
+    .color-field input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+    }
+    .color-field input:focus {
+      outline: none;
+    }
+    .color-field .btn-copy {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .color-field .btn-copy:hover {
+      color: var(--accent);
+    }
+    .sliders {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .slider-row label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text2);
+      min-width: 20px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--bg3);
+      border-radius: 3px;
+    }
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .slider-row .val {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      min-width: 35px;
+      text-align: right;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      padding: 8px 14px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.secondary {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .palettes {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .palette {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .palette-name {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+    }
+    .swatch:hover {
+      transform: scale(1.15);
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Color Converter</span>
+    <span class="nav-num">HEX / RGB / HSL</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Color Converter</h1>
+      <p>Convert between HEX, RGB, and HSL formats.</p>
+    </div>
+
+    <div class="color-layout">
+      <div class="color-main">
+        <div class="color-preview" id="preview">#e8ff47</div>
+
+        <div class="color-field">
+          <label>HEX</label>
+          <input type="text" id="hex">
+          <button class="btn-copy" data-copy="hex">📋</button>
+        </div>
+
+        <div class="color-field">
+          <label>RGB</label>
+          <input type="text" id="rgb">
+          <button class="btn-copy" data-copy="rgb">📋</button>
+        </div>
+
+        <div class="color-field">
+          <label>HSL</label>
+          <input type="text" id="hsl">
+          <button class="btn-copy" data-copy="hsl">📋</button>
+        </div>
+
+        <div class="sliders">
+          <div class="slider-row">
+            <label>R</label>
+            <input type="range" id="r" min="0" max="255" value="232">
+            <span class="val" id="rVal">232</span>
+          </div>
+          <div class="slider-row">
+            <label>G</label>
+            <input type="range" id="g" min="0" max="255" value="255">
+            <span class="val" id="gVal">255</span>
+          </div>
+          <div class="slider-row">
+            <label>B</label>
+            <input type="range" id="b" min="0" max="255" value="71">
+            <span class="val" id="bVal">71</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" id="random">🎲 Random</button>
+          <button class="btn secondary" id="picker">🎨 Pick</button>
+          <input type="color" id="colorPicker" value="#e8ff47" style="display:none">
+        </div>
+      </div>
+
+      <div class="palettes">
+      <div class="palette">
+          <div class="palette-name">Le360</div>
+          <div class="palette-grid" id="custom"></div>
+        </div>
+        <div class="palette">
+          <div class="palette-name">Brand</div>
+          <div class="palette-grid" id="brand"></div>
+        </div>
+        <div class="palette">
+          <div class="palette-name">Material</div>
+          <div class="palette-grid" id="material"></div>
+        </div>
+        <div class="palette">
+          <div class="palette-name">Basic</div>
+          <div class="palette-grid" id="basic"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let R = 232, G = 255, B = 71;
+
+    const hexEl = document.getElementById('hex');
+    const rgbEl = document.getElementById('rgb');
+    const hslEl = document.getElementById('hsl');
+    const preview = document.getElementById('preview');
+    const rEl = document.getElementById('r');
+    const gEl = document.getElementById('g');
+    const bEl = document.getElementById('b');
+    const picker = document.getElementById('colorPicker');
+
+    function toHex(n) { return n.toString(16).padStart(2,'0'); }
+    function fromHex(h) { return parseInt(h, 16); }
+
+    function rgbToHex(r,g,b) { return '#' + toHex(r) + toHex(g) + toHex(b); }
+    function hexToRgb(hex) {
+      hex = hex.replace('#','');
+      if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+      return { r: fromHex(hex.slice(0,2)), g: fromHex(hex.slice(2,4)), b: fromHex(hex.slice(4,6)) };
+    }
+
+    function rgbToHsl(r,g,b) {
+      r/=255; g/=255; b/=255;
+      const max=Math.max(r,g,b), min=Math.min(r,g,b);
+      let h=0, s=0, l=(max+min)/2;
+      if (max!==min) {
+        const d=max-min;
+        s = l>0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max) {
+          case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+          case g: h = ((b-r)/d + 2)/6; break;
+          case b: h = ((r-g)/d + 4)/6; break;
+        }
+      }
+      return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+    }
+
+    function update() {
+      const hex = rgbToHex(R,G,B);
+      const hsl = rgbToHsl(R,G,B);
+      hexEl.value = hex;
+      rgbEl.value = `rgb(${R}, ${G}, ${B})`;
+      hslEl.value = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+      preview.textContent = hex;
+      preview.style.background = hex;
+      rEl.value = R; gEl.value = G; bEl.value = B;
+      document.getElementById('rVal').textContent = R;
+      document.getElementById('gVal').textContent = G;
+      document.getElementById('bVal').textContent = B;
+    }
+
+    function setRgb(r,g,b) {
+      R=r; G=g; B=b;
+      update();
+    }
+
+    // Palettes
+    const palettes = {
+      brand: ['#e8ff47','#7c6bff','#ff6b6b','#111118','#f4f4f0'],
+      material: ['#f44336','#e91e63','#9c27b0','#673ab7','#3f51b5'],
+      basic: ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff'],
+      custom: ['#ff7a14','#C84A32', '#4499F7', '#891AAE', '#F3B23E', '#49A34A', '#E8692B', '#E5C72A', '#4F9091', '#C73977']
+    };
+
+    ['brand','material','basic','custom'].forEach(name => {
+      document.getElementById(name).innerHTML = palettes[name].map(c => 
+        `<div class="swatch" style="background:${c}" data-color="${c}"></div>`
+      ).join('');
+    });
+
+    document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', e => {
+      const c = hexToRgb(e.target.dataset.color);
+      setRgb(c.r,c.g,c.b);
+    }));
+
+    // Events
+    hexEl.addEventListener('change', () => {
+      const c = hexToRgb(hexEl.value);
+      setRgb(c.r,c.g,c.b);
+    });
+
+    [rEl,gEl,bEl].forEach((el,i) => el.addEventListener('input', () => {
+      setRgb(parseInt(rEl.value), parseInt(gEl.value), parseInt(bEl.value));
+    }));
+
+    document.getElementById('random').addEventListener('click', () => {
+      setRgb(Math.floor(Math.random()*256), Math.floor(Math.random()*256), Math.floor(Math.random()*256));
+    });
+
+    document.getElementById('picker').addEventListener('click', () => picker.click());
+    picker.addEventListener('input', e => {
+      const c = hexToRgb(e.target.value);
+      setRgb(c.r,c.g,c.b);
+    });
+
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const val = {
+          hex: hexEl.value,
+          rgb: rgbEl.value,
+          hsl: hslEl.value
+        }[btn.dataset.copy];
+        await navigator.clipboard.writeText(val);
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = '📋', 800);
+      });
+    });
+
+    update();
+  </script>
+</body>
+</html>

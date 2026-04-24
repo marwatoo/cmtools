@@ -102,11 +102,6 @@
     .md-preview h2 { font-size: 1.4rem; margin: 20px 0 12px; }
     .md-preview h3 { font-size: 1.1rem; margin: 16px 0 8px; }
     .md-preview p { margin-bottom: 12px; line-height: 1.7; }
-    .md-preview [dir="rtl"], .md-preview p:lang(ar), .md-preview p:lang(he) {
-      direction: rtl;
-      unicode-bidi: embed;
-      text-align: right;
-    }
     .md-preview ul, .md-preview ol { margin: 0 0 12px 20px; }
     .md-preview li { margin-bottom: 4px; }
     .md-preview a { color: var(--accent2); }
@@ -194,7 +189,6 @@
       <button class="btn" id="loadFileBtn">📂 Load</button>
       <button class="btn" id="pasteBtn">📋 Paste</button>
       <button class="btn" id="copyHtmlBtn">📄 Copy HTML</button>
-      <button class="btn" id="rtlBtn">↔ RTL</button>
       <button class="btn" id="clearBtn">🗑 Clear</button>
       <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none">
     </div>
@@ -333,13 +327,6 @@ greet('World');
 
     document.getElementById('clearBtn').addEventListener('click', () => {
       mdInput.value = ''; render();
-    });
-
-    let rtlMode = false;
-    document.getElementById('rtlBtn').addEventListener('click', () => {
-      rtlMode = !rtlMode;
-      previewDiv.dir = rtlMode ? 'rtl' : 'ltr';
-      document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
     });
 
     document.getElementById('copyHtmlBtn').addEventListener('click', async () => {

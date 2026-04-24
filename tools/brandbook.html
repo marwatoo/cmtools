@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le360 Brandbook — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .brandbook-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .brandbook-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+    }
+    .brandbook-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brandbook-title .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #ff7a14, #ff9a4a);
+      border-radius: 6px;
+    }
+    .brandbook-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      padding: 8px 14px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.secondary {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn.secondary:hover { border-color: var(--accent); }
+    .brandbook-frame {
+      width: 100%;
+      height: calc(100vh - 280px);
+      min-height: 500px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #1a1a24;
+    }
+    .brandbook-info {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+    }
+    .brandbook-info h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .color-swatch {
+      aspect-ratio: 1;
+      border-radius: var(--radius-xs);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 8px;
+      font-size: 0.7rem;
+    }
+    .color-swatch span {
+      background: rgba(0,0,0,0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Le360 Brandbook</span>
+    <span class="nav-num">brand</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Le360 Brandbook</h1>
+      <p>Official brand guidelines and design system.</p>
+    </div>
+
+    <div class="brandbook-layout">
+      <div class="brandbook-header">
+        <div class="brandbook-title">
+          <div class="logo"></div>
+          <span>Le360 Brandbook</span>
+        </div>
+        <div class="brandbook-actions">
+          <a href="https://www.figma.com/proto/gEaGwQNnsp6icCVRIt5ljR/360-Brandbook?node-id=3-12963" class="btn" target="_blank" rel="noopener">Open in Figma ↗</a>
+          <a href="https://www.figma.com/file/gEaGwQNnsp6icCVRIt5ljR/360-Brandbook" class="btn secondary" target="_blank" rel="noopener">Edit in Figma</a>
+        </div>
+      </div>
+
+      <iframe 
+        class="brandbook-frame" 
+        src="https://www.figma.com/embed?embed_host=MediaToolsStudio&url=https%3A%2F%2Fwww.figma.com%2Fproto%2FgEaGwQNnsp6icCVRIt5ljR%2F360-Brandbook%3Fnode-id%3D3-12963"
+        allowfullscreen
+      ></iframe>
+
+      <div class="brandbook-info">
+        <h3>Brand Colors</h3>
+        <div class="color-grid">
+          <div class="color-swatch" style="background: #ff7a14;"><span>#ff7a14</span></div>
+          <div class="color-swatch" style="background: #ff9a4a;"><span>#ff9a4a</span></div>
+          <div class="color-swatch" style="background: #000000;"><span>#000000</span></div>
+          <div class="color-swatch" style="background: #ffffff; border: 1px solid #ccc;"><span>#ffffff</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
