@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Converter — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .tool-page{max-width:720px;margin:0 auto;padding:32px 24px 80px}
+    .tool-header{margin-bottom:28px}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:6px}
+    .tool-header p{color:var(--text2);font-size:.9rem}
+
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    /* Drop zone */
+    .dropzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);position:relative}
+    .dropzone:hover,.dropzone.drag-over{border-color:var(--accent);background:var(--card-hover)}
+    .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .dz-icon{font-size:2.4rem;margin-bottom:10px;opacity:.5}
+    .dz-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:4px}
+    .dz-sub{font-size:.8rem;color:var(--text3)}
+
+    /* Format selector */
+    .format-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+    .fmt-btn{padding:12px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--text2);text-align:center;transition:all .15s}
+    .fmt-btn:hover{border-color:var(--accent);color:var(--text);background:var(--card-hover)}
+    .fmt-btn.active{background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-bg)}
+
+    /* Quality slider */
+    .srow{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    .srow label{font-size:.78rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);white-space:nowrap;width:80px;flex-shrink:0}
+    .sval{width:44px;flex-shrink:0;text-align:right;font-size:.8rem;font-variant-numeric:tabular-nums;color:var(--text3);font-family:'DM Mono',monospace}
+    input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:100px;background:var(--border2);outline:none;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+
+    /* File list */
+    .file-list{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+    .file-item{display:grid;grid-template-columns:40px 1fr auto auto;align-items:center;gap:12px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);transition:border-color .2s}
+    .fi-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;background:var(--bg3)}
+    .fi-info .fi-name{font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+    .fi-info .fi-size{font-size:.7rem;color:var(--text3);margin-top:1px}
+    .fi-status{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+    .fi-status.done{color:#44ff88}
+    .fi-status.error{color:var(--accent3)}
+    .fi-status.working{color:var(--accent2)}
+    .fi-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:0 2px;transition:color .2s;line-height:1}
+    .fi-remove:hover{color:var(--accent3)}
+
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;width:100%;margin-bottom:10px}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-row{display:flex;gap:10px}.btn-row .btn{margin-bottom:0}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+    /* Progress */
+    .progress-wrap{height:3px;background:var(--border2);border-radius:100px;overflow:hidden;margin-bottom:14px;display:none}
+    .progress-bar{height:100%;background:var(--accent);border-radius:100px;width:0%;transition:width .3s}
+
+    /* Notice */
+    .notice{padding:13px 16px;border-radius:var(--radius-sm);background:var(--bg3);border-left:3px solid var(--accent);font-size:.83rem;color:var(--text2);margin-bottom:16px;line-height:1.5}
+
+    @media(max-width:600px){.format-grid{grid-template-columns:repeat(2,1fr)}.fi-info .fi-name{max-width:140px}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Image Converter</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Image Converter</h1>
+    <p>Convert JPG, PNG, WebP and GIF images — entirely in your browser. No upload to any server.</p>
+  </div>
+
+  <div class="notice">⚡ 100% client-side — your images never leave your device.</div>
+
+  <!-- Drop zone -->
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    <div class="dz-icon">◈</div>
+    <div class="dz-text">Drop images here or click to browse</div>
+    <div class="dz-sub">JPG, PNG, WebP, GIF, BMP — multiple files supported</div>
+  </div>
+
+  <!-- File list -->
+  <div class="file-list" id="fileList"></div>
+
+  <!-- Settings -->
+  <div id="settingsWrap" style="display:none">
+    <p class="section-head">Output Format</p>
+    <div class="format-grid">
+      <button class="fmt-btn active" data-fmt="image/jpeg" data-ext="jpg">JPG</button>
+      <button class="fmt-btn" data-fmt="image/png" data-ext="png">PNG</button>
+      <button class="fmt-btn" data-fmt="image/webp" data-ext="webp">WebP</button>
+      <button class="fmt-btn" data-fmt="image/gif" data-ext="gif">GIF</button>
+    </div>
+
+    <p class="section-head">Quality</p>
+    <div class="srow">
+      <label>Quality</label>
+      <input type="range" id="qualitySlider" min="10" max="100" step="5" value="92" />
+      <span class="sval" id="qualityVal">92%</span>
+    </div>
+    <p style="font-size:.75rem;color:var(--text3);margin-bottom:16px;">Quality only applies to JPG and WebP output. PNG is lossless.</p>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="convertBtn">⚡ Convert All</button>
+      <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Theme */
+  (function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+
+  let files = [];
+  let targetFmt = 'image/jpeg', targetExt = 'jpg';
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileListEl = document.getElementById('fileList');
+  const settingsWrap = document.getElementById('settingsWrap');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+
+  qualitySlider.addEventListener('input', () => { qualityVal.textContent = qualitySlider.value + '%'; });
+
+  /* Format buttons */
+  document.querySelectorAll('.fmt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      targetFmt = btn.dataset.fmt;
+      targetExt = btn.dataset.ext;
+    });
+  });
+
+  /* Drag & drop */
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+  function handleFiles(fl) {
+    [...fl].forEach(f => { if (f.type.startsWith('image/')) files.push({ file: f, status: 'ready' }); });
+    renderList();
+    settingsWrap.style.display = files.length ? 'block' : 'none';
+  }
+
+  function fmtBytes(b) { return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(2) + ' MB'; }
+
+  function renderList() {
+    fileListEl.innerHTML = '';
+    files.forEach((item, i) => {
+      const el = document.createElement('div'); el.className = 'file-item';
+      const img = document.createElement('img'); img.className = 'fi-thumb';
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; };
+      reader.readAsDataURL(item.file);
+      const statusMap = { ready: '—', working: 'Converting…', done: '✓ Done', error: '✕ Error' };
+      const statusClass = { ready: '', working: 'working', done: 'done', error: 'error' };
+      el.innerHTML = `<span></span><div class="fi-info"><div class="fi-name">${item.file.name}</div><div class="fi-size">${fmtBytes(item.file.size)}</div></div><span class="fi-status ${statusClass[item.status]}">${statusMap[item.status]}</span><button class="fi-remove" data-idx="${i}">✕</button>`;
+      el.querySelector('span').appendChild(img);
+      fileListEl.appendChild(el);
+    });
+    fileListEl.addEventListener('click', e => {
+      const btn = e.target.closest('.fi-remove'); if (!btn) return;
+      files.splice(parseInt(btn.dataset.idx), 1); renderList();
+      settingsWrap.style.display = files.length ? 'block' : 'none';
+    });
+  }
+
+  /* Convert */
+  document.getElementById('convertBtn').addEventListener('click', async () => {
+    if (!files.length) return;
+    const quality = parseInt(qualitySlider.value) / 100;
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    progressWrap.style.display = 'block';
+
+    for (let i = 0; i < files.length; i++) {
+      files[i].status = 'working'; renderList();
+      progressBar.style.width = Math.round((i / files.length) * 100) + '%';
+      try {
+        const blobUrl = URL.createObjectURL(files[i].file);
+        await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (targetFmt === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob(blob => {
+              if (!blob) { reject(); return; }
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              const base = files[i].file.name.replace(/\.[^.]+$/, '');
+              a.download = `${base}.${targetExt}`;
+              a.click();
+              URL.revokeObjectURL(blobUrl);
+              files[i].status = 'done'; renderList(); resolve();
+            }, targetFmt, quality);
+          };
+          img.onerror = reject;
+          img.src = blobUrl;
+        });
+      } catch { files[i].status = 'error'; renderList(); }
+      await new Promise(r => setTimeout(r, 150));
+    }
+    progressBar.style.width = '100%';
+    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1000);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    files = []; renderList(); settingsWrap.style.display = 'none';
+    fileInput.value = '';
+  });
+</script>
+</body>
+</html>

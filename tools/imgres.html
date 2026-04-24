@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Resizer — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .tool-page{max-width:860px;margin:0 auto;padding:32px 24px 80px}
+    .tool-header{margin-bottom:28px}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:6px}
+    .tool-header p{color:var(--text2);font-size:.9rem}
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    /* Layout */
+    .editor-layout{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start}
+
+    /* Drop zone */
+    .dropzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);position:relative;margin-bottom:16px}
+    .dropzone:hover,.dropzone.drag-over{border-color:var(--accent);background:var(--card-hover)}
+    .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .dz-icon{font-size:2rem;margin-bottom:8px;opacity:.5}
+    .dz-text{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;margin-bottom:3px}
+    .dz-sub{font-size:.75rem;color:var(--text3)}
+
+    /* Presets */
+    .preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+    .preset-btn{padding:9px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:.68rem;letter-spacing:.03em;color:var(--text2);text-align:center;transition:all .15s;line-height:1.3}
+    .preset-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--card-hover)}
+    .preset-btn span{display:block;font-family:'DM Sans',sans-serif;font-weight:400;font-size:.62rem;color:var(--text3);margin-top:2px}
+
+    /* Dimension inputs */
+    .dim-row{display:grid;grid-template-columns:1fr 28px 1fr;align-items:center;gap:6px;margin-bottom:10px}
+    .dim-row input[type=number]{width:100%;padding:9px 10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Mono',monospace;font-size:.88rem;outline:none;transition:border-color .2s;text-align:center}
+    .dim-row input:focus{border-color:var(--accent)}
+    .dim-sep{text-align:center;color:var(--text3);font-weight:700;font-size:.9rem}
+
+    /* Fit mode */
+    .fit-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+    .fit-btn{padding:9px 4px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:.68rem;color:var(--text2);text-align:center;transition:all .15s}
+    .fit-btn:hover{border-color:var(--accent);color:var(--text)}
+    .fit-btn.active{background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-bg)}
+
+    /* Format */
+    .format-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+    .fmt-btn{padding:9px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:.75rem;color:var(--text2);text-align:center;transition:all .15s}
+    .fmt-btn:hover{border-color:var(--accent);color:var(--text)}
+    .fmt-btn.active{background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-bg)}
+
+    /* Quality */
+    .srow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .srow label{font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;width:72px;flex-shrink:0}
+    .sval{width:40px;flex-shrink:0;text-align:right;font-size:.78rem;color:var(--text3);font-family:'DM Mono',monospace}
+    input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:100px;background:var(--border2);outline:none;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+
+    /* Checkbox */
+    .check-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);cursor:pointer;margin-bottom:10px;user-select:none}
+    .check-row input{display:none}
+    .chk-box{width:15px;height:15px;flex-shrink:0;border:1.5px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.65rem;transition:all .15s}
+    .check-row input:checked~.chk-box{background:var(--accent);border-color:var(--accent);color:var(--btn-text)}
+    .chk-label{font-size:.8rem;color:var(--text2)}
+
+    /* Preview */
+    .preview-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:sticky;top:73px}
+    .preview-label{font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+    .preview-canvas-wrap{background:repeating-conic-gradient(#33333366 0% 25%,transparent 0% 50%) 0 0/16px 16px;border-radius:calc(var(--radius)-4px);overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:220px}
+    #previewCanvas{max-width:100%;max-height:320px;display:block;border-radius:4px}
+    .preview-placeholder{color:var(--text3);font-size:.85rem;text-align:center;padding:40px 20px}
+    .preview-info{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .pi-item{padding:8px 10px;background:var(--bg3);border-radius:var(--radius-xs);font-size:.72rem}
+    .pi-label{color:var(--text3);margin-bottom:2px;font-size:.65rem;text-transform:uppercase;letter-spacing:.04em}
+    .pi-val{font-family:'DM Mono',monospace;font-weight:500;color:var(--text)}
+
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;width:100%;margin-bottom:8px}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+
+    @media(max-width:720px){.editor-layout{grid-template-columns:1fr}.preview-wrap{position:static;order:-1}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Image Resizer</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Image Resizer</h1>
+    <p>Resize images to exact dimensions or social media presets. 100% in-browser.</p>
+  </div>
+
+  <div class="editor-layout">
+    <!-- Controls -->
+    <div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*" />
+        <div class="dz-icon">◧</div>
+        <div class="dz-text">Drop image or click to browse</div>
+        <div class="dz-sub">JPG, PNG, WebP, GIF</div>
+      </div>
+
+      <div id="controls" style="display:none">
+        <div class="card">
+          <p class="section-head" style="margin-top:0">Social Presets</p>
+          <div class="preset-grid">
+            <button class="preset-btn" data-w="1920" data-h="1080">YouTube Cover<span>1920 × 1080</span></button>
+            <button class="preset-btn" data-w="1080" data-h="1080">Instagram Post<span>1080 × 1080</span></button>
+            <button class="preset-btn" data-w="1080" data-h="1350">IG Portrait<span>1080 × 1350</span></button>
+            <button class="preset-btn" data-w="1080" data-h="1920">IG Story<span>1080 × 1920</span></button>
+            <button class="preset-btn" data-w="1200" data-h="630">Facebook Link<span>1200 × 630</span></button>
+            <button class="preset-btn" data-w="1500" data-h="500">Twitter Header<span>1500 × 500</span></button>
+            <button class="preset-btn" data-w="800" data-h="800">Thumbnail<span>800 × 800</span></button>
+            <button class="preset-btn" data-w="512" data-h="512">Avatar<span>512 × 512</span></button>
+          </div>
+
+          <p class="section-head">Custom Size</p>
+          <div class="dim-row">
+            <input type="number" id="widthInput" placeholder="W" min="1" max="8000" />
+            <span class="dim-sep">×</span>
+            <input type="number" id="heightInput" placeholder="H" min="1" max="8000" />
+          </div>
+          <label class="check-row" id="lockRatioRow">
+            <input type="checkbox" id="lockRatio" checked />
+            <span class="chk-box">✓</span>
+            <span class="chk-label">Lock aspect ratio</span>
+          </label>
+
+          <p class="section-head">Fit Mode</p>
+          <div class="fit-grid">
+            <button class="fit-btn active" data-fit="fill">Fill</button>
+            <button class="fit-btn" data-fit="contain">Contain</button>
+            <button class="fit-btn" data-fit="cover">Cover</button>
+          </div>
+          <p style="font-size:.72rem;color:var(--text3);margin-bottom:12px;" id="fitDesc">Stretches/squishes to exactly fit the dimensions.</p>
+
+          <p class="section-head">Output Format</p>
+          <div class="format-grid">
+            <button class="fmt-btn active" data-fmt="image/jpeg" data-ext="jpg">JPG</button>
+            <button class="fmt-btn" data-fmt="image/png" data-ext="png">PNG</button>
+            <button class="fmt-btn" data-fmt="image/webp" data-ext="webp">WebP</button>
+          </div>
+
+          <div class="srow" id="qualityRow">
+            <label>Quality</label>
+            <input type="range" id="qualitySlider" min="10" max="100" step="5" value="92" />
+            <span class="sval" id="qualityVal">92%</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="downloadBtn">⬇ Download Resized Image</button>
+        <button class="btn btn-secondary" id="clearBtn">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-wrap" id="previewWrap">
+      <div class="preview-label">
+        <span>Preview</span>
+        <span id="previewDim" style="font-family:'DM Mono',monospace;font-size:.7rem;font-weight:400;color:var(--text3)"></span>
+      </div>
+      <div class="preview-canvas-wrap">
+        <div class="preview-placeholder" id="previewPlaceholder">Load an image to see the preview</div>
+        <canvas id="previewCanvas" style="display:none"></canvas>
+      </div>
+      <div class="preview-info" id="previewInfo" style="display:none">
+        <div class="pi-item"><div class="pi-label">Original</div><div class="pi-val" id="origSize">—</div></div>
+        <div class="pi-item"><div class="pi-label">Output</div><div class="pi-val" id="outSize">—</div></div>
+        <div class="pi-item"><div class="pi-label">Original Res</div><div class="pi-val" id="origRes">—</div></div>
+        <div class="pi-item"><div class="pi-label">Output Res</div><div class="pi-val" id="outRes">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+
+  let srcImage = null, origW = 0, origH = 0, fitMode = 'fill', targetFmt = 'image/jpeg', targetExt = 'jpg';
+  const FIT_DESC = { fill:'Stretches/squishes to exactly fit the dimensions.', contain:'Fits inside the box, adds letterbox padding.', cover:'Crops to fill the box, no padding.' };
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+
+  /* Drag */
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); loadFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+
+  function loadFile(f) {
+    if (!f || !f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        srcImage = img; origW = img.naturalWidth; origH = img.naturalHeight;
+        document.getElementById('widthInput').value = origW;
+        document.getElementById('heightInput').value = origH;
+        document.getElementById('origSize').textContent = fmtBytes(f.size);
+        document.getElementById('origRes').textContent = `${origW} × ${origH}`;
+        document.getElementById('controls').style.display = 'block';
+        renderPreview();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(f);
+  }
+
+  function fmtBytes(b){return b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(2)+' MB'}
+
+  function renderPreview() {
+    if (!srcImage) return;
+    const w = parseInt(document.getElementById('widthInput').value) || origW;
+    const h = parseInt(document.getElementById('heightInput').value) || origH;
+    drawToCanvas(canvas, srcImage, w, h, fitMode);
+    document.getElementById('previewPlaceholder').style.display = 'none';
+    canvas.style.display = 'block';
+    document.getElementById('previewDim').textContent = `${w} × ${h}`;
+    document.getElementById('previewInfo').style.display = 'grid';
+    document.getElementById('outRes').textContent = `${w} × ${h}`;
+    // Estimate output size
+    canvas.toBlob(blob => { if (blob) document.getElementById('outSize').textContent = fmtBytes(blob.size); }, targetFmt, parseInt(document.getElementById('qualitySlider').value)/100);
+  }
+
+  function drawToCanvas(c, img, w, h, fit) {
+    c.width = w; c.height = h;
+    const cctx = c.getContext('2d');
+    cctx.clearRect(0,0,w,h);
+    if (targetFmt === 'image/jpeg') { cctx.fillStyle='#fff'; cctx.fillRect(0,0,w,h); }
+    if (fit === 'fill') {
+      cctx.drawImage(img, 0, 0, w, h);
+    } else if (fit === 'contain') {
+      const scale = Math.min(w/img.naturalWidth, h/img.naturalHeight);
+      const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+      const dx = (w - dw)/2, dy = (h - dh)/2;
+      cctx.drawImage(img, dx, dy, dw, dh);
+    } else if (fit === 'cover') {
+      const scale = Math.max(w/img.naturalWidth, h/img.naturalHeight);
+      const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+      const dx = (w - dw)/2, dy = (h - dh)/2;
+      cctx.drawImage(img, dx, dy, dw, dh);
+    }
+  }
+
+  /* Fit buttons */
+  document.querySelectorAll('.fit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fit-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); fitMode = btn.dataset.fit;
+      document.getElementById('fitDesc').textContent = FIT_DESC[fitMode];
+      renderPreview();
+    });
+  });
+
+  /* Format buttons */
+  document.querySelectorAll('.fmt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fmt-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); targetFmt = btn.dataset.fmt; targetExt = btn.dataset.ext;
+      renderPreview();
+    });
+  });
+
+  /* Presets */
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('widthInput').value = btn.dataset.w;
+      document.getElementById('heightInput').value = btn.dataset.h;
+      renderPreview();
+    });
+  });
+
+  /* Dimension inputs with lock */
+  let lockedRatio = origH ? origH/origW : 1;
+  document.getElementById('widthInput').addEventListener('input', () => {
+    if (document.getElementById('lockRatio').checked && srcImage) {
+      const r = origH/origW;
+      document.getElementById('heightInput').value = Math.round(parseInt(document.getElementById('widthInput').value||0)*r)||'';
+    }
+    renderPreview();
+  });
+  document.getElementById('heightInput').addEventListener('input', () => {
+    if (document.getElementById('lockRatio').checked && srcImage) {
+      const r = origW/origH;
+      document.getElementById('widthInput').value = Math.round(parseInt(document.getElementById('heightInput').value||0)*r)||'';
+    }
+    renderPreview();
+  });
+  document.getElementById('qualitySlider').addEventListener('input', () => {
+    document.getElementById('qualityVal').textContent = document.getElementById('qualitySlider').value + '%';
+    renderPreview();
+  });
+
+  /* Download */
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (!srcImage) return;
+    const w = parseInt(document.getElementById('widthInput').value)||origW;
+    const h = parseInt(document.getElementById('heightInput').value)||origH;
+    const dlCanvas = document.createElement('canvas');
+    drawToCanvas(dlCanvas, srcImage, w, h, fitMode);
+    const quality = parseInt(document.getElementById('qualitySlider').value)/100;
+    dlCanvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `resized_${w}x${h}.${targetExt}`;
+      a.click();
+    }, targetFmt, quality);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    srcImage = null; origW = 0; origH = 0;
+    canvas.style.display = 'none';
+    document.getElementById('previewPlaceholder').style.display = 'block';
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('previewInfo').style.display = 'none';
+    document.getElementById('previewDim').textContent = '';
+    fileInput.value = '';
+  });
+</script>
+</body>
+</html>
