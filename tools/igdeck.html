@@ -443,20 +443,26 @@ const COLUMNS = [
 const cache = {};
 const seen  = {}; // key → Set of post IDs
 
-// ── Fetch from Apify ───────────────────────────────────────────────────────
-async function fetchInstagram(username) {
+// ── Fetch all accounts in one API call ─────────────────────────────────────
+async function fetchAllInstagram() {
+  const usernames = COLUMNS.map(c => c.key);
   const res = await fetch(
     `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usernames: [username] })
+      body: JSON.stringify({ usernames })
     }
   );
   if (!res.ok) throw new Error(`Apify error ${res.status}`);
   const data = await res.json();
-  if (!data || !data[0]) throw new Error('No data returned');
-  return data[0];
+  if (!Array.isArray(data)) throw new Error('No data returned');
+  data.forEach(profile => {
+    if (profile && profile.username) {
+      cache[profile.username] = profile;
+    }
+  });
+  return data;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -868,13 +874,16 @@ COLUMNS.forEach(col => {
   container.appendChild(colEl);
 });
 
-// ── Load column ────────────────────────────────────────────────────────────
+// ── Load column from cache ──────────────────────────────────────────────────
 async function loadColumn(col) {
   const feed = document.getElementById(`feed-${col.key}`);
   try {
-    const data  = await fetchInstagram(col.key);
-    console.log('Data for', col.key, data);
-    console.log('profilePicUrl:', data.profilePicUrl);
+    if (!cache[col.key]) {
+      await fetchAllInstagram();
+    }
+    const data = cache[col.key];
+    if (!data) throw new Error('No cached data');
+
     const posts = [
       ...(data.latestPosts || []),
       ...(data.latestIgtvVideos || [])
@@ -945,11 +954,15 @@ async function loadColumn(col) {
   }
 }
 
-// ── Staggered load + refresh every 30 min ─────────────────────────────────
-// NOTE: Apify calls cost credits — don't refresh too often
-function updateLoop() {
+// ── Fetch all, then load columns ──────────────────────────────────────────
+async function updateLoop() {
+  try {
+    await fetchAllInstagram();
+  } catch(e) {
+    console.warn('Failed to fetch all Instagram data', e);
+  }
   COLUMNS.forEach((col, i) => {
-    setTimeout(() => loadColumn(col), i * 2000);
+    setTimeout(() => loadColumn(col), i * 500);
   });
   setTimeout(updateLoop, 2 * 60 * 1000); // every 2 minutes
 }
