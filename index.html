@@ -26,6 +26,11 @@
 <h1 class="hub-title">Your visual<br><span class="accent">production suite</span></h1>
 <p class="hub-subtitle">Create covers, overlays, carousels and monitor live news — all in your browser, no install needed.</p>
 </section>
+<!-- Search -->
+<section class="hub-search">
+<input type="text" id="toolSearch" class="search-input" placeholder="Search tools..." autocomplete="off">
+<div class="search-results"><span class="results-count"></span></div>
+</section>
 <!-- Tool Cards -->
 <section class="hub-grid">
 <a href="tools/ytcover.html" class="tool-card" data-tool="ytcover">
@@ -130,7 +135,7 @@
 <div class="card-number">08</div>
 <div class="card-icon">𝕏</div>
 <div class="card-body">
-<h2>X Deck (BETA)</h2>
+<h2>X Deck</h2>
 <p>TweetDeck-style live X feed dashboard for Le360 — AR, FR, Sport, Afrique & Espagnol columns.</p>
 <ul class="card-tags">
 <li>Live Feed</li>
@@ -348,5 +353,52 @@
 </footer>
 </div>
 <script src="assets/theme.js"></script>
+<script>
+(function() {
+  const searchInput = document.getElementById('toolSearch');
+  const resultsCount = document.querySelector('.results-count');
+  const toolCards = document.querySelectorAll('.tool-card');
+  const hubGrid = document.querySelector('.hub-grid');
+
+  searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    let visibleCount = 0;
+    let noResultsMsg = document.querySelector('.no-results');
+
+    toolCards.forEach(card => {
+      const title = card.querySelector('.card-body h2').textContent.toLowerCase();
+      const desc = card.querySelector('.card-body p').textContent.toLowerCase();
+      const tags = Array.from(card.querySelectorAll('.card-tags li')).map(li => li.textContent.toLowerCase()).join(' ');
+      const searchText = title + ' ' + desc + ' ' + tags;
+
+      if (query === '' || searchText.includes(query)) {
+        card.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+
+    if (visibleCount === 0) {
+      if (!noResultsMsg) {
+        noResultsMsg = document.createElement('p');
+        noResultsMsg.className = 'no-results';
+        noResultsMsg.textContent = 'No tools found';
+        hubGrid.appendChild(noResultsMsg);
+      }
+      noResultsMsg.style.display = 'block';
+    } else {
+      if (noResultsMsg) noResultsMsg.style.display = 'none';
+    }
+
+    if (query && visibleCount > 0) {
+      resultsCount.textContent = visibleCount + ' tool' + (visibleCount === 1 ? '' : 's') + ' found';
+      resultsCount.classList.add('visible');
+    } else {
+      resultsCount.classList.remove('visible');
+    }
+  });
+})();
+</script>
 </body>
 </html>
