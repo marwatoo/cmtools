@@ -87,6 +87,11 @@
       z-index: 2; display: flex; align-items: center;
       justify-content: space-between; flex-shrink: 0;
     }
+    .col-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      margin-right: 10px; object-fit: cover;
+      background: var(--bg3); flex-shrink: 0;
+    }
     .deck-col-header h2 {
       font-family: 'Syne', sans-serif; font-weight: 700;
       font-size: 0.95rem; color: var(--accent);
@@ -132,11 +137,11 @@
     .tweet-avatar {
       width: 36px; height: 36px; border-radius: 50%;
       background: var(--bg3); flex-shrink: 0;
-      object-fit: cover; border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; border: 1px solid var(--border2); color: var(--text3);
+      object-fit: cover;
     }
-    .tweet-handle {
-      font-size: 0.78rem; color: var(--text3);
-    }
+    .tweet-handle { font-size: 0.78rem; color: var(--text3); }
     .tweet-date {
       font-size: 0.7rem; color: var(--text3);
       margin-left: auto; white-space: nowrap;
@@ -151,11 +156,14 @@
     .tweet-text a:hover { text-decoration: underline; }
 
     /* Media */
-    .tweet-media { margin-bottom: 10px; position: relative; }
     .tweet-img {
       width: 100%; border-radius: 8px;
       aspect-ratio: 16/9; object-fit: cover;
-      background: var(--bg3); display: block;
+      background: var(--bg3); display: block; margin-bottom: 10px;
+    }
+    .tweet-img.full {
+      aspect-ratio: auto;
+      max-height: 400px; object-fit: contain;
     }
     .tweet-img-grid {
       display: grid; gap: 3px; margin-bottom: 10px;
@@ -175,18 +183,7 @@
       width: 100%; aspect-ratio: 16/9; border-radius: 8px;
       background: var(--bg3); display: flex; align-items: center;
       justify-content: center; margin-bottom: 10px;
-      border: 1px solid var(--border2); position: relative;
-      overflow: hidden;
-    }
-    .tweet-video-wrap video {
-      width: 100%; height: 100%; object-fit: cover;
-      border-radius: 8px;
-    }
-    .tweet-video-wrap .play-overlay {
-      position: absolute; inset: 0; display: flex;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.35); border-radius: 8px;
-      pointer-events: none;
+      border: 1px solid var(--border2);
     }
     .play-btn-icon {
       width: 48px; height: 48px; border-radius: 50%;
@@ -203,26 +200,13 @@
       font-size: 0.65rem; padding: 2px 7px;
       border-radius: 100px; font-weight: 600;
       letter-spacing: 0.03em; text-transform: uppercase;
-      border: 1px solid; display: flex; align-items: center; gap: 3px;
+      border: 1px solid;
     }
     .tag-video   { color: #ff6b6b; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
     .tag-image   { color: var(--accent2); border-color: rgba(124,107,255,0.4); background: rgba(124,107,255,0.08); }
     .tag-images  { color: var(--accent2); border-color: rgba(124,107,255,0.4); background: rgba(124,107,255,0.08); }
     .tag-link    { color: var(--accent); border-color: rgba(232,255,71,0.3); background: rgba(232,255,71,0.06); }
     .tag-retweet { color: var(--text2); border-color: var(--border2); background: var(--bg3); }
-    .tag-thread  { color: #f0a500; border-color: rgba(240,165,0,0.4); background: rgba(240,165,0,0.08); }
-
-    /* Linked card preview */
-    .tweet-link-card {
-      border: 1px solid var(--border2); border-radius: 8px;
-      overflow: hidden; text-decoration: none; display: block;
-      margin-bottom: 10px; transition: border-color 0.2s;
-    }
-    .tweet-link-card:hover { border-color: var(--accent); }
-    .tweet-link-card-img { width: 100%; height: 100px; object-fit: cover; display: block; }
-    .tweet-link-card-body { padding: 8px 10px; }
-    .tweet-link-card-domain { font-size: 0.65rem; color: var(--text3); margin-bottom: 2px; }
-    .tweet-link-card-title  { font-size: 0.8rem; color: var(--text); font-weight: 600; line-height: 1.3; }
 
     /* Action buttons */
     .tweet-btns {
@@ -267,7 +251,10 @@
     }
     .modal-avatar {
       width: 44px; height: 44px; border-radius: 50%;
-      background: var(--bg3); object-fit: cover;
+      background: var(--bg3); display: flex; align-items: center;
+      justify-content: center; font-size: 1.3rem;
+      border: 1px solid var(--border2); color: var(--text3); flex-shrink: 0;
+      object-fit: cover;
     }
     .modal-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
     .modal-handle { font-size: 0.8rem; color: var(--text3); }
@@ -285,7 +272,7 @@
     .modal-media-grid.count-3 { grid-template-columns: 1fr 1fr; }
     .modal-media-grid.count-3 img:first-child { grid-row: span 2; }
     .modal-media-grid.count-4 { grid-template-columns: 1fr 1fr; }
-    .modal-media-grid img { width: 100%; object-fit: cover; aspect-ratio: 1; display: block; }
+    .modal-media-grid img { width: 100%; object-fit: contain; aspect-ratio: auto; max-height: 80vh; display: block; }
     .modal-media-grid.count-1 img { aspect-ratio: 16/9; }
     .modal-footer {
       display: flex; align-items: center; gap: 8px;
@@ -314,19 +301,26 @@
       width: 100%; aspect-ratio: 16/9; border-radius: 10px;
       background: var(--bg3); margin-bottom: 14px; overflow: hidden;
       display: flex; align-items: center; justify-content: center;
-      position: relative;
+      flex-direction: column; gap: 8px;
     }
-    .modal-video-wrap video { width: 100%; height: 100%; object-fit: contain; }
 
-    /* Scrollbar webkit */
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .deck-col-header, .deck-column, .tweet-card {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .deck-column:nth-of-type(1) { animation-delay: 0.1s; }
+    .deck-column:nth-of-type(2) { animation-delay: 0.15s; }
+    .deck-column:nth-of-type(3) { animation-delay: 0.2s; }
+    .deck-column:nth-of-type(4) { animation-delay: 0.25s; }
+    .deck-column:nth-of-type(5) { animation-delay: 0.3s; }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-    @media (max-width: 480px) {
-      .deck-column { min-width: 200px; }
-    }
+    @media (max-width: 480px) { .deck-column { min-width: 200px; } }
   </style>
 </head>
 <body>
@@ -351,7 +345,7 @@
   </div>
 
 <script>
-// ── Theme ─────────────────────────────────────────────────────────────────
+// ── Theme (unchanged) ──────────────────────────────────────────────────────
 (function(){
   const KEY = 'mts-theme';
   function getTheme(){
@@ -374,200 +368,44 @@
 })();
 
 // ── Config ─────────────────────────────────────────────────────────────────
+// 👇 Your Railway API base URL
+const API_BASE = 'https://rssweb-production.up.railway.app';
+
 const COLUMNS = [
-  { key: 'le360fr',      handle: '@le360fr',      label: 'Le360 FR',    nitter: 'le360fr' },
-  { key: 'le360ar',      handle: '@le360ar',      label: 'Le360 AR',    nitter: 'le360ar' },
-  { key: 'le360sport',   handle: '@le360sport',   label: 'Sport',       nitter: 'le360sport' },
-  { key: 'le360es',      handle: '@le360es',      label: 'Espagnol',    nitter: 'le360es' },
-  { key: 'le360_afrique',handle: '@le360_afrique',label: 'Afrique',     nitter: 'le360_afrique' },
+  { key: 'le360fr',       handle: '@le360fr',       label: 'Le360 FR'   },
+  { key: 'le360ar',       handle: '@le360ar',       label: 'Le360 AR'   },
+  { key: 'le360sport',    handle: '@le360sport',    label: 'Sport'      },
+  { key: 'le360es',       handle: '@le360es',       label: 'Espagnol'   },
+  { key: 'le360_afrique', handle: '@le360_afrique', label: 'Afrique'    },
 ];
 
-const seen = {};   // key → Set of tweet IDs
+const seen = {}; // key → Set of tweet IDs
+const profileImages = {}; // key → profile_image URL
 
-// ── Fetch attempt matrix ───────────────────────────────────────────────────
-// nitter.net works in browser — try it direct first (no proxy = no CORS issue
-// if the server sends the right headers, and no rate limit hit).
-// Proxies are fallbacks in case CORS blocks the direct request.
-const ATTEMPTS = [
-  // Direct — works if nitter.net sends Access-Control-Allow-Origin (it sometimes does)
-  h => `https://nitter.net/${h}/rss`,
-  // Via corsproxy.io — rewrites CORS headers
-  h => `https://corsproxy.io/?${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
-  // Via allorigins
-  h => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
-  // Via codetabs proxy
-  h => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
-  // htmldriven cors proxy
-  h => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(`https://nitter.net/${h}/rss`)}`,
-];
-
-async function tryFetch(url, timeoutMs = 7000) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const text = await res.text();
-    if (!text.includes('<item')) return null;
-    const start = text.search(/<[?]xml|<rss/i);
-    return start !== -1 ? text.slice(start) : null;
-  } catch(e) {
-    clearTimeout(timer);
-    return null;
-  }
+// ── Fetch from YOUR Railway API ────────────────────────────────────────────
+async function fetchFeed(username) {
+  const url = `${API_BASE}/api/feed?user=${encodeURIComponent(username)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json();
+  if (data.error && !data.items?.length) throw new Error(data.error);
+  return data;
 }
 
-// Race all attempts with staggered starts — first valid XML wins
-async function fetchFeed(nitterHandle) {
-  return new Promise((resolve, reject) => {
-    let done = false;
-    let failed = 0;
-
-    ATTEMPTS.forEach((makeFn, i) => {
-      setTimeout(async () => {
-        if (done) return;
-        const xml = await tryFetch(makeFn(nitterHandle));
-        if (done) return;
-        if (xml) {
-          done = true;
-          resolve(xml);
-        } else {
-          failed++;
-          if (failed === ATTEMPTS.length) reject(new Error('All attempts failed for @' + nitterHandle));
-        }
-      }, i * 500);
-    });
-  });
-}
-
-// ── Parse nitter RSS ───────────────────────────────────────────────────────
-function parseNitterRSS(xmlText, nitterHandle) {
-  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  const channelTitle = doc.querySelector('channel > title')?.textContent?.trim() || nitterHandle;
-  const items = [...doc.querySelectorAll('item')];
-
-  return items.slice(0, 20).map(item => {
-    const title   = item.querySelector('title')?.textContent?.trim() || '';
-    const link    = item.querySelector('link')?.textContent?.trim() || '';
-    const pubDate = item.querySelector('pubDate')?.textContent?.trim() || '';
-    const creator = item.querySelector('creator')?.textContent?.trim() ||
-                    doc.querySelector('channel > title')?.textContent?.trim() || nitterHandle;
-
-    // Nitter puts HTML content in <description>
-    const descRaw = item.querySelector('description')?.textContent || '';
-    const parsed  = parseDescription(descRaw, link);
-
-    // Build tweet ID from link
-    const idMatch = link.match(/\/status\/(\d+)/);
-    const tweetId = idMatch ? idMatch[1] : link;
-
-    // Convert nitter link → x.com link
-    const xLink = link.replace(/https?:\/\/[^/]+/, 'https://x.com');
-
-    return {
-      id: tweetId,
-      title,
-      link: xLink,
-      nitterLink: link,
-      pubDate,
-      creator: creator.replace(/^\//, ''),
-      channelTitle,
-      nitterHandle,
-      text:        parsed.text,
-      images:      parsed.images,
-      videoUrl:    parsed.videoUrl,
-      hasVideo:    parsed.hasVideo,
-      externalLink:parsed.externalLink,
-      isRetweet:   title.startsWith('RT by '),
-    };
-  });
-}
-
-// ── Parse <description> HTML from Nitter ──────────────────────────────────
-// Nitter description contains an HTML fragment with the tweet text + media
-function parseDescription(html, itemLink) {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-
-  // Images: Nitter wraps them in <a><img ...></a>
-  const imgEls = [...div.querySelectorAll('img')];
-  const images = imgEls
-    .map(img => {
-      let src = img.src || img.getAttribute('src') || '';
-      // Nitter serves images as /pic/... — convert to real URL
-      if (src.startsWith('/pic/')) {
-        // Extract original URL from path like /pic/media%2F...
-        try {
-          const inner = decodeURIComponent(src.replace('/pic/', ''));
-          if (inner.startsWith('http')) return inner;
-          return `https://pbs.twimg.com/${inner}`;
-        } catch(e) { return ''; }
-      }
-      if (src.includes('nitter') && src.includes('/pic/')) {
-        try {
-          const after = src.split('/pic/')[1];
-          const inner = decodeURIComponent(after);
-          if (inner.startsWith('http')) return inner;
-          return `https://pbs.twimg.com/${inner}`;
-        } catch(e) { return ''; }
-      }
-      return src;
-    })
-    .filter(src => src && !src.includes('emoji') && !src.includes('data:'));
-
-  // Video: look for <video> tag in description
-  const videoEl = div.querySelector('video');
-  let videoUrl = '';
-  let hasVideo = false;
-  if (videoEl) {
-    hasVideo = true;
-    videoUrl = videoEl.querySelector('source')?.src ||
-               videoEl.src ||
-               videoEl.getAttribute('data-src') || '';
-  }
-  // Nitter sometimes puts a gif/video as img with .mp4 extension
-  if (!hasVideo) {
-    const mp4img = imgEls.find(img => (img.src||'').endsWith('.mp4'));
-    if (mp4img) { hasVideo = true; videoUrl = mp4img.src; }
-  }
-
-  // External link card: last <a> that looks like an outside URL
-  let externalLink = null;
-  const anchors = [...div.querySelectorAll('a')];
-  for (const a of anchors.reverse()) {
-    const href = a.href || '';
-    if (href && !href.includes('nitter') && !href.includes('twitter.com')
-        && !href.includes('x.com') && href.startsWith('http')
-        && !href.endsWith('.jpg') && !href.endsWith('.png') && !href.endsWith('.mp4')) {
-      externalLink = { url: href, text: a.textContent.trim() };
-      break;
-    }
-  }
-
-  // Clean text: remove images and known nitter UI elements
-  imgEls.forEach(img => img.closest('a')?.remove() || img.remove());
-  videoEl?.remove();
-  // Remove pic.twitter.com links
-  anchors.forEach(a => {
-    if ((a.href||'').includes('nitter') || (a.textContent||'').includes('pic.twitter'))
-      a.remove();
-  });
-
-  const text = div.textContent?.trim().replace(/\s+/g, ' ') || '';
-
-  return { text, images, videoUrl, hasVideo, externalLink };
-}
-
+// ── Helpers ────────────────────────────────────────────────────────────────
 function formatDate(ds) {
   if (!ds) return '';
   try {
     const d = new Date(ds);
-    return d.toLocaleString('fr-FR', { hour12: false, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return d.toLocaleString('fr-FR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
   } catch(e) { return ds; }
 }
 
-// ── Copy helper ────────────────────────────────────────────────────────────
 function copyText(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
     btn.classList.add('copied');
@@ -577,36 +415,68 @@ function copyText(text, btn) {
   });
 }
 
-// ── Detect media tags ──────────────────────────────────────────────────────
+// ── Map rss_fetcher.py item → tweet object ─────────────────────────────────
+// rss_fetcher returns: id, title, description, link, pub_date, parsed_date,
+//                      images:[{url, type}], has_video, author
+function mapItem(item, colKey) {
+  const images = (item.images || []).map(img => img.url || img);
+  const isRetweet = (item.title || '').startsWith('RT by ');
+
+  // Convert nitter link → x.com
+  const xLink = (item.link || '').replace(/https?:\/\/[^/]+/, 'https://x.com');
+
+  // Strip HTML from title for display text
+  const div = document.createElement('div');
+  div.innerHTML = item.title || '';
+  const text = div.textContent.trim();
+
+  return {
+    id:         item.id || item.link,
+    text,
+    link:       xLink,
+    rawLink:    item.link,
+    pubDate:    item.pub_date || '',
+    parsedDate: item.parsed_date || '',
+    images,
+    hasVideo:   item.has_video || false,
+    author:     item.author || colKey,
+    isRetweet,
+    colKey,
+  };
+}
+
+// ── Media tags ─────────────────────────────────────────────────────────────
 function getMediaTags(tweet) {
   const tags = [];
-  if (tweet.isRetweet) tags.push({ cls: 'tag-retweet', icon: '🔁', label: 'RT' });
-  if (tweet.hasVideo)  tags.push({ cls: 'tag-video',   icon: '▶',  label: 'Video' });
-  else if (tweet.images.length > 1) tags.push({ cls: 'tag-images', icon: '⊞', label: `${tweet.images.length} Photos` });
-  else if (tweet.images.length === 1) tags.push({ cls: 'tag-image', icon: '📷', label: 'Photo' });
-  if (tweet.externalLink) tags.push({ cls: 'tag-link', icon: '↗', label: 'Link' });
+  if (tweet.isRetweet)          tags.push({ cls: 'tag-retweet', icon: '🔁', label: 'RT' });
+  if (tweet.hasVideo)           tags.push({ cls: 'tag-video',   icon: '▶',  label: 'Video' });
   return tags;
 }
 
-// ── Build card ─────────────────────────────────────────────────────────────
+// ── Build tweet card ───────────────────────────────────────────────────────
 function createTweetCard(tweet) {
   const card = document.createElement('div');
   card.className = 'tweet-card';
 
-  // Header: avatar + handle + date
+  // Header
   const header = document.createElement('div');
   header.className = 'tweet-header';
 
-  const avatar = document.createElement('div');
-  avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem;border:1px solid var(--border2);color:var(--text3);';
-  avatar.textContent = '𝕏';
-  header.appendChild(avatar);
+  const avatar = document.createElement('img');
+  avatar.className = 'tweet-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.textContent = '@';
+  }
+  //header.appendChild(avatar);
 
   const info = document.createElement('div');
   info.style.cssText = 'display:flex;flex-direction:column;min-width:0;flex:1;';
   const handleEl = document.createElement('div');
   handleEl.className = 'tweet-handle';
-  handleEl.textContent = `@${tweet.nitterHandle}`;
+  handleEl.textContent = `@${tweet.colKey}`;
   info.appendChild(handleEl);
   header.appendChild(info);
 
@@ -614,93 +484,66 @@ function createTweetCard(tweet) {
   dateEl.className = 'tweet-date';
   dateEl.textContent = formatDate(tweet.pubDate);
   header.appendChild(dateEl);
-
   card.appendChild(header);
 
-  // Media tags
-  const mediaTags = getMediaTags(tweet);
-  if (mediaTags.length) {
-    const tagsRow = document.createElement('div');
-    tagsRow.className = 'tweet-tags';
-    mediaTags.forEach(t => {
+  // Tags
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    tags.forEach(t => {
       const span = document.createElement('span');
       span.className = `tweet-tag ${t.cls}`;
       span.textContent = `${t.icon} ${t.label}`;
-      tagsRow.appendChild(span);
+      row.appendChild(span);
     });
-    card.appendChild(tagsRow);
+    card.appendChild(row);
   }
 
-  // Tweet text (truncated on card)
+  // Text
   if (tweet.text) {
     const p = document.createElement('div');
     p.className = 'tweet-text';
-    const display = tweet.text.length > 220 ? tweet.text.slice(0, 220) + '…' : tweet.text;
-    p.textContent = display;
+    p.textContent = tweet.text.length > 220 ? tweet.text.slice(0, 220) + '…' : tweet.text;
     card.appendChild(p);
   }
 
-  // Media preview
+  // Media
   if (tweet.hasVideo) {
     const vw = document.createElement('div');
     vw.className = 'tweet-video-wrap';
-    if (tweet.videoUrl && !tweet.videoUrl.endsWith('.m3u8')) {
-      const video = document.createElement('video');
-      video.src = tweet.videoUrl;
-      video.preload = 'metadata';
-      video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
-      vw.appendChild(video);
-    }
-    const overlay = document.createElement('div');
-    overlay.className = 'play-overlay';
-    const playIcon = document.createElement('div');
-    playIcon.className = 'play-btn-icon';
-    playIcon.textContent = '▶';
-    overlay.appendChild(playIcon);
-    vw.appendChild(overlay);
+    const icon = document.createElement('div');
+    icon.className = 'play-btn-icon';
+    icon.textContent = '▶';
+    vw.appendChild(icon);
     card.appendChild(vw);
-  } else if (tweet.images.length > 0) {
-    if (tweet.images.length === 1) {
+  } else if (tweet.images.length === 1) {
+    const img = document.createElement('img');
+    img.className = 'tweet-img full';
+    img.src = tweet.images[0];
+    img.loading = 'lazy'; img.alt = '';
+    img.onerror = function(){ this.style.display='none'; };
+    img.style.cursor = 'zoom-out';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      img.classList.toggle('full');
+      img.style.objectFit = img.classList.contains('full') ? 'contain' : 'cover';
+      img.style.aspectRatio = img.classList.contains('full') ? 'auto' : '16/9';
+      img.style.cursor = img.classList.contains('full') ? 'zoom-out' : 'zoom-in';
+    });
+    card.appendChild(img);
+  } else if (tweet.images.length > 1) {
+    const grid = document.createElement('div');
+    const cnt = Math.min(tweet.images.length, 4);
+    grid.className = `tweet-img-grid count-${cnt}`;
+    tweet.images.slice(0, 4).forEach(src => {
       const img = document.createElement('img');
-      img.className = 'tweet-img';
-      img.src = tweet.images[0];
-      img.loading = 'lazy';
-      img.alt = '';
-      img.onerror = function(){ this.style.display='none'; };
-      card.appendChild(img);
-    } else {
-      const grid = document.createElement('div');
-      const cnt = Math.min(tweet.images.length, 4);
-      grid.className = `tweet-img-grid count-${cnt}`;
-      tweet.images.slice(0, 4).forEach(src => {
-        const img = document.createElement('img');
-        img.className = 'grid-img';
-        img.src = src; img.loading = 'lazy'; img.alt = '';
-        img.onerror = function(){ this.parentNode.removeChild(this); };
-        grid.appendChild(img);
-      });
-      card.appendChild(grid);
-    }
-  }
-
-  // External link card preview
-  if (tweet.externalLink) {
-    const lc = document.createElement('a');
-    lc.className = 'tweet-link-card';
-    lc.href = tweet.externalLink.url;
-    lc.target = '_blank'; lc.rel = 'noopener';
-    lc.addEventListener('click', e => e.stopPropagation());
-    const body = document.createElement('div');
-    body.className = 'tweet-link-card-body';
-    const domain = document.createElement('div');
-    domain.className = 'tweet-link-card-domain';
-    try { domain.textContent = new URL(tweet.externalLink.url).hostname; } catch(e) { domain.textContent = ''; }
-    const title = document.createElement('div');
-    title.className = 'tweet-link-card-title';
-    title.textContent = tweet.externalLink.text || tweet.externalLink.url;
-    body.appendChild(domain); body.appendChild(title);
-    lc.appendChild(body);
-    card.appendChild(lc);
+      img.className = 'grid-img';
+      img.src = src; img.loading = 'lazy'; img.alt = '';
+      img.onerror = function(){ this.parentNode?.removeChild(this); };
+      grid.appendChild(img);
+    });
+    card.appendChild(grid);
   }
 
   // Buttons
@@ -734,10 +577,7 @@ function createTweetCard(tweet) {
   btns.appendChild(openBtn);
 
   card.appendChild(btns);
-
-  // Click → modal
   card.addEventListener('click', () => openModal(tweet));
-
   return card;
 }
 
@@ -747,50 +587,50 @@ function openModal(tweet) {
   const body    = document.getElementById('modalBody');
   body.innerHTML = '';
 
-  // Header
   const header = document.createElement('div');
   header.className = 'modal-tweet-header';
-
-  const avatar = document.createElement('div');
-  avatar.style.cssText = 'width:44px;height:44px;border-radius:50%;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:1px solid var(--border2);color:var(--text3);';
-  avatar.textContent = '𝕏';
+  const avatar = document.createElement('img');
+  avatar.className = 'modal-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.className = 'modal-avatar';
+    avatar.textContent = '𝕏';
+  }
   header.appendChild(avatar);
-
   const info = document.createElement('div');
   const name = document.createElement('div');
   name.className = 'modal-name';
-  name.textContent = tweet.creator || tweet.nitterHandle;
+  name.textContent = tweet.author || tweet.colKey;
   const handle = document.createElement('div');
   handle.className = 'modal-handle';
-  handle.textContent = `@${tweet.nitterHandle}`;
+  handle.textContent = `@${tweet.colKey}`;
   info.appendChild(name); info.appendChild(handle);
   header.appendChild(info);
   body.appendChild(header);
 
   // Tags
-  const mediaTags = getMediaTags(tweet);
-  if (mediaTags.length) {
-    const tagsRow = document.createElement('div');
-    tagsRow.className = 'tweet-tags';
-    tagsRow.style.marginBottom = '12px';
-    mediaTags.forEach(t => {
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    row.style.marginBottom = '12px';
+    tags.forEach(t => {
       const span = document.createElement('span');
       span.className = `tweet-tag ${t.cls}`;
       span.textContent = `${t.icon} ${t.label}`;
-      tagsRow.appendChild(span);
+      row.appendChild(span);
     });
-    body.appendChild(tagsRow);
+    body.appendChild(row);
   }
 
   // Full text
   if (tweet.text) {
     const p = document.createElement('div');
     p.className = 'modal-text';
-    // Linkify URLs
-    p.innerHTML = tweet.text.replace(
-      /(https?:\/\/[^\s<>"']+)/g,
-      '<a href="$1" target="_blank" rel="noopener">$1</a>'
-    );
+    p.innerHTML = tweet.text.replace(/(https?:\/\/[^\s<>"']+)/g,
+      '<a href="$1" target="_blank" rel="noopener">$1</a>');
     body.appendChild(p);
   }
 
@@ -798,69 +638,40 @@ function openModal(tweet) {
   if (tweet.hasVideo) {
     const vw = document.createElement('div');
     vw.className = 'modal-video-wrap';
-    if (tweet.videoUrl && !tweet.videoUrl.includes('.m3u8')) {
-      const video = document.createElement('video');
-      video.src = tweet.videoUrl;
-      video.controls = true;
-      video.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-      vw.appendChild(video);
-      const note = document.createElement('div');
-      note.style.cssText = 'font-size:0.72rem;color:var(--text3);margin-bottom:14px;';
-      note.textContent = 'Video may not load due to cross-origin restrictions. Open on X for full playback.';
-      body.appendChild(vw);
-      body.appendChild(note);
-    } else {
-      // HLS or no URL
-      vw.style.cssText += 'flex-direction:column;gap:8px;';
-      const icon = document.createElement('div');
-      icon.style.cssText = 'font-size:2rem;color:var(--text3);';
-      icon.textContent = '▶';
-      const note = document.createElement('div');
-      note.style.cssText = 'font-size:0.8rem;color:var(--text3);text-align:center;max-width:200px;';
-      note.textContent = 'Video playback requires opening on X.com';
-      vw.appendChild(icon); vw.appendChild(note);
-      body.appendChild(vw);
-    }
+    const icon = document.createElement('div');
+    icon.style.cssText = 'font-size:2.5rem;color:var(--text3);';
+    icon.textContent = '▶';
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:0.8rem;color:var(--text3);text-align:center;';
+    note.textContent = 'Video playback requires opening on X.com';
+    vw.appendChild(icon); vw.appendChild(note);
+    body.appendChild(vw);
   }
 
-  // Images grid
+  // Images
   if (!tweet.hasVideo && tweet.images.length > 0) {
     const grid = document.createElement('div');
-    const cnt = Math.min(tweet.images.length, 4);
-    grid.className = `modal-media-grid count-${cnt}`;
+    grid.style.display = 'flex';
+    grid.style.flexDirection = 'column';
+    grid.style.gap = '4px';
+    grid.style.marginBottom = '14px';
+    grid.style.borderRadius = '10px';
+    grid.style.overflow = 'hidden';
     tweet.images.slice(0, 4).forEach(src => {
       const img = document.createElement('img');
       img.src = src; img.alt = '';
+      img.style.width = '100%';
+      img.style.objectFit = 'contain';
+      img.style.maxHeight = '80vh';
       img.onerror = function(){ this.style.display='none'; };
       grid.appendChild(img);
     });
     body.appendChild(grid);
   }
 
-  // External link
-  if (tweet.externalLink) {
-    const lc = document.createElement('a');
-    lc.className = 'tweet-link-card';
-    lc.href = tweet.externalLink.url;
-    lc.target = '_blank'; lc.rel = 'noopener';
-    lc.style.marginBottom = '14px';
-    const lbody = document.createElement('div');
-    lbody.className = 'tweet-link-card-body';
-    const dom = document.createElement('div');
-    dom.className = 'tweet-link-card-domain';
-    try { dom.textContent = new URL(tweet.externalLink.url).hostname; } catch(e){}
-    const ltitle = document.createElement('div');
-    ltitle.className = 'tweet-link-card-title';
-    ltitle.textContent = tweet.externalLink.text || tweet.externalLink.url;
-    lbody.appendChild(dom); lbody.appendChild(ltitle);
-    lc.appendChild(lbody);
-    body.appendChild(lc);
-  }
-
   // Footer
   const footer = document.createElement('div');
   footer.className = 'modal-footer';
-
   const date = document.createElement('div');
   date.className = 'modal-date';
   date.textContent = formatDate(tweet.pubDate);
@@ -872,11 +683,11 @@ function openModal(tweet) {
   copyBtn.addEventListener('click', () => copyText(tweet.link, copyBtn));
   footer.appendChild(copyBtn);
 
-  const copyTextBtnModal = document.createElement('button');
-  copyTextBtnModal.className = 'modal-copy-btn';
-  copyTextBtnModal.textContent = 'Copy Text';
-  copyTextBtnModal.addEventListener('click', () => copyText(tweet.text, copyTextBtnModal));
-  footer.appendChild(copyTextBtnModal);
+  const copyTxtBtn = document.createElement('button');
+  copyTxtBtn.className = 'modal-copy-btn';
+  copyTxtBtn.textContent = 'Copy Text';
+  copyTxtBtn.addEventListener('click', () => copyText(tweet.text, copyTxtBtn));
+  footer.appendChild(copyTxtBtn);
 
   const openBtn = document.createElement('a');
   openBtn.className = 'modal-open-btn';
@@ -884,8 +695,8 @@ function openModal(tweet) {
   openBtn.target = '_blank'; openBtn.rel = 'noopener';
   openBtn.textContent = '↗ Open on 𝕏';
   footer.appendChild(openBtn);
-
   body.appendChild(footer);
+
   overlay.classList.remove('hidden');
 }
 
@@ -908,9 +719,9 @@ COLUMNS.forEach(col => {
   const colEl = document.createElement('div');
   colEl.className = 'deck-column';
   colEl.id = `col-${col.key}`;
-
   colEl.innerHTML = `
     <div class="deck-col-header">
+      <img class="col-avatar" src="" alt="" style="display:none;" />
       <div>
         <h2>${col.label}</h2>
         <div class="handle">${col.handle}</div>
@@ -920,7 +731,6 @@ COLUMNS.forEach(col => {
     <div class="deck-col-feed" id="feed-${col.key}">
       <div class="deck-loading">Loading…</div>
     </div>`;
-
   container.appendChild(colEl);
 });
 
@@ -928,9 +738,30 @@ COLUMNS.forEach(col => {
 async function updateColumn(col) {
   const feed = document.getElementById(`feed-${col.key}`);
   try {
-    const xml    = await fetchFeed(col.nitter);
-    const tweets = parseNitterRSS(xml, col.nitter);
+    const data   = await fetchFeed(col.key);
+    const items  = data.items || [];
+    const tweets = items.map(item => mapItem(item, col.key));
     const fresh  = tweets.filter(t => !seen[col.key].has(t.id));
+
+    // Update profile image if available
+    if (data.profile_image) {
+      let profileUrl = data.profile_image;
+      // Remove nitter.net/pic/ prefix and fix double https://
+      if (profileUrl.includes('nitter.net/pic/')) {
+        profileUrl = profileUrl.replace('nitter.net/pic/', '');
+        profileUrl = profileUrl.replace('https://https://', 'https://');
+      }
+      profileImages[col.key] = profileUrl;
+      const colHeader = document.querySelector(`#col-${col.key} .deck-col-header`);
+      if (colHeader) {
+        const avatar = colHeader.querySelector('.col-avatar');
+        if (avatar) {
+          avatar.src = profileUrl;
+          avatar.style.display = 'block';
+        }
+      }
+    }
+
     if (!fresh.length) return;
 
     const loader = feed.querySelector('.deck-loading');
@@ -962,12 +793,10 @@ async function updateColumn(col) {
   }
 }
 
-// ── Staggered update loop ─────────────────────────────────────────────────
-// Columns start 2s apart so the proxy never sees a burst of 5 requests.
-// Each column still races its own proxy attempts independently.
+// ── Staggered update loop ──────────────────────────────────────────────────
 function updateLoop() {
   COLUMNS.forEach((col, i) => {
-    setTimeout(() => updateColumn(col), i * 2000);
+    setTimeout(() => updateColumn(col), i * 1000);
   });
   setTimeout(updateLoop, 45000);
 }
