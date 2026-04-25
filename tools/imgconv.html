@@ -91,6 +91,19 @@
     /* Notice */
     .notice{padding:13px 16px;border-radius:var(--radius-sm);background:var(--bg3);border-left:3px solid var(--accent);font-size:.83rem;color:var(--text2);margin-bottom:16px;line-height:1.5}
 
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .upload-zone, .field, .format-grid, .btn {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .upload-zone { animation-delay: 0.1s; }
+    .field:nth-of-type(1) { animation-delay: 0.15s; }
+    .format-grid { animation-delay: 0.2s; }
+
     @media(max-width:600px){.format-grid{grid-template-columns:repeat(2,1fr)}.fi-info .fi-name{max-width:140px}}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
   </style>

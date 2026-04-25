@@ -100,6 +100,20 @@
     .angle-row input[type=range]{flex:1;accent-color:var(--accent)}
     .angle-val{font-family:'DM Mono',monospace;font-size:.8rem;color:var(--text2);min-width:36px;text-align:right}
 
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .editor-layout, .controls-card, .preview-card, .type-tabs, .field, .presets-grid {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .editor-layout { animation-delay: 0.1s; }
+    .controls-card { animation-delay: 0.15s; }
+    .preview-card { animation-delay: 0.2s; }
+    .type-tabs { animation-delay: 0.25s; }
+
     @media(max-width:760px){.editor-layout{grid-template-columns:1fr}.controls-card{position:static}.presets-grid{grid-template-columns:repeat(5,1fr)}}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
   </style>

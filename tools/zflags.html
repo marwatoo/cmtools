@@ -18,6 +18,21 @@
       align-items: end;
       margin-bottom: 20px;
     }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .controls-grid, .search-row, .field, .btn, .flag-preview {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .controls-grid { animation-delay: 0.05s; }
+    .search-row:nth-of-type(1) { animation-delay: 0.1s; }
+    .search-row:nth-of-type(2) { animation-delay: 0.15s; }
+    .field:nth-of-type(1) { animation-delay: 0.2s; }
+    .field:nth-of-type(2) { animation-delay: 0.25s; }
+    .btn { animation-delay: 0.3s; }
+
     @media (max-width: 560px) {
       .controls-grid { grid-template-columns: 1fr; }
       .divider-col   { display: none; }

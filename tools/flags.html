@@ -18,125 +18,24 @@
       align-items: end;
       margin-bottom: 20px;
     }
+@keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .controls-grid, .search-row, .field, .zoom-row, .btn {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .controls-grid { animation-delay: 0.05s; }
+    .search-row:nth-of-type(1) { animation-delay: 0.1s; }
+    .search-row:nth-of-type(2) { animation-delay: 0.15s; }
+    .field:nth-of-type(1) { animation-delay: 0.2s; }
+    .field:nth-of-type(2) { animation-delay: 0.25s; }
+    .zoom-row { animation-delay: 0.3s; }
+
     @media (max-width: 560px) {
       .controls-grid { grid-template-columns: 1fr; }
       .divider-col   { display: none; }
-    }
-
-    .divider-col {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding-bottom: 12px;
-      color: var(--text3);
-      font-size: 18px;
-    }
-
-    .search-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .flag-col .field {
-      margin-bottom: 0;
-    }
-
-    .flag-search-wrap {
-      position: relative;
-      flex: 1;
-      min-width: 0;
-    }
-
-    /* Compact search button — not full-width like global .btn */
-    .btn-search {
-      flex-shrink: 0;
-      padding: 12px 14px;
-      background: var(--bg3);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--text2);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: border-color 0.2s, color 0.2s;
-    }
-    .btn-search:hover  { border-color: var(--accent); color: var(--accent); }
-    .btn-search:active { transform: scale(0.98); }
-    .btn-search:disabled { opacity: 0.35; cursor: default; transform: none; }
-
-    /* Suggestions dropdown */
-    .suggestions {
-      position: absolute;
-      z-index: 200;
-      top: calc(100% + 6px);
-      left: 0;
-      width: 100%;
-      background: var(--bg2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      max-height: 220px;
-      overflow-y: auto;
-      box-shadow: var(--shadow);
-    }
-
-    .suggestion-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      font-size: 0.85rem;
-      color: var(--text2);
-      cursor: pointer;
-      transition: background 0.1s, color 0.1s;
-    }
-    .suggestion-item:hover { background: var(--bg3); color: var(--text); }
-    .suggestion-item img {
-      width: 34px;
-      height: 21px;
-      object-fit: cover;
-      border-radius: 3px;
-      border: 1px solid var(--border2);
-      flex-shrink: 0;
-    }
-
-    /* Flag preview chip */
-    .flag-preview {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-      min-height: 22px;
-      font-size: 0.78rem;
-      color: var(--text3);
-    }
-    .flag-preview.loaded { color: var(--text2); }
-    .flag-preview img {
-      width: 34px;
-      height: 21px;
-      object-fit: cover;
-      border-radius: 3px;
-      border: 1px solid var(--border2);
-    }
-
-    /* Download row */
-    .bottom-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    /* Override global .btn full-width for this context */
-    #dlBtn {
-      width: auto;
-      margin-bottom: 0;
-    }
-
-    .status {
-      font-size: 0.8rem;
-      color: var(--text3);
     }
   </style>
 </head>

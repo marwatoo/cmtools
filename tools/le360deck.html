@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <style>
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .deck-container {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease 0.1s forwards;
+    }
+  </style>
 </head>
 <body>
 

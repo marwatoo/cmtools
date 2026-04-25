@@ -124,6 +124,20 @@
     .stat-val{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--accent)}
     .stat-key{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
 
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .editor-layout, .controls-card, .preview-wrap, .field, .btn, .stat-box {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .editor-layout { animation-delay: 0.1s; }
+    .controls-card { animation-delay: 0.15s; }
+    .preview-wrap { animation-delay: 0.2s; }
+    .field:nth-of-type(1) { animation-delay: 0.25s; }
+
     @media(max-width:760px){.editor-layout{grid-template-columns:1fr}.controls-card{position:static}}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
   </style>

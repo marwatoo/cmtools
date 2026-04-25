@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X Deck — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0; --text2:#8888a8; --text3:#555570;
+      --accent:#e8ff47; --accent2:#7c6bff; --accent3:#ff6b6b;
+      --card-bg:#13131c; --card-hover:#1e1e2e;
+      --btn-bg:#e8ff47; --btn-text:#0a0a0f;
+      --shadow:0 4px 32px rgba(0,0,0,0.5);
+      --radius:16px; --radius-sm:10px; --radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0; --bg2:#ffffff; --bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07); --border2:rgba(0,0,0,0.13);
+      --text:#111118; --text2:#555570; --text3:#aaaacc;
+      --accent:#3a2fff; --accent2:#7c6bff; --accent3:#ff4444;
+      --card-bg:#ffffff; --card-hover:#f0f0ff;
+      --btn-bg:#111118; --btn-text:#ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text2); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .nav-title {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 1rem; flex: 1;
+    }
+    .nav-x-icon { color: var(--text2); font-size: 1rem; }
+    .theme-toggle {
+      width: 38px; height: 38px;
+      border: 1px solid var(--border2); border-radius: 50%;
+      background: transparent; color: var(--text2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Deck layout ── */
+    .deck-container {
+      display: flex; overflow-x: auto;
+      height: calc(100vh - 57px);
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .deck-column {
+      flex: 1 1 0; min-width: 240px; max-width: 400px;
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--bg2); overflow: hidden;
+    }
+    .deck-col-header {
+      position: sticky; top: 0;
+      padding: 14px 16px; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      z-index: 2; display: flex; align-items: center;
+      justify-content: space-between; flex-shrink: 0;
+    }
+    .col-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      margin-right: 10px; object-fit: cover;
+      background: var(--bg3); flex-shrink: 0;
+    }
+    .deck-col-header h2 {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 0.95rem; color: var(--accent);
+    }
+    .deck-col-header .handle {
+      font-size: 0.72rem; color: var(--text3); margin-top: 2px;
+    }
+    .deck-col-badge {
+      font-size: 0.7rem; padding: 2px 8px;
+      background: var(--bg3); border-radius: 100px; color: var(--text2);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .deck-pulse {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--accent);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .deck-col-feed {
+      flex: 1; overflow-y: auto; padding: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .deck-loading {
+      padding: 24px 16px; text-align: center;
+      font-size: 0.8rem; color: var(--text3);
+    }
+
+    /* ── Tweet card ── */
+    .tweet-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px;
+      margin-bottom: 10px; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .tweet-card:hover { background: var(--card-hover); border-color: var(--border2); }
+
+    .tweet-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .tweet-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg3); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; border: 1px solid var(--border2); color: var(--text3);
+      object-fit: cover;
+    }
+    .tweet-handle { font-size: 0.78rem; color: var(--text3); }
+    .tweet-date {
+      font-size: 0.7rem; color: var(--text3);
+      margin-left: auto; white-space: nowrap;
+    }
+
+    .tweet-text {
+      font-size: 0.88rem; color: var(--text);
+      line-height: 1.5; margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .tweet-text a { color: var(--accent); text-decoration: none; }
+    .tweet-text a:hover { text-decoration: underline; }
+
+    /* Media */
+    .tweet-img {
+      width: 100%; border-radius: 8px;
+      aspect-ratio: 16/9; object-fit: cover;
+      background: var(--bg3); display: block; margin-bottom: 10px;
+    }
+    .tweet-img.full {
+      aspect-ratio: auto;
+      max-height: 400px; object-fit: contain;
+    }
+    .tweet-img-grid {
+      display: grid; gap: 3px; margin-bottom: 10px;
+      border-radius: 8px; overflow: hidden;
+    }
+    .tweet-img-grid.count-2 { grid-template-columns: 1fr 1fr; }
+    .tweet-img-grid.count-3 { grid-template-columns: 1fr 1fr; }
+    .tweet-img-grid.count-3 .grid-img:first-child { grid-row: span 2; }
+    .tweet-img-grid.count-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .grid-img {
+      width: 100%; aspect-ratio: 1/1; object-fit: cover;
+      display: block; background: var(--bg3);
+    }
+
+    /* Video placeholder */
+    .tweet-video-wrap {
+      width: 100%; aspect-ratio: 16/9; border-radius: 8px;
+      background: var(--bg3); display: flex; align-items: center;
+      justify-content: center; margin-bottom: 10px;
+      border: 1px solid var(--border2);
+    }
+    .play-btn-icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(0,0,0,0.6); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 1.2rem; border: 2px solid rgba(255,255,255,0.5);
+    }
+
+    /* Tags row */
+    .tweet-tags {
+      display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .tweet-tag {
+      font-size: 0.65rem; padding: 2px 7px;
+      border-radius: 100px; font-weight: 600;
+      letter-spacing: 0.03em; text-transform: uppercase;
+      border: 1px solid;
+    }
+    .tag-video   { color: #ff6b6b; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
+    .tag-image   { color: var(--accent2); border-color: rgba(124,107,255,0.4); background: rgba(124,107,255,0.08); }
+    .tag-images  { color: var(--accent2); border-color: rgba(124,107,255,0.4); background: rgba(124,107,255,0.08); }
+    .tag-link    { color: var(--accent); border-color: rgba(232,255,71,0.3); background: rgba(232,255,71,0.06); }
+    .tag-retweet { color: var(--text2); border-color: var(--border2); background: var(--bg3); }
+
+    /* Action buttons */
+    .tweet-btns {
+      display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .tweet-btn {
+      font-size: 0.68rem; padding: 4px 9px;
+      border: 1px solid var(--border2); border-radius: var(--radius-xs);
+      background: var(--bg3); color: var(--text2); cursor: pointer;
+      transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+    }
+    .tweet-btn:hover  { border-color: var(--accent); color: var(--accent); }
+    .tweet-btn.copied { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
+    .tweet-btn.open-x { color: var(--text3); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px; backdrop-filter: blur(5px);
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius); max-width: 620px; width: 100%;
+      max-height: 90vh; overflow-y: auto; padding: 24px;
+      position: relative; scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text2); width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close:hover { color: var(--text); border-color: var(--accent); }
+    .modal-tweet-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; padding-right: 40px;
+    }
+    .modal-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--bg3); display: flex; align-items: center;
+      justify-content: center; font-size: 1.3rem;
+      border: 1px solid var(--border2); color: var(--text3); flex-shrink: 0;
+      object-fit: cover;
+    }
+    .modal-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+    .modal-handle { font-size: 0.8rem; color: var(--text3); }
+    .modal-text {
+      font-size: 0.95rem; line-height: 1.6;
+      color: var(--text); margin-bottom: 14px; word-break: break-word;
+    }
+    .modal-text a { color: var(--accent); }
+    .modal-media-grid {
+      display: grid; gap: 4px; margin-bottom: 14px;
+      border-radius: 10px; overflow: hidden;
+    }
+    .modal-media-grid.count-1 { grid-template-columns: 1fr; }
+    .modal-media-grid.count-2 { grid-template-columns: 1fr 1fr; }
+    .modal-media-grid.count-3 { grid-template-columns: 1fr 1fr; }
+    .modal-media-grid.count-3 img:first-child { grid-row: span 2; }
+    .modal-media-grid.count-4 { grid-template-columns: 1fr 1fr; }
+    .modal-media-grid img { width: 100%; object-fit: contain; aspect-ratio: auto; max-height: 80vh; display: block; }
+    .modal-media-grid.count-1 img { aspect-ratio: 16/9; }
+    .modal-footer {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; border-top: 1px solid var(--border);
+      padding-top: 14px; margin-top: 4px;
+    }
+    .modal-date { font-size: 0.78rem; color: var(--text3); flex: 1; }
+    .modal-open-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: var(--radius-xs);
+      background: var(--btn-bg); color: var(--btn-text);
+      font-size: 0.78rem; font-weight: 600; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .modal-open-btn:hover { opacity: 0.85; }
+    .modal-copy-btn {
+      padding: 7px 14px; border-radius: var(--radius-xs);
+      border: 1px solid var(--border2); background: var(--bg3);
+      color: var(--text2); font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .modal-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-copy-btn.copied { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
+    .modal-video-wrap {
+      width: 100%; aspect-ratio: 16/9; border-radius: 10px;
+      background: var(--bg3); margin-bottom: 14px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px;
+    }
+
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .deck-col-header, .deck-column, .tweet-card {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .deck-column:nth-of-type(1) { animation-delay: 0.1s; }
+    .deck-column:nth-of-type(2) { animation-delay: 0.15s; }
+    .deck-column:nth-of-type(3) { animation-delay: 0.2s; }
+    .deck-column:nth-of-type(4) { animation-delay: 0.25s; }
+    .deck-column:nth-of-type(5) { animation-delay: 0.3s; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    @media (max-width: 480px) { .deck-column { min-width: 200px; } }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">𝕏 Deck</span>
+    <span class="nav-x-icon" style="font-size:0.75rem;color:var(--text3);">via nitter</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+    </div>
+  </nav>
+
+  <div class="deck-container" id="deckContainer"></div>
+
+  <!-- Modal -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+// ── Theme (unchanged) ──────────────────────────────────────────────────────
+(function(){
+  const KEY = 'mts-theme';
+  function getTheme(){
+    return localStorage.getItem(KEY) ||
+      (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(KEY, t);
+    const icon = document.querySelector('.theme-icon');
+    if (icon) icon.textContent = t === 'dark' ? '☽' : '○';
+  }
+  applyTheme(getTheme());
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  });
+})();
+
+// ── Config ─────────────────────────────────────────────────────────────────
+// 👇 Your Railway API base URL
+const API_BASE = 'https://rssweb-production.up.railway.app';
+
+const COLUMNS = [
+  { key: 'le360fr',       handle: '@le360fr',       label: 'Le360 FR'   },
+  { key: 'le360ar',       handle: '@le360ar',       label: 'Le360 AR'   },
+  { key: 'le360sport',    handle: '@le360sport',    label: 'Sport'      },
+  { key: 'le360es',       handle: '@le360es',       label: 'Espagnol'   },
+  { key: 'le360_afrique', handle: '@le360_afrique', label: 'Afrique'    },
+];
+
+const seen = {}; // key → Set of tweet IDs
+const profileImages = {}; // key → profile_image URL
+
+// ── Fetch from YOUR Railway API ────────────────────────────────────────────
+async function fetchFeed(username) {
+  const url = `${API_BASE}/api/feed?user=${encodeURIComponent(username)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json();
+  if (data.error && !data.items?.length) throw new Error(data.error);
+  return data;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function formatDate(ds) {
+  if (!ds) return '';
+  try {
+    const d = new Date(ds);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return d.toLocaleString('fr-FR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  } catch(e) { return ds; }
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1400);
+  });
+}
+
+// ── Map rss_fetcher.py item → tweet object ─────────────────────────────────
+// rss_fetcher returns: id, title, description, link, pub_date, parsed_date,
+//                      images:[{url, type}], has_video, author
+function mapItem(item, colKey) {
+  const images = (item.images || []).map(img => img.url || img);
+  const isRetweet = (item.title || '').startsWith('RT by ');
+
+  // Convert nitter link → x.com
+  const xLink = (item.link || '').replace(/https?:\/\/[^/]+/, 'https://x.com');
+
+  // Strip HTML from title for display text
+  const div = document.createElement('div');
+  div.innerHTML = item.title || '';
+  const text = div.textContent.trim();
+
+  return {
+    id:         item.id || item.link,
+    text,
+    link:       xLink,
+    rawLink:    item.link,
+    pubDate:    item.pub_date || '',
+    parsedDate: item.parsed_date || '',
+    images,
+    hasVideo:   item.has_video || false,
+    author:     item.author || colKey,
+    isRetweet,
+    colKey,
+  };
+}
+
+// ── Media tags ─────────────────────────────────────────────────────────────
+function getMediaTags(tweet) {
+  const tags = [];
+  if (tweet.isRetweet)          tags.push({ cls: 'tag-retweet', icon: '🔁', label: 'RT' });
+  if (tweet.hasVideo)           tags.push({ cls: 'tag-video',   icon: '▶',  label: 'Video' });
+  return tags;
+}
+
+// ── Build tweet card ───────────────────────────────────────────────────────
+function createTweetCard(tweet) {
+  const card = document.createElement('div');
+  card.className = 'tweet-card';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'tweet-header';
+
+  const avatar = document.createElement('img');
+  avatar.className = 'tweet-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.textContent = '@';
+  }
+  //header.appendChild(avatar);
+
+  const info = document.createElement('div');
+  info.style.cssText = 'display:flex;flex-direction:column;min-width:0;flex:1;';
+  const handleEl = document.createElement('div');
+  handleEl.className = 'tweet-handle';
+  handleEl.textContent = `@${tweet.colKey}`;
+  info.appendChild(handleEl);
+  header.appendChild(info);
+
+  const dateEl = document.createElement('div');
+  dateEl.className = 'tweet-date';
+  dateEl.textContent = formatDate(tweet.pubDate);
+  header.appendChild(dateEl);
+  card.appendChild(header);
+
+  // Tags
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = `tweet-tag ${t.cls}`;
+      span.textContent = `${t.icon} ${t.label}`;
+      row.appendChild(span);
+    });
+    card.appendChild(row);
+  }
+
+  // Text
+  if (tweet.text) {
+    const p = document.createElement('div');
+    p.className = 'tweet-text';
+    p.textContent = tweet.text.length > 220 ? tweet.text.slice(0, 220) + '…' : tweet.text;
+    card.appendChild(p);
+  }
+
+  // Media
+  if (tweet.hasVideo) {
+    const vw = document.createElement('div');
+    vw.className = 'tweet-video-wrap';
+    const icon = document.createElement('div');
+    icon.className = 'play-btn-icon';
+    icon.textContent = '▶';
+    vw.appendChild(icon);
+    card.appendChild(vw);
+  } else if (tweet.images.length === 1) {
+    const img = document.createElement('img');
+    img.className = 'tweet-img full';
+    img.src = tweet.images[0];
+    img.loading = 'lazy'; img.alt = '';
+    img.onerror = function(){ this.style.display='none'; };
+    img.style.cursor = 'zoom-out';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      img.classList.toggle('full');
+      img.style.objectFit = img.classList.contains('full') ? 'contain' : 'cover';
+      img.style.aspectRatio = img.classList.contains('full') ? 'auto' : '16/9';
+      img.style.cursor = img.classList.contains('full') ? 'zoom-out' : 'zoom-in';
+    });
+    card.appendChild(img);
+  } else if (tweet.images.length > 1) {
+    const grid = document.createElement('div');
+    const cnt = Math.min(tweet.images.length, 4);
+    grid.className = `tweet-img-grid count-${cnt}`;
+    tweet.images.slice(0, 4).forEach(src => {
+      const img = document.createElement('img');
+      img.className = 'grid-img';
+      img.src = src; img.loading = 'lazy'; img.alt = '';
+      img.onerror = function(){ this.parentNode?.removeChild(this); };
+      grid.appendChild(img);
+    });
+    card.appendChild(grid);
+  }
+
+  // Buttons
+  const btns = document.createElement('div');
+  btns.className = 'tweet-btns';
+
+  const copyLinkBtn = document.createElement('button');
+  copyLinkBtn.className = 'tweet-btn';
+  copyLinkBtn.textContent = 'Copy Link';
+  copyLinkBtn.addEventListener('click', e => { e.stopPropagation(); copyText(tweet.link, copyLinkBtn); });
+  btns.appendChild(copyLinkBtn);
+
+  const copyTextBtn = document.createElement('button');
+  copyTextBtn.className = 'tweet-btn';
+  copyTextBtn.textContent = 'Copy Text';
+  copyTextBtn.addEventListener('click', e => { e.stopPropagation(); copyText(tweet.text, copyTextBtn); });
+  btns.appendChild(copyTextBtn);
+
+  const copyBothBtn = document.createElement('button');
+  copyBothBtn.className = 'tweet-btn';
+  copyBothBtn.textContent = 'Copy Both';
+  copyBothBtn.addEventListener('click', e => { e.stopPropagation(); copyText(`${tweet.text}\n${tweet.link}`, copyBothBtn); });
+  btns.appendChild(copyBothBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'tweet-btn open-x';
+  openBtn.textContent = '↗ Open';
+  openBtn.href = tweet.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.addEventListener('click', e => e.stopPropagation());
+  btns.appendChild(openBtn);
+
+  card.appendChild(btns);
+  card.addEventListener('click', () => openModal(tweet));
+  return card;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(tweet) {
+  const overlay = document.getElementById('modalOverlay');
+  const body    = document.getElementById('modalBody');
+  body.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'modal-tweet-header';
+  const avatar = document.createElement('img');
+  avatar.className = 'modal-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.className = 'modal-avatar';
+    avatar.textContent = '𝕏';
+  }
+  header.appendChild(avatar);
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'modal-name';
+  name.textContent = tweet.author || tweet.colKey;
+  const handle = document.createElement('div');
+  handle.className = 'modal-handle';
+  handle.textContent = `@${tweet.colKey}`;
+  info.appendChild(name); info.appendChild(handle);
+  header.appendChild(info);
+  body.appendChild(header);
+
+  // Tags
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    row.style.marginBottom = '12px';
+    tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = `tweet-tag ${t.cls}`;
+      span.textContent = `${t.icon} ${t.label}`;
+      row.appendChild(span);
+    });
+    body.appendChild(row);
+  }
+
+  // Full text
+  if (tweet.text) {
+    const p = document.createElement('div');
+    p.className = 'modal-text';
+    p.innerHTML = tweet.text.replace(/(https?:\/\/[^\s<>"']+)/g,
+      '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    body.appendChild(p);
+  }
+
+  // Video
+  if (tweet.hasVideo) {
+    const vw = document.createElement('div');
+    vw.className = 'modal-video-wrap';
+    const icon = document.createElement('div');
+    icon.style.cssText = 'font-size:2.5rem;color:var(--text3);';
+    icon.textContent = '▶';
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:0.8rem;color:var(--text3);text-align:center;';
+    note.textContent = 'Video playback requires opening on X.com';
+    vw.appendChild(icon); vw.appendChild(note);
+    body.appendChild(vw);
+  }
+
+  // Images
+  if (!tweet.hasVideo && tweet.images.length > 0) {
+    const grid = document.createElement('div');
+    grid.style.display = 'flex';
+    grid.style.flexDirection = 'column';
+    grid.style.gap = '4px';
+    grid.style.marginBottom = '14px';
+    grid.style.borderRadius = '10px';
+    grid.style.overflow = 'hidden';
+    tweet.images.slice(0, 4).forEach(src => {
+      const img = document.createElement('img');
+      img.src = src; img.alt = '';
+      img.style.width = '100%';
+      img.style.objectFit = 'contain';
+      img.style.maxHeight = '80vh';
+      img.onerror = function(){ this.style.display='none'; };
+      grid.appendChild(img);
+    });
+    body.appendChild(grid);
+  }
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  const date = document.createElement('div');
+  date.className = 'modal-date';
+  date.textContent = formatDate(tweet.pubDate);
+  footer.appendChild(date);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'modal-copy-btn';
+  copyBtn.textContent = 'Copy Link';
+  copyBtn.addEventListener('click', () => copyText(tweet.link, copyBtn));
+  footer.appendChild(copyBtn);
+
+  const copyTxtBtn = document.createElement('button');
+  copyTxtBtn.className = 'modal-copy-btn';
+  copyTxtBtn.textContent = 'Copy Text';
+  copyTxtBtn.addEventListener('click', () => copyText(tweet.text, copyTxtBtn));
+  footer.appendChild(copyTxtBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'modal-open-btn';
+  openBtn.href = tweet.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.textContent = '↗ Open on 𝕏';
+  footer.appendChild(openBtn);
+  body.appendChild(footer);
+
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('modalClose').addEventListener('click', () =>
+  document.getElementById('modalOverlay').classList.add('hidden'));
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.add('hidden');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+});
+
+// ── Build columns ──────────────────────────────────────────────────────────
+const container = document.getElementById('deckContainer');
+
+COLUMNS.forEach(col => {
+  seen[col.key] = new Set();
+
+  const colEl = document.createElement('div');
+  colEl.className = 'deck-column';
+  colEl.id = `col-${col.key}`;
+  colEl.innerHTML = `
+    <div class="deck-col-header">
+      <img class="col-avatar" src="" alt="" style="display:none;" />
+      <div>
+        <h2>${col.label}</h2>
+        <div class="handle">${col.handle}</div>
+      </div>
+      <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+    </div>
+    <div class="deck-col-feed" id="feed-${col.key}">
+      <div class="deck-loading">Loading…</div>
+    </div>`;
+  container.appendChild(colEl);
+});
+
+// ── Update single column ───────────────────────────────────────────────────
+async function updateColumn(col) {
+  const feed = document.getElementById(`feed-${col.key}`);
+  try {
+    const data   = await fetchFeed(col.key);
+    const items  = data.items || [];
+    const tweets = items.map(item => mapItem(item, col.key));
+    const fresh  = tweets.filter(t => !seen[col.key].has(t.id));
+
+    // Update profile image if available
+    if (data.profile_image) {
+      let profileUrl = data.profile_image;
+      // Remove nitter.net/pic/ prefix and fix double https://
+      if (profileUrl.includes('nitter.net/pic/')) {
+        profileUrl = profileUrl.replace('nitter.net/pic/', '');
+        profileUrl = profileUrl.replace('https://https://', 'https://');
+      }
+      profileImages[col.key] = profileUrl;
+      const colHeader = document.querySelector(`#col-${col.key} .deck-col-header`);
+      if (colHeader) {
+        const avatar = colHeader.querySelector('.col-avatar');
+        if (avatar) {
+          avatar.src = profileUrl;
+          avatar.style.display = 'block';
+        }
+      }
+    }
+
+    if (!fresh.length) return;
+
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) loader.remove();
+
+    const frag = document.createDocumentFragment();
+    fresh.forEach(t => {
+      frag.appendChild(createTweetCard(t));
+      seen[col.key].add(t.id);
+    });
+    feed.insertBefore(frag, feed.firstChild);
+  } catch(e) {
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) {
+      loader.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.textContent = '⚠ Failed to load';
+      msg.style.cssText = 'margin-bottom:8px;font-size:0.8rem;color:var(--text3);';
+      const btn = document.createElement('button');
+      btn.textContent = '↺ Retry';
+      btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
+      btn.onmouseenter = () => btn.style.borderColor = 'var(--accent)';
+      btn.onmouseleave = () => btn.style.borderColor = 'var(--border2)';
+      btn.onclick = () => { loader.textContent = 'Retrying…'; updateColumn(col); };
+      loader.appendChild(msg);
+      loader.appendChild(btn);
+    }
+    console.warn('Feed error', col.key, e);
+  }
+}
+
+// ── Staggered update loop ──────────────────────────────────────────────────
+function updateLoop() {
+  COLUMNS.forEach((col, i) => {
+    setTimeout(() => updateColumn(col), i * 1000);
+  });
+  setTimeout(updateLoop, 45000);
+}
+
+updateLoop();
+</script>
+</body>
+</html>

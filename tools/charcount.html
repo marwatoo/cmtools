@@ -15,6 +15,20 @@
       gap: 20px;
       margin-top: 16px;
     }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .char-layout, .char-editor, .char-stats {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .char-layout { animation-delay: 0.1s; }
+    .char-editor { animation-delay: 0.15s; }
+    .char-stats { animation-delay: 0.2s; }
+
     @media (max-width: 750px) {
       .char-layout { grid-template-columns: 1fr; }
     }

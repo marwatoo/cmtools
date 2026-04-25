@@ -8,6 +8,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
+  <style>
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .tool-header, .upload-zone, .field, .btn-row, .canvas-wrap {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .upload-zone { animation-delay: 0.1s; }
+    .field { animation-delay: 0.15s; }
+    .btn-row { animation-delay: 0.2s; }
+    .canvas-wrap { animation-delay: 0.25s; }
+  </style>
 </head>
 <body>
 

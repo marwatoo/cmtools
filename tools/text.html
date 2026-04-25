@@ -216,6 +216,25 @@
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* Animations */
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .field, .section-head, .transform-grid, .fnr-row, .output-wrap {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .field:nth-of-type(1) { animation-delay: 0.1s; }
+    #statsBar { animation-delay: 0.15s; }
+    .section-head:nth-of-type(1) { animation-delay: 0.2s; }
+    .transform-grid:nth-of-type(1) { animation-delay: 0.25s; }
+    .section-head:nth-of-type(2) { animation-delay: 0.3s; }
+    .transform-grid:nth-of-type(2) { animation-delay: 0.35s; }
+    .fnr-row { animation-delay: 0.4s; }
+    .output-wrap { animation-delay: 0.45s; }
   </style>
 </head>
 <body>

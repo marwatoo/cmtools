@@ -9,6 +9,19 @@
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <style>
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .brandbook-layout, .brandbook-header, .brandbook-frame, .brandbook-info {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .brandbook-layout { animation-delay: 0.05s; }
+    .brandbook-header { animation-delay: 0.1s; }
+    .brandbook-frame { animation-delay: 0.15s; }
+    .brandbook-info { animation-delay: 0.2s; }
+
     .brandbook-layout {
       display: flex;
       flex-direction: column;
