@@ -140,6 +140,14 @@
       });
     }
 
+    function extractYouTubeLink(html) {
+      if (!html) return '';
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      const ytMatch = d.innerHTML.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+      return ytMatch ? `https://youtu.be/${ytMatch[1]}` : '';
+    }
+
     // ── Render card ────────────────────────────────────────────────────────
     function createCard(article) {
       const card = document.createElement('div');
@@ -187,6 +195,16 @@
       copyBoth.dataset.link = article.link;
       btns.appendChild(copyBoth);
 
+      const ytLink = extractYouTubeLink(article.content);
+      if (ytLink) {
+        const copyTitleYt = document.createElement('button');
+        copyTitleYt.className = 'deck-btn copy-title-yt';
+        copyTitleYt.textContent = 'Copy Title + YT Link';
+        copyTitleYt.dataset.title = article.title;
+        copyTitleYt.dataset.ytlink = ytLink;
+        btns.appendChild(copyTitleYt);
+      }
+
       if (hasCarousel) {
         const carousel = document.createElement('span');
         carousel.className = 'deck-btn carousel-tag';
@@ -216,6 +234,14 @@
         e.stopPropagation();
         copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth);
       });
+
+      const copyTitleYt = card.querySelector('.copy-title-yt');
+      if (copyTitleYt) {
+        copyTitleYt.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(`${copyTitleYt.dataset.title}\n${copyTitleYt.dataset.ytlink}`, copyTitleYt);
+        });
+      }
 
       return card;
     }
