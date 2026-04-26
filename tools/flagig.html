@@ -17,6 +17,9 @@
       gap: 16px;
       align-items: end;
       margin-bottom: 20px;
+      overflow: visible;
+      position: relative;
+      z-index: 10;
     }
 @keyframes fadeUp {
       to { opacity: 1; transform: translateY(0); }
@@ -36,6 +39,313 @@
     @media (max-width: 560px) {
       .controls-grid { grid-template-columns: 1fr; }
       .divider-col   { display: none; }
+    }
+
+    /* ── flag col ───────────────────────────────────────────────────────── */
+    .flag-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .divider-col {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 14px;
+      font-size: 1.4rem;
+      color: var(--text3);
+      user-select: none;
+    }
+
+    /* ── search row (input + button) ────────────────────────────────────── */
+    .search-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .flag-search-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .flag-search-wrap input {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .flag-search-wrap input::placeholder { color: var(--text3); }
+    .flag-search-wrap input:focus {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .btn-search {
+      flex-shrink: 0;
+      height: 44px;
+      padding: 0 16px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn-search:hover   { opacity: 0.88; transform: translateY(-1px); }
+    .btn-search:active  { transform: translateY(0); }
+    .btn-search:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* ── suggestions dropdown ───────────────────────────────────────────── */
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      min-width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      z-index: 9999;
+      overflow: hidden;
+      animation: fadeUp 0.18s ease forwards;
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .suggestion-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--border);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover {
+      background: var(--card-hover);
+    }
+    .suggestion-item:hover span {
+      color: var(--accent);
+    }
+
+    .suggestion-item img {
+      width: 48px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg3);
+    }
+
+    .suggestion-item span {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: color 0.15s;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
+    }
+
+    /* ── flag preview card ──────────────────────────────────────────────── */
+    .flag-preview {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg3);
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text3);
+      font-size: 0.85rem;
+      overflow: hidden;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .flag-preview.loaded {
+      border-style: solid;
+      border-color: var(--border2);
+      background: #000;
+      padding: 0;
+      position: relative;
+    }
+
+    .flag-preview.loaded img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .flag-preview.loaded span {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 4px 10px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.03em;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── logo offset row ────────────────────────────────────────────────── */
+    .logo-row {
+      display: flex;
+      gap: 20px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .logo-row .field input {
+      width: 120px;
+      padding: 10px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .logo-row .field input:focus { border-color: var(--accent); }
+    .logo-row .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .logo-color-toggle {
+      display: flex;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .logo-color-btn {
+      flex: 1;
+      padding: 10px 18px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+    }
+    .logo-color-btn:first-child { border-right: 1px solid var(--border2); }
+    .logo-color-btn.active {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+    }
+    .logo-color-btn:not(.active):hover {
+      background: var(--card-hover);
+      color: var(--text);
+    }
+
+    /* ── field label (shared) ───────────────────────────────────────────── */
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── status notice ──────────────────────────────────────────────────── */
+    .notice {
+      padding: 12px 16px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.84rem;
+      color: var(--text2);
+      margin-bottom: 16px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    /* ── bottom row (download btn + status) ─────────────────────────────── */
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+    }
+    .btn-primary:hover:not(:disabled)  { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.32; cursor: not-allowed; transform: none; }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    /* ── canvas wrap ────────────────────────────────────────────────────── */
+    .canvas-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #000;
+    }
+    .canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: auto;
     }
   </style>
 </head>
@@ -68,7 +378,6 @@
             <button class="btn-search" id="btnT">Search</button>
           </div>
         </div>
-        <div class="flag-preview" id="previewT">—</div>
       </div>
 
       <div class="divider-col">⇅</div>
@@ -84,7 +393,6 @@
             <button class="btn-search" id="btnB">Search</button>
           </div>
         </div>
-        <div class="flag-preview" id="previewB">—</div>
       </div>
 
     </div>
@@ -93,6 +401,13 @@
       <div class="field">
         <label>Logo Y offset (%)</label>
         <input type="number" id="logoY" value="0" min="-50" max="50" step="1" />
+      </div>
+      <div class="field">
+        <label>Logo color</label>
+        <div class="logo-color-toggle">
+          <button class="logo-color-btn active" id="logoWhite" data-color="white">White</button>
+          <button class="logo-color-btn" id="logoBlack" data-color="black">Black</button>
+        </div>
       </div>
     </div>
 
@@ -121,6 +436,7 @@
     const logoYEl  = document.getElementById('logoY');
 
     let flagT = null, flagB = null;
+    let logoColor = 'white'; // 'white' | 'black'
 
     // Preload le360 logo
     const logoImg = new Image();
@@ -146,10 +462,30 @@
     }
 
     async function searchFlags(q) {
-      const url = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + q)}&limit=7&namespace=0&format=json&origin=*`;
-      const r   = await fetch(url);
-      const d   = await r.json();
-      const titles = d[1] || [];
+      // Search for each word separately and merge, so "states" finds "United States"
+      const words = [...new Set(
+        [q, ...q.trim().split(/\s+/)].filter(w => w.length >= 2)
+      )];
+
+      const queries = words.map(w =>
+        fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + w)}&limit=7&namespace=0&format=json&origin=*`)
+          .then(r => r.json()).then(d => d[1] || []).catch(() => [])
+      );
+
+      const results = await Promise.all(queries);
+
+      // Merge, deduplicate, keep only "Flag of …" titles
+      const seen = new Set();
+      const titles = [];
+      for (const batch of results) {
+        for (const t of batch) {
+          if (!seen.has(t) && /^Flag of /i.test(t)) {
+            seen.add(t);
+            titles.push(t);
+          }
+        }
+      }
+
       const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
       return titles
         .map((t, i) => ({ title: t, thumb: thumbs[i] }))
@@ -214,8 +550,31 @@
       const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * CH;
 
       if (logoImg.complete && logoImg.naturalWidth > 0) {
-        // Logo is sized to fill the full canvas width — same pattern as instapost
-        ctx.drawImage(logoImg, 0, logoOffsetY, CW, CH);
+        ctx.save();
+        if (logoColor === 'black') {
+          // Invert white logo to black: draw on offscreen canvas with multiply
+          const off = document.createElement('canvas');
+          off.width = CW; off.height = CH;
+          const octx = off.getContext('2d');
+          octx.drawImage(logoImg, 0, 0, CW, CH);
+          // Multiply by black: use destination-in then fill black
+          octx.globalCompositeOperation = 'multiply';
+          octx.fillStyle = '#000000';
+          octx.fillRect(0, 0, CW, CH);
+          // But multiply won't work well for transparency — use CSS filter approach via offscreen
+          // Better: draw logo normally, then use 'source-atop' trick
+          const off2 = document.createElement('canvas');
+          off2.width = CW; off2.height = CH;
+          const o2 = off2.getContext('2d');
+          o2.drawImage(logoImg, 0, 0, CW, CH);
+          o2.globalCompositeOperation = 'source-in';
+          o2.fillStyle = '#000000';
+          o2.fillRect(0, 0, CW, CH);
+          ctx.drawImage(off2, 0, logoOffsetY);
+        } else {
+          ctx.drawImage(logoImg, 0, logoOffsetY, CW, CH);
+        }
+        ctx.restore();
       } else {
         // Fallback text logo
         ctx.save();
@@ -232,6 +591,20 @@
 
     logoYEl.addEventListener('input', drawCanvas);
 
+    // Logo color toggle
+    document.getElementById('logoWhite').addEventListener('click', () => {
+      logoColor = 'white';
+      document.getElementById('logoWhite').classList.add('active');
+      document.getElementById('logoBlack').classList.remove('active');
+      drawCanvas();
+    });
+    document.getElementById('logoBlack').addEventListener('click', () => {
+      logoColor = 'black';
+      document.getElementById('logoBlack').classList.add('active');
+      document.getElementById('logoWhite').classList.remove('active');
+      drawCanvas();
+    });
+
     // Re-draw when logo loads
     logoImg.onload = drawCanvas;
 
@@ -239,7 +612,6 @@
       const inp     = document.getElementById('input'   + side);
       const btn     = document.getElementById('btn'     + side);
       const sug     = document.getElementById('sug'     + side);
-      const preview = document.getElementById('preview' + side);
 
       let debounce;
 
@@ -278,7 +650,7 @@
           results.forEach(({ title, thumb }) => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
-            const label = title.replace(/^Flag of /i, '');
+            const label = title.replace(/^Flag of (?:the )?/i, '');
             item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
             item.addEventListener('click', () => selectFlag(title, thumb, label));
             sug.appendChild(item);
@@ -295,16 +667,12 @@
       async function selectFlag(title, previewThumb, label) {
         sug.style.display = 'none';
         inp.value = label;
-        preview.className = 'flag-preview';
-        preview.innerHTML = '<span>Loading HD flag…</span>';
         setStatus('Fetching high-resolution flag…');
         try {
           const hdSrc = await fetchThumb(title, 1920) || previewThumb;
           const img   = await loadImg(hdSrc);
           if (side === 'T') flagT = img;
           else              flagB = img;
-          preview.className = 'flag-preview loaded';
-          preview.innerHTML = `<img src="${hdSrc}" alt=""><span>${label}</span>`;
           drawCanvas();
           const ready = flagT && flagB;
           dlBtn.disabled = !ready;
@@ -312,7 +680,6 @@
             ? 'Ready — 1080×1350 image generated.'
             : 'Now select the ' + (side === 'T' ? 'bottom' : 'top') + ' flag.');
         } catch {
-          preview.innerHTML = '<span>Could not load image.</span>';
           setStatus('Failed to load flag image.');
         }
       }
