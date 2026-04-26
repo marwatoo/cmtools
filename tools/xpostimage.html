@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X Post Image Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .page-header {
+      padding: 24px 24px 20px;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .page-header h1 { margin: 0 0 4px; }
+    .page-header p { margin: 0; }
+
+    .tool-page {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    .controls-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+
+    .preview-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+
+    .preview-canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .url-field {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .url-field .field {
+      flex: 1;
+      margin: 0;
+    }
+    .url-field .btn {
+      flex-shrink: 0;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      color: var(--text2);
+    }
+    .status-row.success { border-color: #00ba7c; color: #00ba7c; }
+    .status-row.error   { border-color: #f4212e; color: #f4212e; }
+    .status-row.loading { border-color: var(--accent); color: var(--accent); }
+
+    .format-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      margin-bottom: 12px;
+    }
+    .format-tab {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: calc(var(--radius-sm) - 2px);
+      transition: background .18s, color .18s;
+    }
+    .format-tab:hover  { color: var(--text); background: var(--bg2); }
+    .format-tab.active { background: var(--btn-bg); color: var(--btn-text); }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .controls-card, .preview-wrap {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header  { animation-delay: 0.05s; }
+    .controls-card { animation-delay: 0.1s; }
+    .preview-wrap  { animation-delay: 0.15s; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">Back</a>
+    <span class="nav-title">X Post Image</span>
+    <span class="nav-num">Dynamic</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+
+    <div class="page-header">
+      <div class="tool-header" style="margin-bottom:18px;">
+        <h1>X Post Image</h1>
+        <p>Generate a shareable post card image from any X/tweet link.</p>
+      </div>
+    </div>
+
+    <div class="controls-card">
+
+      <p class="section-head">Tweet URL</p>
+
+      <div class="url-field">
+        <div class="field">
+          <input type="text" id="tweetUrl" placeholder="https://x.com/user/status/123456789">
+        </div>
+        <button class="btn btn-primary" id="fetchBtn" style="margin:0;width:auto;padding:12px 24px;">Generate</button>
+      </div>
+
+      <div class="status-row" id="statusRow">
+        Paste an X/tweet link and click Generate to create the post image.
+      </div>
+
+      <p class="section-head">Theme</p>
+
+      <div class="format-tabs" id="bgTabs">
+        <button class="format-tab active" data-bg="#000000">Dark</button>
+        <button class="format-tab" data-bg="#ffffff">Light</button>
+      </div>
+
+    </div>
+
+    <div class="preview-wrap">
+      <canvas id="canvas" class="preview-canvas"></canvas>
+    </div>
+
+    <button class="btn btn-primary" id="dlBtn" disabled>Download Image</button>
+
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+
+    let currentBg  = '#000000';
+    let tweetData  = null;
+
+    // ─── decode HTML entities ─────────────────────────────────────────
+    function decodeHtml(str) {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = str;
+      return txt.value;
+    }
+
+// ─── load image (always use proxy) ────────────────────────
+    const IMG_PROXY = 'https://images.weserv.nl/?url=';
+    
+    function loadImage(rawUrl) {
+        return new Promise((resolve, reject) => {
+        if (!rawUrl) { reject(new Error('no url')); return; }
+        // Always use proxy for CORS
+        const src = IMG_PROXY + encodeURIComponent(rawUrl);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => resolve(img);
+        img.onerror = () => reject(new Error('img load failed'));
+        img.src = src;
+        });
+    }
+
+    // ─── main fetch via FXTwitter API ────────────────────────────
+    async function fetchAndGenerate(tweetUrl) {
+      const statusEl = document.getElementById('statusRow');
+      const fetchBtn = document.getElementById('fetchBtn');
+      const dlBtn    = document.getElementById('dlBtn');
+
+      if (!tweetUrl) {
+        statusEl.textContent = 'Please enter an X/tweet URL';
+        statusEl.className   = 'status-row error';
+        return;
+      }
+
+      statusEl.innerHTML = '⏳ Fetching tweet…';
+      statusEl.className = 'status-row loading';
+      fetchBtn.disabled  = true;
+      dlBtn.disabled   = true;
+
+      try {
+        const match = tweetUrl.match(/(?:x|twitter)\.com\/(\w+)\/status\/(\d+)/);
+        if (!match) throw new Error('Invalid X/Twitter URL');
+        const username = match[1];
+        const statusId = match[2];
+
+        // ── Use fxtwitter API (free, no auth) ───────────────────────
+        const apiUrl = `https://api.fxtwitter.com/status/${statusId}`;
+        
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error('Failed to fetch tweet');
+        const data = await res.json();
+
+        if (!data.tweet || (!data.tweet.text && !data.tweet.full_text)) {
+          throw new Error('Could not extract tweet content');
+        }
+
+        // ── Extract fields ────────────────────────────────────────────
+        const tweet  = data.tweet;
+        const author = tweet.author || {};
+        const user   = data.user    || {};
+
+        const name   = author.name        || user.name        || username;
+        const handle = '@' + (author.screen_name || user.screen_name || username);
+        let text = tweet.full_text || tweet.text || '';
+
+        // Format date with time - use timestamp for more precision
+        let createdAt = '';
+        if (tweet.created_timestamp) {
+          const d = new Date(tweet.created_timestamp * 1000);
+          createdAt = d.toLocaleString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: 'am'
+          }).replace(/,\s*/, ' · ');
+        } else if (tweet.created_at) {
+          createdAt = new Date(tweet.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+        }
+
+        // ── Avatar ─────────────────────────────────────────────────
+        // fxtwitter returns avatar under tweet.author.avatar_url
+        let avatarRaw = author.avatar_url || user.avatar_url || user.profile_image_url_https || '';
+
+        // ── Media images ──────────────────────────────────────────
+        // Photos → use m.url; Videos/GIFs → use m.thumbnail_url as preview
+        const mediaImages = [];
+        const mediaTypes  = []; // 'photo' | 'video' | 'gif'
+        const mediaList   = tweet.media?.photos || tweet.media?.videos || tweet.media?.all || [];
+        for (const m of mediaList.slice(0, 4)) {
+          if (m.type === 'photo' && m.url) {
+            mediaImages.push(m.url);
+            mediaTypes.push('photo');
+          } else if ((m.type === 'video' || m.type === 'animated_gif') && m.thumbnail_url) {
+            // Remove all query params after .mp4 - find .mp4 and cut everything after it
+            let thumbUrl = m.thumbnail_url;
+            const mp4Index = thumbUrl.indexOf('.mp4');
+            if (mp4Index > -1) {
+              thumbUrl = thumbUrl.substring(0, mp4Index + 4);
+            }
+            mediaImages.push(thumbUrl);
+            mediaTypes.push(m.type === 'animated_gif' ? 'gif' : 'video');
+          }
+        }
+
+        tweetData = {
+          name, handle, text, date: createdAt,
+          avatarRaw, mediaImages, mediaTypes,
+          likes: tweet.likes?.toString() || '',
+          retweets: tweet.retweets?.toString() || '',
+          replies: tweet.replies?.toString() || '', username
+        };
+
+        statusEl.innerHTML = '✅ Fetched @' + username;
+        statusEl.className = 'status-row success';
+        dlBtn.disabled = false;
+        await draw();
+
+      } catch (e) {
+        statusEl.innerHTML = '❌ ' + e.message;
+        statusEl.className = 'status-row error';
+      }
+
+fetchBtn.disabled = false;
+    }
+
+    // ─── canvas draw ─────────────────────────────────────────────────
+    async function draw() {
+      const W          = 1200;
+      const padding    = 56;
+      const avatarSize = 64;
+      const lineHeight = 44;
+      const fontSize   = 30;
+      const mediaBorder = 16;
+
+      const bg        = currentBg;
+      const isDark    = bg === '#000000';
+      const textColor = isDark ? '#ffffff' : '#0f1419';
+      const mutedColor = isDark ? '#71767b' : '#536471';
+      const borderColor = isDark ? '#2f3336' : '#cfd9de';
+
+      // empty state
+      if (!tweetData) {
+        canvas.width  = W;
+        canvas.height = 300;
+        canvas.style.width  = Math.min(W, 600) + 'px';
+        canvas.style.height = 'auto';
+        ctx.fillStyle = bg || '#000';
+        ctx.fillRect(0, 0, W, 300);
+        ctx.fillStyle = mutedColor;
+        ctx.font      = '24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Enter a tweet URL to generate', W / 2, 155);
+        ctx.textAlign = 'left';
+        return;
+      }
+
+      const { name, handle, text, date, avatarRaw, mediaImages, mediaTypes, likes, retweets, replies } = tweetData;
+
+      // ── load images before sizing canvas ─────────────────────────────
+      let avatarImg = null;
+      try { avatarImg = await loadImage(avatarRaw); } catch (_) {}
+
+      const loadedMedia = [];
+      for (const src of mediaImages.slice(0, 4)) {
+        try {
+          const img = await loadImage(src);
+          loadedMedia.push(img);
+        } catch (_) {}
+      }
+
+      // ── compute canvas height ─────────────────────────────────────────
+      ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      const contentW = W - padding * 2;
+      const lines    = wrapText(text, contentW, fontSize);
+
+      let H = padding;
+      H += avatarSize + 44;             // header row
+      H += lines.length * lineHeight;    // text
+      H += 12;
+
+      // media grid - use actual image aspect ratio
+      let mediaH = 0;
+      if (loadedMedia.length > 0) {
+        const firstImg = loadedMedia[0];
+        // Calculate height based on actual image aspect ratio, max width 600px
+        const maxMediaW = 600;
+        mediaH = Math.round(maxMediaW * firstImg.height / firstImg.width);
+        // Clamp to reasonable height
+        mediaH = Math.max(200, Math.min(800, mediaH));
+        H += mediaH + 36;
+      }
+
+      const hasStats = likes || retweets || replies;
+      if (hasStats) H += 32;
+      if (date)     H += 28;
+      H += padding;
+
+      canvas.width        = W;
+      canvas.height       = Math.max(300, H);
+      canvas.style.width  = Math.min(W, 600) + 'px';
+      canvas.style.height = 'auto';
+
+      // ── background ────────────────────────────────────────────────────
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, canvas.height);
+
+      let y = padding;
+
+      // ── avatar ────────────────────────────────────────────────────────
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(padding + avatarSize / 2, y + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      if (avatarImg) {
+        ctx.drawImage(avatarImg, padding, y, avatarSize, avatarSize);
+      } else {
+        drawDefaultAvatar(padding, y, avatarSize);
+      }
+      ctx.restore();
+
+      // ── name + handle ─────────────────────────────────────────────────
+      const textX = padding + avatarSize + 18;
+      ctx.fillStyle = textColor;
+      ctx.font      = `700 26px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.fillText(name, textX, y + 28);
+
+      ctx.fillStyle = mutedColor;
+      ctx.font      = `22px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.fillText(handle, textX, y + 56);
+
+      y += avatarSize + 44;
+
+      // ── tweet text (supports newlines) ────────────────────────────────
+      ctx.fillStyle = textColor;
+      ctx.font      = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      lines.forEach(line => {
+        ctx.fillText(line, padding, y);
+        y += lineHeight;
+      });
+
+      y += 16;
+
+      // ── media grid ────────────────────────────────────────────────────
+      if (loadedMedia.length > 0) {
+        const n = loadedMedia.length;
+        const gutter = 8;
+        // Use actual image dimensions for each image
+        const drawImg1 = loadedMedia[0];
+        const drawW = Math.min(contentW, 600);
+        const drawH = Math.round(drawW * drawImg1.height / drawImg1.width);
+
+        if (n === 1) {
+          drawRoundedImage(loadedMedia[0], padding, y, drawW, drawH, 16);
+        } else if (n === 2) {
+          const cellW = (drawW - gutter) / 2;
+          const cellH = Math.round(cellW * loadedMedia[1].height / loadedMedia[1].width);
+          drawRoundedImage(loadedMedia[0], padding,           y, cellW, cellH, 16);
+          drawRoundedImage(loadedMedia[1], padding + cellW + gutter, y, cellW, cellH, 16);
+        } else if (n >= 3) {
+          const cellW = (drawW - gutter) / 2;
+          const topH  = Math.round(drawH * 0.55);
+          const botH  = drawH - topH - gutter;
+          drawRoundedImage(loadedMedia[0], padding,                  y,         drawW, topH, 16);
+          drawRoundedImage(loadedMedia[1], padding,                  y + topH + gutter, cellW, botH, 16);
+          drawRoundedImage(loadedMedia[2], padding + cellW + gutter, y + topH + gutter, cellW, botH, 16);
+        }
+
+        y += drawH + 36;
+
+        // ── play button overlay for video/gif ─────────────────────────
+        if (mediaTypes && (mediaTypes[0] === 'video' || mediaTypes[0] === 'gif')) {
+          const cx = padding + Math.min(contentW, 600) / 2;
+          const cy = y - drawH / 2 - 20;
+          const r  = 36;
+          ctx.save();
+          ctx.globalAlpha = 0.82;
+          ctx.fillStyle   = 'rgba(0,0,0,0.55)';
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.moveTo(cx - 13, cy - 16);
+          ctx.lineTo(cx - 13, cy + 16);
+          ctx.lineTo(cx + 20, cy);
+          ctx.closePath(); ctx.fill();
+          if (mediaTypes[0] === 'gif') {
+            ctx.font = 'bold 14px -apple-system, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('GIF', cx, cy + r + 18);
+            ctx.textAlign = 'left';
+          }
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      }
+
+      // ── stats ─────────────────────────────────────────────────────────
+      const stats = [];
+      if (replies  && replies  !== '0') stats.push(`${replies} replies`);
+      if (retweets && retweets !== '0') stats.push(`${retweets} retweets`);
+      if (likes    && likes    !== '0') stats.push(`${likes} likes`);
+
+      if (stats.length) {
+        ctx.fillStyle = mutedColor;
+        ctx.font      = `20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        ctx.fillText(stats.join(' · '), padding, y);
+        y += 32;
+      }
+
+      // ── date ──────────────────────────────────────────────────────────
+      if (date) {
+        ctx.fillStyle = mutedColor;
+        ctx.font      = `20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        ctx.fillText(date, padding, y);
+      }
+
+      // ── subtle X watermark ────────────────────────────────────────────
+      ctx.fillStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+      ctx.font      = `700 120px -apple-system, sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillText('𝕏', W - padding + 10, padding + 90);
+      ctx.textAlign = 'left';
+    }
+
+    // ── draw image fitted into a rounded rect (no crop) ─────────────────
+    function drawRoundedImage(img, x, y, w, h, r) {
+      ctx.save();
+      roundedRect(x, y, w, h, r);
+      ctx.clip();
+      // contain-fit: show full image without cropping
+      const scale = Math.min(w / img.width, h / img.height);
+      const sw    = img.width  * scale;
+      const sh    = img.height * scale;
+      ctx.drawImage(img, x + (w - sw) / 2, y + (h - sh) / 2, sw, sh);
+      ctx.restore();
+    }
+
+    function roundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawDefaultAvatar(x, y, size) {
+      const grad = ctx.createLinearGradient(x, y, x + size, y + size);
+      grad.addColorStop(0, '#667eea');
+      grad.addColorStop(1, '#764ba2');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── text wrap with newline support ────────────────────────────────
+    function wrapText(text, maxW, fs) {
+      const allLines = [];
+      const paragraphs = text.split('\n');
+      ctx.font = `${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+
+      for (const para of paragraphs) {
+        if (!para.trim()) { allLines.push(''); continue; }
+        const words = para.split(' ');
+        let line = '';
+        for (const word of words) {
+          const test = line ? line + ' ' + word : word;
+          if (ctx.measureText(test).width > maxW && line) {
+            allLines.push(line);
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+        if (line) allLines.push(line);
+      }
+      return allLines;
+    }
+
+    // ─── event wiring ─────────────────────────────────────────────────
+    document.getElementById('fetchBtn').addEventListener('click', () => {
+      fetchAndGenerate(document.getElementById('tweetUrl').value.trim());
+    });
+
+    document.getElementById('tweetUrl').addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchAndGenerate(e.target.value.trim());
+    });
+
+    document.getElementById('bgTabs').addEventListener('click', e => {
+      const tab = e.target.closest('.format-tab[data-bg]');
+      if (!tab) return;
+      document.querySelectorAll('.format-tab[data-bg]').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+      currentBg = tab.dataset.bg;
+      draw();
+    });
+
+    document.getElementById('dlBtn').addEventListener('click', () => {
+      if (!tweetData) return;
+      const now = new Date();
+      const ts  = now.getFullYear()
+        + String(now.getMonth() + 1).padStart(2, '0')
+        + String(now.getDate()).padStart(2, '0')
+        + '_' + String(now.getHours()).padStart(2, '0')
+        + String(now.getMinutes()).padStart(2, '0');
+      const a = document.createElement('a');
+      a.href     = canvas.toDataURL('image/png');
+      a.download = `x_post_${tweetData.username}_${ts}.png`;
+      a.click();
+    });
+
+    draw();
+  </script>
+</body>
+</html>

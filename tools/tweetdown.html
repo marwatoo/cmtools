@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X Video Download — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .page-header {
+      padding: 24px 24px 20px;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .page-header h1 { margin: 0 0 4px; }
+    .page-header p  { margin: 0; }
+
+    .tool-page {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    .controls-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+
+    .preview-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    /* thumbnail */
+    .thumb-wrap {
+      position: relative;
+      width: 100%;
+      background: #000;
+      display: none;
+    }
+    .thumb-wrap.visible { display: block; }
+    .thumb-wrap img {
+      width: 100%;
+      display: block;
+      max-height: 340px;
+      object-fit: contain;
+      background: #000;
+    }
+    .play-badge {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px; height: 64px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .play-badge svg { width: 26px; height: 26px; fill: #fff; margin-left: 4px; }
+
+    /* tweet meta inside preview */
+    .tweet-meta {
+      padding: 16px 18px 18px;
+      display: none;
+    }
+    .tweet-meta.visible { display: flex; gap: 12px; align-items: flex-start; }
+    .tweet-meta-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+      background: #333;
+    }
+    .tweet-meta-body { flex: 1; min-width: 0; }
+    .tweet-meta-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 0.95rem;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tweet-meta-handle { font-size: 0.82rem; color: var(--text2); margin-bottom: 6px; }
+    .tweet-meta-text   { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
+
+    .url-field {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .url-field .field { flex: 1; margin: 0; }
+    .url-field .btn   { flex-shrink: 0; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      color: var(--text2);
+    }
+    .status-row.success { border-color: #00ba7c; color: #00ba7c; }
+    .status-row.error   { border-color: #f4212e; color: #f4212e; }
+    .status-row.loading { border-color: var(--accent); color: var(--accent); }
+
+    /* quality selector tabs */
+    .format-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      margin-bottom: 12px;
+    }
+    .format-tab {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: calc(var(--radius-sm) - 2px);
+      transition: background .18s, color .18s;
+    }
+    .format-tab:hover  { color: var(--text); background: var(--bg2); }
+    .format-tab.active { background: var(--btn-bg); color: var(--btn-text); }
+    .format-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* download buttons list */
+    .dl-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dl-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .dl-item-info { display: flex; flex-direction: column; gap: 2px; }
+    .dl-item-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 0.8rem;
+      color: var(--text);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .dl-item-meta { font-size: 0.78rem; color: var(--text2); }
+    .dl-item .btn {
+      margin: 0; padding: 9px 18px;
+      width: auto; flex-shrink: 0;
+      font-size: 0.8rem;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .controls-card, .preview-wrap {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header   { animation-delay: 0.05s; }
+    .controls-card { animation-delay: 0.1s; }
+    .preview-wrap  { animation-delay: 0.15s; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">Back</a>
+    <span class="nav-title">Twitter Video Download</span>
+    <span class="nav-num">Dynamic</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+
+    <div class="page-header">
+      <div class="tool-header" style="margin-bottom:18px;">
+        <h1>Twitter Video Download</h1>
+        <p>Download videos from any X/tweet link — choose your quality.</p>
+      </div>
+    </div>
+
+    <div class="controls-card">
+
+      <p class="section-head">Tweet URL</p>
+
+      <div class="url-field">
+        <div class="field">
+          <input type="text" id="tweetUrl" placeholder="https://x.com/user/status/123456789">
+        </div>
+        <button class="btn btn-primary" id="fetchBtn" style="margin:0;width:auto;padding:12px 24px;">Fetch</button>
+      </div>
+
+      <div class="status-row" id="statusRow">
+        Paste an X/tweet link with a video and click Fetch.
+      </div>
+
+    </div>
+
+    <!-- preview: thumbnail + tweet info -->
+    <div class="preview-wrap" id="previewWrap">
+      <div class="thumb-wrap" id="thumbWrap">
+        <img id="thumbImg" src="" alt="Video thumbnail">
+        <div class="play-badge">
+          <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+        </div>
+      </div>
+      <div class="tweet-meta" id="tweetMeta">
+        <img class="tweet-meta-avatar" id="metaAvatar" src="" alt="">
+        <div class="tweet-meta-body">
+          <div class="tweet-meta-name" id="metaName"></div>
+          <div class="tweet-meta-handle" id="metaHandle"></div>
+          <div class="tweet-meta-text" id="metaText"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- quality tabs + download buttons — hidden until fetched -->
+    <div id="dlSection" style="display:none;">
+      <p class="section-head" style="margin-bottom:10px;">Quality</p>
+      <div class="format-tabs" id="qualityTabs"></div>
+      <div class="dl-list" id="dlList"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let videoData = null; // { videos: [{label, bitrate, url, width, height}], author, text, thumbnail }
+
+    // ─── fxtwitter fetch ──────────────────────────────────────────────────
+    async function fetchTweet(tweetUrl) {
+      const statusEl = document.getElementById('statusRow');
+      const fetchBtn = document.getElementById('fetchBtn');
+
+      if (!tweetUrl) {
+        setStatus('Please enter an X/tweet URL', 'error');
+        return;
+      }
+
+      setStatus('⏳ Fetching tweet…', 'loading');
+      fetchBtn.disabled = true;
+      hideDlSection();
+
+      try {
+        const match = tweetUrl.match(/(?:x|twitter)\.com\/(\w+)\/status\/(\d+)/);
+        if (!match) throw new Error('Invalid X/Twitter URL');
+        const statusId = match[2];
+
+        const res = await fetch(`https://api.fxtwitter.com/status/${statusId}`);
+        if (!res.ok) throw new Error('Failed to fetch tweet (status ' + res.status + ')');
+        const data = await res.json();
+
+        const tweet = data.tweet;
+        if (!tweet) throw new Error('No tweet data returned');
+
+        // ── collect all video variants across all media items ─────────
+        const allMedia  = tweet.media?.all || tweet.media?.videos || [];
+        const videoItems = allMedia.filter(m => m.type === 'video' || m.type === 'animated_gif');
+
+        if (videoItems.length === 0) {
+          throw new Error('No video found in this tweet');
+        }
+
+        // Build a flat list of mp4 variants from the first video
+        // (tweets rarely have multiple videos; handle the first one)
+        const primaryVideo = videoItems[0];
+        const formats      = primaryVideo.formats || primaryVideo.variants || [];
+
+        // Keep only mp4 variants with a bitrate (skip m3u8)
+        const mp4variants = formats
+          .filter(f => (f.container === 'mp4' || f.content_type === 'video/mp4') && f.url)
+          .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+
+        if (mp4variants.length === 0) {
+          // Fallback: use the direct url field on the media item itself
+          if (primaryVideo.url && primaryVideo.url.includes('.mp4')) {
+            mp4variants.push({ url: primaryVideo.url.split('?')[0], bitrate: primaryVideo.bitrate || 0,
+              width: primaryVideo.width, height: primaryVideo.height });
+          } else {
+            throw new Error('No downloadable MP4 found for this video');
+          }
+        }
+
+        // Label each variant
+        const labeled = mp4variants.map(v => {
+          // Strip ?tag=XX (and any other query params) from the URL
+          const cleanUrl = v.url.split('?')[0];
+          const w = v.width  || 0;
+          const h = v.height || 0;
+          // derive height from url if not in variant object
+          const hFromUrl = cleanUrl.match(/\/(\d+)x(\d+)\//);
+          const resH = h || (hFromUrl ? parseInt(hFromUrl[2]) : 0);
+          const resW = w || (hFromUrl ? parseInt(hFromUrl[1]) : 0);
+          const label = resH >= 1080 ? '1080p'
+                      : resH >= 720  ? '720p'
+                      : resH >= 480  ? '480p'
+                      : resH >= 360  ? '360p'
+                      : resH >= 270  ? '270p'
+                      : v.bitrate    ? Math.round(v.bitrate / 1000) + 'kbps'
+                      : 'Default';
+          return { label, bitrate: v.bitrate || 0, url: cleanUrl, width: resW, height: resH };
+        });
+
+        // author info
+        const author = tweet.author || {};
+
+        videoData = {
+          videos:    labeled,
+          thumbnail: primaryVideo.thumbnail_url || '',
+          avatarUrl: author.avatar_url || '',
+          name:      author.name       || match[1],
+          handle:    '@' + (author.screen_name || match[1]),
+          text:      tweet.text        || '',
+          username:  author.screen_name || match[1],
+        };
+
+        renderPreview();
+        renderDlSection();
+        setStatus('✅ Found ' + labeled.length + ' quality option' + (labeled.length > 1 ? 's' : ''), 'success');
+
+      } catch (e) {
+        setStatus('❌ ' + e.message, 'error');
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    }
+
+    // ─── render thumbnail + meta ──────────────────────────────────────────
+    function renderPreview() {
+      const { thumbnail, avatarUrl, name, handle, text } = videoData;
+
+      // thumbnail
+      const thumbWrap = document.getElementById('thumbWrap');
+      const thumbImg  = document.getElementById('thumbImg');
+      if (thumbnail) {
+        thumbImg.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(thumbnail);
+        thumbWrap.classList.add('visible');
+      } else {
+        thumbWrap.classList.remove('visible');
+      }
+
+      // tweet meta
+      const metaEl     = document.getElementById('tweetMeta');
+      const metaAvatar = document.getElementById('metaAvatar');
+      const metaName   = document.getElementById('metaName');
+      const metaHandle = document.getElementById('metaHandle');
+      const metaText   = document.getElementById('metaText');
+
+      metaAvatar.src  = avatarUrl
+        ? 'https://images.weserv.nl/?url=' + encodeURIComponent(avatarUrl)
+        : '';
+      metaName.textContent   = name;
+      metaHandle.textContent = handle;
+      metaText.textContent   = text;
+      metaEl.classList.add('visible');
+    }
+
+    // ─── render quality tabs + download buttons ───────────────────────────
+    function renderDlSection(activeIdx = 0) {
+      const { videos, username } = videoData;
+      const tabsEl  = document.getElementById('qualityTabs');
+      const dlEl    = document.getElementById('dlList');
+      const section = document.getElementById('dlSection');
+
+      // quality tabs
+      tabsEl.innerHTML = '';
+      videos.forEach((v, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'format-tab' + (i === activeIdx ? ' active' : '');
+        btn.textContent = v.label;
+        btn.addEventListener('click', () => renderDlSection(i));
+        tabsEl.appendChild(btn);
+      });
+
+      // single download item for selected quality
+      const v = videos[activeIdx];
+      const sizeMbApprox = v.bitrate ? Math.round(v.bitrate / 8000) + ' KB/s' : '';
+      const resolution   = (v.width && v.height) ? v.width + '×' + v.height : '';
+
+      dlEl.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'dl-item';
+      item.innerHTML = `
+        <div class="dl-item-info">
+          <div class="dl-item-label">${v.label} — MP4</div>
+          <div class="dl-item-meta">${[resolution, sizeMbApprox].filter(Boolean).join(' · ') || 'Video'}</div>
+        </div>
+        <a class="btn btn-primary" href="${v.url}" download="x_video_${username}_${v.label}.mp4" target="_blank">
+          Download
+        </a>
+      `;
+      dlEl.appendChild(item);
+
+      section.style.display = 'block';
+    }
+
+    function hideDlSection() {
+      document.getElementById('dlSection').style.display = 'none';
+      document.getElementById('thumbWrap').classList.remove('visible');
+      document.getElementById('tweetMeta').classList.remove('visible');
+      videoData = null;
+    }
+
+    // ─── status helper ────────────────────────────────────────────────────
+    function setStatus(msg, type = '') {
+      const el = document.getElementById('statusRow');
+      el.innerHTML   = msg;
+      el.className   = 'status-row' + (type ? ' ' + type : '');
+    }
+
+    // ─── event wiring ─────────────────────────────────────────────────────
+    document.getElementById('fetchBtn').addEventListener('click', () => {
+      fetchTweet(document.getElementById('tweetUrl').value.trim());
+    });
+
+    document.getElementById('tweetUrl').addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchTweet(e.target.value.trim());
+    });
+  </script>
+</body>
+</html>
