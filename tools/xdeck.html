@@ -534,7 +534,6 @@ function createTweetCard(tweet) {
       const thumb = document.createElement('img');
       thumb.className = 'video-thumb';
       thumb.src = thumbSrc;
-      thumb.crossOrigin = 'anonymous';
       thumb.loading = 'lazy';
       thumb.onerror = function(){ this.style.display='none'; };
       vw.appendChild(thumb);
@@ -670,7 +669,6 @@ function openModal(tweet) {
       const thumb = document.createElement('img');
       thumb.className = 'modal-video-thumb';
       thumb.src = thumbSrc;
-      thumb.crossOrigin = 'anonymous';
       thumb.onerror = function(){ this.style.display='none'; };
       vw.appendChild(thumb);
     }
