@@ -316,7 +316,6 @@
 
     // ─── canvas draw ──────────────────────────────────────────────────────────
     async function draw() {
-      const DPR        = window.devicePixelRatio || 1;
       const W          = 1200;
       const padding    = 56;
       const avatarSize = 64;
@@ -329,11 +328,10 @@
       const mutedColor = isDark ? '#71767b' : '#536471';
 
       if (!tweetData) {
-        canvas.width  = W * DPR;
-        canvas.height = 300 * DPR;
-        canvas.style.width  = W + 'px';
-        canvas.style.height = '300px';
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        canvas.width  = W;
+        canvas.height = 300;
+        canvas.style.width  = Math.min(W, 600) + 'px';
+        canvas.style.height = 'auto';
         ctx.fillStyle = bg || '#000';
         ctx.fillRect(0, 0, W, 300);
         ctx.fillStyle = mutedColor;
@@ -405,17 +403,14 @@
       if (date)         H += 28;
       H += padding;
 
-      // Scale canvas for devicePixelRatio so macOS Retina font metrics
-      // match exactly what measureText() reported during line-wrapping.
-      canvas.width  = W * DPR;
-      canvas.height = Math.max(300, H) * DPR;
-      canvas.style.width  = W + 'px';
-      canvas.style.height = Math.max(300, H) + 'px';
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      canvas.width        = W;
+      canvas.height       = Math.max(300, H);
+      canvas.style.width  = Math.min(W, 600) + 'px';
+      canvas.style.height = 'auto';
 
       // background
       ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, W, Math.max(300, H));
+      ctx.fillRect(0, 0, W, canvas.height);
 
       let y = padding;
 
