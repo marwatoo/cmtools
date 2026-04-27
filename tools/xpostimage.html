@@ -45,6 +45,7 @@
 
     .preview-canvas {
       max-width: 100%;
+      width: 100%;
       height: auto;
       border-radius: 8px;
       box-shadow: var(--shadow);
@@ -330,8 +331,6 @@
       if (!tweetData) {
         canvas.width  = W;
         canvas.height = 300;
-        canvas.style.width  = Math.min(W, 600) + 'px';
-        canvas.style.height = 'auto';
         ctx.fillStyle = bg || '#000';
         ctx.fillRect(0, 0, W, 300);
         ctx.fillStyle = mutedColor;
@@ -403,10 +402,8 @@
       if (date)         H += 28;
       H += padding;
 
-      canvas.width        = W;
-      canvas.height       = Math.max(300, H);
-      canvas.style.width  = Math.min(W, 600) + 'px';
-      canvas.style.height = 'auto';
+      canvas.width  = W;
+      canvas.height = Math.max(300, H);
 
       // background
       ctx.fillStyle = bg;
@@ -646,13 +643,14 @@
     }
 
     function breakToken(token, maxW) {
+      const safeW = maxW * 0.98;
       const parts = [];
       let remaining = token;
-      while (remaining && ctx.measureText(remaining).width > maxW) {
+      while (remaining && ctx.measureText(remaining).width > safeW) {
         let lo = 1, hi = remaining.length;
         while (lo < hi) {
           const mid = (lo + hi + 1) >>> 1;
-          if (ctx.measureText(remaining.slice(0, mid)).width <= maxW) lo = mid;
+          if (ctx.measureText(remaining.slice(0, mid)).width <= safeW) lo = mid;
           else hi = mid - 1;
         }
         parts.push(remaining.slice(0, lo));
@@ -663,21 +661,24 @@
     }
 
     function wrapText(text, maxW, fs) {
+      // Shrink the effective wrap width by ~2% to absorb macOS/San Francisco
+      // subpixel rendering, which measures slightly wider than Linux/Android.
+      const safeW = maxW * 0.98;
       const allLines = [];
       ctx.font = `${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       for (const para of text.split('\n')) {
-        if (ctx.measureText(para).width <= maxW) { allLines.push(para); continue; }
+        if (ctx.measureText(para).width <= safeW) { allLines.push(para); continue; }
         let line = '';
         for (const word of para.split(' ')) {
-          if (ctx.measureText(word).width > maxW) {
+          if (ctx.measureText(word).width > safeW) {
             if (line) { allLines.push(line); line = ''; }
-            const broken = breakToken(word, maxW);
+            const broken = breakToken(word, safeW);
             for (let b = 0; b < broken.length - 1; b++) allLines.push(broken[b]);
             line = broken[broken.length - 1];
             continue;
           }
           const test = line ? line + ' ' + word : word;
-          if (ctx.measureText(test).width > maxW && line) { allLines.push(line); line = word; }
+          if (ctx.measureText(test).width > safeW && line) { allLines.push(line); line = word; }
           else line = test;
         }
         if (line) allLines.push(line);
