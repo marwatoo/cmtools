@@ -128,7 +128,7 @@
       transform: translateY(12px);
       animation: fadeUp 0.5s ease forwards;
     }
-    .tool-header  { animation-delay: 0.05s; }
+    .tool-header   { animation-delay: 0.05s; }
     .controls-card { animation-delay: 0.1s; }
     .preview-wrap  { animation-delay: 0.15s; }
   </style>
@@ -195,38 +195,28 @@
     const canvas = document.getElementById('canvas');
     const ctx    = canvas.getContext('2d');
 
-    let currentBg  = '#000000';
-    let tweetData  = null;
-    let showLogo   = true;
+    let currentBg = '#000000';
+    let tweetData = null;
+    let showLogo  = true;
 
-    // ─── decode HTML entities ─────────────────────────────────────────
-    function decodeHtml(str) {
-      const txt = document.createElement('textarea');
-      txt.innerHTML = str;
-      return txt.value;
-    }
-
-// ─── load image (always use proxy) ────────────────────────
     const IMG_PROXY = 'https://images.weserv.nl/?url=';
-    
+
     function loadImage(rawUrl) {
-        return new Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         if (!rawUrl) { reject(new Error('no url')); return; }
-        // Always use proxy for CORS
         const src = IMG_PROXY + encodeURIComponent(rawUrl);
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload  = () => resolve(img);
         img.onerror = () => reject(new Error('img load failed'));
         img.src = src;
-        });
+      });
     }
 
-    // ─── main fetch via FXTwitter API ────────────────────────────
     async function fetchAndGenerate(tweetUrl) {
-      const statusEl = document.getElementById('statusRow');
-      const fetchBtn = document.getElementById('fetchBtn');
-      const dlBtn    = document.getElementById('dlBtn');
+      const statusEl  = document.getElementById('statusRow');
+      const fetchBtn  = document.getElementById('fetchBtn');
+      const dlBtn     = document.getElementById('dlBtn');
       const dlBtn1350 = document.getElementById('dlBtn1350');
 
       if (!tweetUrl) {
@@ -238,7 +228,8 @@
       statusEl.innerHTML = '⏳ Fetching tweet…';
       statusEl.className = 'status-row loading';
       fetchBtn.disabled  = true;
-      dlBtn.disabled   = true;
+      dlBtn.disabled     = true;
+      dlBtn1350.disabled = true;
 
       try {
         const match = tweetUrl.match(/(?:x|twitter)\.com\/(\w+)\/status\/(\d+)/);
@@ -246,10 +237,7 @@
         const username = match[1];
         const statusId = match[2];
 
-        // ── Use fxtwitter API (free, no auth) ───────────────────────
-        const apiUrl = `https://api.fxtwitter.com/status/${statusId}`;
-        
-        const res = await fetch(apiUrl);
+        const res = await fetch(`https://api.fxtwitter.com/status/${statusId}`);
         if (!res.ok) throw new Error('Failed to fetch tweet');
         const data = await res.json();
 
@@ -257,76 +245,64 @@
           throw new Error('Could not extract tweet content');
         }
 
-        // ── Extract fields ────────────────────────────────────────────
         const tweet  = data.tweet;
         const author = tweet.author || {};
         const user   = data.user    || {};
 
         const name   = author.name        || user.name        || username;
         const handle = '@' + (author.screen_name || user.screen_name || username);
-        let text = tweet.full_text || tweet.text || '';
+        const text   = tweet.full_text || tweet.text || '';
 
-        // Format date with time - use timestamp for more precision
         let createdAt = '';
         if (tweet.created_timestamp) {
           const d = new Date(tweet.created_timestamp * 1000);
-          createdAt = d.toLocaleString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: 'am'
+          createdAt = d.toLocaleString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
           }).replace(/,\s*/, ' · ');
         } else if (tweet.created_at) {
-          createdAt = new Date(tweet.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+          createdAt = new Date(tweet.created_at).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+          });
         }
 
-        // ── Avatar ─────────────────────────────────────────────────
-        // fxtwitter returns avatar under tweet.author.avatar_url
         let avatarRaw = author.avatar_url || user.avatar_url || user.profile_image_url_https || '';
 
-        // ── Media images ──────────────────────────────────────────
-        // Photos → use m.url; Videos/GIFs → use m.thumbnail_url as preview
         const mediaImages = [];
-        const mediaTypes  = []; // 'photo' | 'video' | 'gif'
+        const mediaTypes  = [];
         const mediaList   = tweet.media?.photos || tweet.media?.videos || tweet.media?.all || [];
         for (const m of mediaList.slice(0, 4)) {
           if (m.type === 'photo' && m.url) {
             mediaImages.push(m.url);
             mediaTypes.push('photo');
           } else if ((m.type === 'video' || m.type === 'animated_gif') && m.thumbnail_url) {
-            // Remove all query params after .mp4 - find .mp4 and cut everything after it
             let thumbUrl = m.thumbnail_url;
             const mp4Index = thumbUrl.indexOf('.mp4');
-            if (mp4Index > -1) {
-              thumbUrl = thumbUrl.substring(0, mp4Index + 4);
-            }
+            if (mp4Index > -1) thumbUrl = thumbUrl.substring(0, mp4Index + 4);
             mediaImages.push(thumbUrl);
             mediaTypes.push(m.type === 'animated_gif' ? 'gif' : 'video');
           }
         }
 
-        // ── Link preview from card ───────────────────────────────────────
         let cardImage = '';
-        let cardUrl = '';
+        let cardUrl   = '';
         if (tweet.card?.image?.url) {
           cardImage = tweet.card.image.url;
-          cardUrl = tweet.card.display_url || tweet.card.domain || '';
+          cardUrl   = tweet.card.display_url || tweet.card.domain || '';
         }
 
         tweetData = {
           name, handle, text, date: createdAt,
           avatarRaw, mediaImages, mediaTypes,
-          likes: tweet.likes?.toString() || '',
+          likes:    tweet.likes?.toString()    || '',
           retweets: tweet.retweets?.toString() || '',
-          replies: tweet.replies?.toString() || '', username,
-          cardImage, cardUrl
+          replies:  tweet.replies?.toString()  || '',
+          username, cardImage, cardUrl
         };
 
         statusEl.innerHTML = '✅ Fetched @' + username;
         statusEl.className = 'status-row success';
-        dlBtn.disabled = false;
+        dlBtn.disabled     = false;
         dlBtn1350.disabled = false;
         await draw();
 
@@ -335,25 +311,22 @@
         statusEl.className = 'status-row error';
       }
 
-fetchBtn.disabled = false;
+      fetchBtn.disabled = false;
     }
 
-    // ─── canvas draw ─────────────────────────────────────────────────
+    // ─── canvas draw ──────────────────────────────────────────────────────────
     async function draw() {
       const W          = 1200;
       const padding    = 56;
       const avatarSize = 64;
       const lineHeight = 44;
       const fontSize   = 30;
-      const mediaBorder = 16;
 
-      const bg        = currentBg;
-      const isDark    = bg === '#000000';
-      const textColor = isDark ? '#ffffff' : '#0f1419';
+      const bg         = currentBg;
+      const isDark     = bg === '#000000';
+      const textColor  = isDark ? '#ffffff' : '#0f1419';
       const mutedColor = isDark ? '#71767b' : '#536471';
-      const borderColor = isDark ? '#2f3336' : '#cfd9de';
 
-      // empty state
       if (!tweetData) {
         canvas.width  = W;
         canvas.height = 300;
@@ -369,62 +342,65 @@ fetchBtn.disabled = false;
         return;
       }
 
-      const { name, handle, text, date, avatarRaw, mediaImages, mediaTypes, likes, retweets, replies, cardImage, cardUrl } = tweetData;
+      const { name, handle, text, date, avatarRaw, mediaImages, mediaTypes,
+              likes, retweets, replies, cardImage, cardUrl } = tweetData;
 
       const rtl = isRTL(text);
 
-      // ── load images before sizing canvas ─────────────────────────────
+      // load images
       let avatarImg = null;
       try { avatarImg = await loadImage(avatarRaw); } catch (_) {}
 
       const loadedMedia = [];
       for (const src of mediaImages.slice(0, 4)) {
-        try {
-          const img = await loadImage(src);
-          loadedMedia.push(img);
-        } catch (_) {}
+        try { loadedMedia.push(await loadImage(src)); } catch (_) {}
       }
 
-      // ── load card image ───────────────────────────────────────────────
       let cardImg = null;
       if (cardImage) {
         try { cardImg = await loadImage(cardImage); } catch (_) {}
       }
 
-      // ── compute canvas height ─────────────────────────────────────────
+      // ── pre-compute urlLines once so height calc and draw both use same data ──
+      let urlLines = [];
+      if (cardImg && loadedMedia.length === 0 && cardUrl) {
+        ctx.font = `18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        urlLines = wrapText(cardUrl, 600, 18);
+      }
+
+      // ── compute canvas height ─────────────────────────────────────────────
       ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       const contentW = W - padding * 2;
       const lines    = wrapText(text, contentW, fontSize);
 
       let H = padding;
-      H += avatarSize + 44;             // header row
-      H += lines.length * lineHeight;    // text
-      H += 12;
+      H += avatarSize + 44;
+      H += lines.length * lineHeight + 12;
 
-      // media grid - use actual image aspect ratio
       let mediaH = 0;
       if (loadedMedia.length > 0) {
-        const firstImg = loadedMedia[0];
-        // Calculate height based on actual image aspect ratio, max width 600px
         const maxMediaW = 600;
-        mediaH = Math.round(maxMediaW * firstImg.height / firstImg.width);
-        // Clamp to reasonable height
+        mediaH = Math.round(maxMediaW * loadedMedia[0].height / loadedMedia[0].width);
         mediaH = Math.max(200, Math.min(1200, mediaH));
         H += mediaH + 36;
       }
 
-      // card image
-      let cardH = 0;
       if (cardImg && loadedMedia.length === 0) {
         const maxCardW = 600;
-        cardH = Math.round(maxCardW * cardImg.height / cardImg.width);
+        let cardH = Math.round(maxCardW * cardImg.height / cardImg.width);
         cardH = Math.max(120, Math.min(400, cardH));
-        H += cardH + 40;
+        H += cardH + 18;
+        if (urlLines.length) H += urlLines.length * 28 + 16;
+        else H += 16;
       }
 
-      const hasStats = likes || retweets || replies;
-      if (hasStats) H += 32;
-      if (date)     H += 28;
+      const stats = [];
+      if (replies  && replies  !== '0') stats.push(`${replies} replies`);
+      if (retweets && retweets !== '0') stats.push(`${retweets} retweets`);
+      if (likes    && likes    !== '0') stats.push(`${likes} likes`);
+
+      if (stats.length) H += 32;
+      if (date)         H += 28;
       H += padding;
 
       canvas.width        = W;
@@ -432,27 +408,24 @@ fetchBtn.disabled = false;
       canvas.style.width  = Math.min(W, 600) + 'px';
       canvas.style.height = 'auto';
 
-      // ── background ────────────────────────────────────────────────────
+      // background
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, canvas.height);
 
       let y = padding;
 
-      // ── avatar ────────────────────────────────────────────────────────
+      // ── avatar ────────────────────────────────────────────────────────────
       const avatarX = rtl ? W - padding - avatarSize : padding;
       ctx.save();
       ctx.beginPath();
       ctx.arc(avatarX + avatarSize / 2, y + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      if (avatarImg) {
-        ctx.drawImage(avatarImg, avatarX, y, avatarSize, avatarSize);
-      } else {
-        drawDefaultAvatar(avatarX, y, avatarSize);
-      }
+      if (avatarImg) ctx.drawImage(avatarImg, avatarX, y, avatarSize, avatarSize);
+      else           drawDefaultAvatar(avatarX, y, avatarSize);
       ctx.restore();
 
-      // ── name + handle ─────────────────────────────────────────────────
+      // ── name + handle ─────────────────────────────────────────────────────
       ctx.fillStyle = textColor;
       ctx.font      = `700 26px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       if (rtl) {
@@ -473,37 +446,29 @@ fetchBtn.disabled = false;
 
       y += avatarSize + 44;
 
-      // ── tweet text (supports newlines) ────────────────────────────────
+      // ── tweet text ────────────────────────────────────────────────────────
       ctx.fillStyle = textColor;
       if (rtl) {
-        ctx.font = `${fontSize}px "Segoe UI", "Tahoma", "Arabic Typesetting", sans-serif`;
+        ctx.font      = `${fontSize}px "Segoe UI", "Tahoma", "Arabic Typesetting", sans-serif`;
         ctx.direction = 'rtl';
         ctx.textAlign = 'right';
-        lines.forEach(line => {
-          ctx.fillText(line, W - padding, y);
-          y += lineHeight;
-        });
+        lines.forEach(line => { ctx.fillText(line, W - padding, y); y += lineHeight; });
         ctx.direction = 'ltr';
         ctx.textAlign = 'left';
       } else {
-        ctx.font      = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-        lines.forEach(line => {
-          ctx.fillText(line, padding, y);
-          y += lineHeight;
-        });
+        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        lines.forEach(line => { ctx.fillText(line, padding, y); y += lineHeight; });
       }
 
       y += 16;
 
-      // ── media grid ────────────────────────────────────────────────────
+      // ── media grid ────────────────────────────────────────────────────────
       if (loadedMedia.length > 0) {
-        const n = loadedMedia.length;
+        const n      = loadedMedia.length;
         const gutter = 8;
-        const drawImg1 = loadedMedia[0];
-        const drawW = Math.min(contentW, 600);
-        const drawH = Math.round(drawW * drawImg1.height / drawImg1.width);
-        // For RTL: anchor the grid to the right side
-        const gridX = rtl ? W - padding - drawW : padding;
+        const drawW  = Math.min(contentW, 600);
+        const drawH  = Math.round(drawW * loadedMedia[0].height / loadedMedia[0].width);
+        const gridX  = rtl ? W - padding - drawW : padding;
 
         if (n === 1) {
           drawRoundedImage(loadedMedia[0], gridX, y, drawW, drawH, 16);
@@ -521,7 +486,7 @@ fetchBtn.disabled = false;
           const cellW = (drawW - gutter) / 2;
           const topH  = Math.round(drawH * 0.55);
           const botH  = drawH - topH - gutter;
-          drawRoundedImage(loadedMedia[0], gridX,                  y,                  drawW, topH, 16);
+          drawRoundedImage(loadedMedia[0], gridX, y, drawW, topH, 16);
           if (rtl) {
             drawRoundedImage(loadedMedia[1], gridX + cellW + gutter, y + topH + gutter, cellW, botH, 16);
             drawRoundedImage(loadedMedia[2], gridX,                  y + topH + gutter, cellW, botH, 16);
@@ -533,7 +498,7 @@ fetchBtn.disabled = false;
 
         y += drawH + 34;
 
-        // ── play button overlay for video/gif ─────────────────────────
+        // play/gif overlay
         if (mediaTypes && (mediaTypes[0] === 'video' || mediaTypes[0] === 'gif')) {
           const cx = gridX + drawW / 2;
           const cy = y - drawH / 2 - 20;
@@ -560,32 +525,44 @@ fetchBtn.disabled = false;
         }
       }
 
-      // ── card image ─────────────────────────────────────────────────────
+      // ── card image + URL (FIXED: full RTL support) ────────────────────────
       if (cardImg && loadedMedia.length === 0) {
         const drawW = Math.min(contentW, 600);
         const drawH = Math.round(drawW * cardImg.height / cardImg.width);
+
+        // RTL: anchor card image to the right, matching media grid behaviour
         const cardX = rtl ? W - padding - drawW : padding;
 
         drawRoundedImage(cardImg, cardX, y, drawW, drawH, 16);
         y += drawH + 18;
 
-        if (cardUrl) {
+        // ── card URL: right-aligned for RTL tweets, left-aligned for LTR ───
+        if (urlLines.length) {
           ctx.fillStyle = mutedColor;
           ctx.font = `18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-          const urlLines = wrapText(cardUrl, 600, 18);
-          urlLines.forEach(line => {
-            ctx.fillText(line, padding, y);
-            y += 28;
-          });
+
+          if (rtl || isRTL(cardUrl)) {
+            // Anchor to right edge of the card image, same as stats/date
+            ctx.direction = 'rtl';
+            ctx.textAlign = 'right';
+            urlLines.forEach(line => {
+              ctx.fillText(line, cardX + drawW, y);
+              y += 28;
+            });
+            ctx.direction = 'ltr';
+            ctx.textAlign = 'left';
+          } else {
+            urlLines.forEach(line => {
+              ctx.fillText(line, cardX, y);
+              y += 28;
+            });
+          }
+
+          y += 8;
         }
       }
 
-      // ── stats ─────────────────────────────────────────────────────────
-      const stats = [];
-      if (replies  && replies  !== '0') stats.push(`${replies} replies`);
-      if (retweets && retweets !== '0') stats.push(`${retweets} retweets`);
-      if (likes    && likes    !== '0') stats.push(`${likes} likes`);
-
+      // ── stats ─────────────────────────────────────────────────────────────
       if (stats.length) {
         ctx.fillStyle = mutedColor;
         ctx.font      = `20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
@@ -599,7 +576,7 @@ fetchBtn.disabled = false;
         y += 32;
       }
 
-      // ── date ──────────────────────────────────────────────────────────
+      // ── date ──────────────────────────────────────────────────────────────
       if (date) {
         ctx.fillStyle = mutedColor;
         ctx.font      = `20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
@@ -612,7 +589,7 @@ fetchBtn.disabled = false;
         }
       }
 
-      // ── subtle X watermark ────────────────────────────────────────────
+      // ── X watermark ───────────────────────────────────────────────────────
       if (showLogo) {
         ctx.fillStyle = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)';
         ctx.font      = `700 120px -apple-system, sans-serif`;
@@ -627,12 +604,11 @@ fetchBtn.disabled = false;
       }
     }
 
-    // ── draw image fitted into a rounded rect (no crop) ─────────────────
+    // ── helpers ───────────────────────────────────────────────────────────────
     function drawRoundedImage(img, x, y, w, h, r) {
       ctx.save();
       roundedRect(x, y, w, h, r);
       ctx.clip();
-      // contain-fit: show full image without cropping
       const scale = Math.min(w / img.width, h / img.height);
       const sw    = img.width  * scale;
       const sh    = img.height * scale;
@@ -644,13 +620,13 @@ fetchBtn.disabled = false;
       ctx.beginPath();
       ctx.moveTo(x + r, y);
       ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
       ctx.lineTo(x + w, y + h - r);
       ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
       ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.quadraticCurveTo(x,     y + h, x,     y + h - r);
       ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.quadraticCurveTo(x,     y,     x + r, y);
       ctx.closePath();
     }
 
@@ -664,60 +640,52 @@ fetchBtn.disabled = false;
       ctx.fill();
     }
 
-    // ── detect Arabic / RTL text ──────────────────────────────────────
     function isRTL(text) {
-      const rtlChars = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
       const rtlCount = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
       return rtlCount > text.length * 0.3;
     }
 
-    // ── text wrap with newline support ────────────────────────────────
+    function breakToken(token, maxW) {
+      const parts = [];
+      let remaining = token;
+      while (remaining && ctx.measureText(remaining).width > maxW) {
+        let lo = 1, hi = remaining.length;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >>> 1;
+          if (ctx.measureText(remaining.slice(0, mid)).width <= maxW) lo = mid;
+          else hi = mid - 1;
+        }
+        parts.push(remaining.slice(0, lo));
+        remaining = remaining.slice(lo);
+      }
+      if (remaining) parts.push(remaining);
+      return parts;
+    }
+
     function wrapText(text, maxW, fs) {
       const allLines = [];
       ctx.font = `${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-
-      const paragraphs = text.split('\n');
-      for (const para of paragraphs) {
-        if (ctx.measureText(para).width <= maxW) {
-          allLines.push(para);
-          continue;
-        }
-
+      for (const para of text.split('\n')) {
+        if (ctx.measureText(para).width <= maxW) { allLines.push(para); continue; }
         let line = '';
-        const words = para.split(' ');
-        for (let i = 0; i < words.length; i++) {
-          const word = words[i];
-          const test = line ? line + ' ' + word : word;
-          if (ctx.measureText(test).width > maxW && line) {
-            allLines.push(line);
-            line = word;
-          } else {
-            line = test;
+        for (const word of para.split(' ')) {
+          if (ctx.measureText(word).width > maxW) {
+            if (line) { allLines.push(line); line = ''; }
+            const broken = breakToken(word, maxW);
+            for (let b = 0; b < broken.length - 1; b++) allLines.push(broken[b]);
+            line = broken[broken.length - 1];
+            continue;
           }
+          const test = line ? line + ' ' + word : word;
+          if (ctx.measureText(test).width > maxW && line) { allLines.push(line); line = word; }
+          else line = test;
         }
         if (line) allLines.push(line);
       }
-
-      if (allLines.length === 1 && text.includes('://')) {
-        allLines.length = 0;
-        let remaining = text;
-        while (remaining && ctx.measureText(remaining).width > maxW) {
-          let lo = 0, hi = remaining.length;
-          while (lo < hi) {
-            const mid = (lo + hi + 1) >>> 1;
-            if (ctx.measureText(remaining.slice(0, mid)).width <= maxW) lo = mid;
-            else hi = mid - 1;
-          }
-          allLines.push(remaining.slice(0, lo));
-          remaining = remaining.slice(lo);
-        }
-        if (remaining) allLines.push(remaining);
-      }
-
       return allLines;
     }
 
-    // ─── event wiring ─────────────────────────────────────────────────
+    // ── event wiring ──────────────────────────────────────────────────────────
     document.getElementById('fetchBtn').addEventListener('click', () => {
       fetchAndGenerate(document.getElementById('tweetUrl').value.trim());
     });
@@ -751,35 +719,24 @@ fetchBtn.disabled = false;
 
     document.getElementById('dlBtn1350').addEventListener('click', async () => {
       if (!tweetData) return;
-      const TARGET_W = 1080;
-      const TARGET_H = 1350;
-
-      // Draw onto an offscreen canvas at 1080x1350
+      const TARGET_W = 1080, TARGET_H = 1350;
       const offCanvas = document.createElement('canvas');
       offCanvas.width  = TARGET_W;
       offCanvas.height = TARGET_H;
       const offCtx = offCanvas.getContext('2d');
-
-      // Scale from the current canvas (1200px wide) to 1080
-      const scale = TARGET_W / canvas.width;
+      const scale   = TARGET_W / canvas.width;
       const scaledH = Math.round(canvas.height * scale);
-
-      // Fill background
       offCtx.fillStyle = currentBg;
       offCtx.fillRect(0, 0, TARGET_W, TARGET_H);
-
       if (scaledH <= TARGET_H) {
-        // Content shorter than target — center vertically
         const yOffset = Math.round((TARGET_H - scaledH) / 2);
         offCtx.drawImage(canvas, 0, yOffset, TARGET_W, scaledH);
       } else {
-        // Content taller than 1350 — scale to fit height, center horizontally
         const fitScale = TARGET_H / canvas.height;
-        const fitW = Math.round(canvas.width * fitScale);
-        const xOffset = Math.round((TARGET_W - fitW) / 2);
+        const fitW     = Math.round(canvas.width * fitScale);
+        const xOffset  = Math.round((TARGET_W - fitW) / 2);
         offCtx.drawImage(canvas, xOffset, 0, fitW, TARGET_H);
       }
-
       const now = new Date();
       const ts  = now.getFullYear()
         + String(now.getMonth() + 1).padStart(2, '0')
