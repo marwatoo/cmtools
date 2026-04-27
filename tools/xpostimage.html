@@ -45,7 +45,6 @@
 
     .preview-canvas {
       max-width: 100%;
-      width: 100%;
       height: auto;
       border-radius: 8px;
       box-shadow: var(--shadow);
@@ -317,6 +316,7 @@
 
     // ─── canvas draw ──────────────────────────────────────────────────────────
     async function draw() {
+      const DPR        = window.devicePixelRatio || 1;
       const W          = 1200;
       const padding    = 56;
       const avatarSize = 64;
@@ -329,8 +329,11 @@
       const mutedColor = isDark ? '#71767b' : '#536471';
 
       if (!tweetData) {
-        canvas.width  = W;
-        canvas.height = 300;
+        canvas.width  = W * DPR;
+        canvas.height = 300 * DPR;
+        canvas.style.width  = W + 'px';
+        canvas.style.height = '300px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle = bg || '#000';
         ctx.fillRect(0, 0, W, 300);
         ctx.fillStyle = mutedColor;
@@ -402,12 +405,17 @@
       if (date)         H += 28;
       H += padding;
 
-      canvas.width  = W;
-      canvas.height = Math.max(300, H);
+      // Scale canvas for devicePixelRatio so macOS Retina font metrics
+      // match exactly what measureText() reported during line-wrapping.
+      canvas.width  = W * DPR;
+      canvas.height = Math.max(300, H) * DPR;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = Math.max(300, H) + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
       // background
       ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, W, canvas.height);
+      ctx.fillRect(0, 0, W, Math.max(300, H));
 
       let y = padding;
 
@@ -643,14 +651,13 @@
     }
 
     function breakToken(token, maxW) {
-      const safeW = maxW * 0.98;
       const parts = [];
       let remaining = token;
-      while (remaining && ctx.measureText(remaining).width > safeW) {
+      while (remaining && ctx.measureText(remaining).width > maxW) {
         let lo = 1, hi = remaining.length;
         while (lo < hi) {
           const mid = (lo + hi + 1) >>> 1;
-          if (ctx.measureText(remaining.slice(0, mid)).width <= safeW) lo = mid;
+          if (ctx.measureText(remaining.slice(0, mid)).width <= maxW) lo = mid;
           else hi = mid - 1;
         }
         parts.push(remaining.slice(0, lo));
@@ -661,24 +668,21 @@
     }
 
     function wrapText(text, maxW, fs) {
-      // Shrink the effective wrap width by ~2% to absorb macOS/San Francisco
-      // subpixel rendering, which measures slightly wider than Linux/Android.
-      const safeW = maxW * 0.98;
       const allLines = [];
       ctx.font = `${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       for (const para of text.split('\n')) {
-        if (ctx.measureText(para).width <= safeW) { allLines.push(para); continue; }
+        if (ctx.measureText(para).width <= maxW) { allLines.push(para); continue; }
         let line = '';
         for (const word of para.split(' ')) {
-          if (ctx.measureText(word).width > safeW) {
+          if (ctx.measureText(word).width > maxW) {
             if (line) { allLines.push(line); line = ''; }
-            const broken = breakToken(word, safeW);
+            const broken = breakToken(word, maxW);
             for (let b = 0; b < broken.length - 1; b++) allLines.push(broken[b]);
             line = broken[broken.length - 1];
             continue;
           }
           const test = line ? line + ' ' + word : word;
-          if (ctx.measureText(test).width > safeW && line) { allLines.push(line); line = word; }
+          if (ctx.measureText(test).width > maxW && line) { allLines.push(line); line = word; }
           else line = test;
         }
         if (line) allLines.push(line);
