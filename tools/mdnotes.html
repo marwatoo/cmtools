@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Notes — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="../assets/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;font-size:1rem}
+
+    .app{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 60px)}
+    
+    .sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:16px;overflow-y:auto;max-height:calc(100vh - 60px)}
+    .sidebar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .sidebar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem}
+    
+    .tree{list-style:none}
+    .tree-item{padding:6px 8px;border-radius:var(--radius-xs);cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:6px;color:var(--text2);transition:all .15s}
+    .tree-item:hover{background:var(--card-hover);color:var(--text)}
+    .tree-item.active{background:var(--accent);color:var(--btn-text)}
+    .tree-item.folder{font-weight:600}
+    .tree-item.folder .tree-icon{font-size:1rem}
+    .tree-icon{font-size:.9rem}
+    .tree-children{padding-left:16px;display:none}
+    .tree-children.show{display:block}
+    
+    .editor-view{display:flex;flex-direction:column;height:100%}
+    .editor-toolbar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+    .file-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;flex:1}
+    
+    .btn{padding:6px 12px;border:none;border-radius:var(--radius-xs);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn:hover{opacity:.88}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent)}
+    .btn-secondary.active{background:var(--accent);color:var(--btn-text);border-color:var(--accent)}
+    .btn-icon{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center}
+
+    .editor-content{flex:1;display:none;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+    .editor-content.show{display:grid}
+    .editor-pane,.preview-pane{background:var(--bg);padding:16px;overflow-y:auto;height:100%;box-sizing:border-box;display:flex;flex-direction:column}
+    .preview-pane{display:flex}
+    
+    .view-split .editor-pane,.view-split .preview-pane{grid-column:span 1}
+    .view-split { grid-template-columns: 1fr 1fr; }
+    .view-editor .editor-pane{grid-column:span 1}
+    .view-editor .preview-pane{display:none}
+    .view-editor { grid-template-columns: 1fr; }
+    .view-preview .editor-pane{display:none}
+    .view-preview .preview-pane{grid-column:span 1}
+    .view-preview { grid-template-columns: 1fr; }
+
+    .editor-pane{display:flex}
+    .editor-pane textarea{font-family:'JetBrains Mono',monospace;font-size:.9rem;line-height:1.6;border:none;resize:none;outline:none;width:100%;height:100%;background:transparent;color:var(--text)}
+
+    .preview-pane{font-size:.95rem;line-height:1.7}
+    .preview-pane h1,.preview-pane h2,.preview-pane h3{font-family:'Syne',sans-serif;margin:1em 0 .5em}
+    .preview-pane h1{font-size:1.6rem}
+    .preview-pane h2{font-size:1.3rem}
+    .preview-pane h3{font-size:1.1rem}
+    .preview-pane p{margin:.8em 0}
+    .preview-pane code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:.85em}
+    .preview-pane pre{background:var(--bg3);padding:12px;border-radius:var(--radius-xs);overflow-x:auto}
+    .preview-pane blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--text2)}
+    .preview-pane ul,.preview-pane ol{padding-left:24px;margin:.8em 0}
+    .preview-pane a{color:var(--accent)}
+    .preview-pane pre { background: transparent !important; padding: 12px; border-radius: var(--radius-xs); overflow-x: auto; margin: 12px 0; }
+    .preview-pane pre code { background: transparent !important; padding: 0; }
+    .preview-pane pre code { display: block; }
+    .preview-pane table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .preview-pane th, .preview-pane td { border: 1px solid var(--border2); padding: 8px 12px; text-align: left; }
+    .preview-pane th { background: var(--bg3); }
+    .preview-pane img { max-width: 100%; border-radius: var(--radius-xs); }
+
+    :root .hljs { background: #1a1a24 !important; color: #e8e8f0; }
+    [data-theme="light"] .hljs { background: #f0f0f5 !important; color: #1a1a24; }
+    :root .hljs-keyword, :root .hljs-selector-tag { color: #ff79c6; }
+    :root .hljs-string, :root .hljs-attr { color: #f1fa8c; }
+    :root .hljs-number, :root .hljs-literal { color: #bd93f9; }
+    :root .hljs-function, :root .hljs-title { color: #50fa7b; }
+    :root .hljs-comment { color: #6272a4; }
+    :root .hljs-built_in, :root .hljs-class { color: #8be9fd; }
+    :root .hljs-params { color: #ffb86c; }
+    [data-theme="light"] .hljs-keyword, [data-theme="light"] .hljs-selector-tag { color: #d63384; }
+    [data-theme="light"] .hljs-string, [data-theme="light"] .hljs-attr { color: #a31515; }
+    [data-theme="light"] .hljs-number, [data-theme="light"] .hljs-literal { color: #098658; }
+    [data-theme="light"] .hljs-function, [data-theme="light"] .hljs-title { color: #010101; }
+    [data-theme="light"] .hljs-comment { color: #008000; }
+    [data-theme="light"] .hljs-built_in, [data-theme="light"] .hljs-class { color: #2b91af; }
+    [data-theme="light"] .hljs-params { color: #a31515; }
+
+    .empty-view{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)}
+
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;display:none}
+    .modal.show{display:flex}
+    .modal-content{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:400px}
+    .modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;margin-bottom:16px}
+    .form-input{width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-size:.9rem;margin-bottom:12px}
+
+    @media (max-width:768px) {
+      .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+      .sidebar{width:100%;max-height:200px;overflow-y:auto;border-right:none;border-bottom:1px solid var(--border)}
+      .sidebar-header{flex-direction:row;flex-wrap:wrap}
+      .sidebar-header .sidebar-title{width:100%;margin-bottom:4px}
+      .editor-toolbar{flex-wrap:wrap;gap:4px}
+      .editor-toolbar .file-name{width:100%;font-size:.9rem}
+      .btn{padding:8px 10px;font-size:.75rem}
+      .modal-content{padding:16px;margin:8px}
+      .editor-content{grid-template-columns:1fr}
+      .editor-content.show{display:flex;flex-direction:column}
+      .view-split .editor-pane,.view-split .preview-pane{width:100%;display:block}
+      .view-split .preview-pane{max-height:300px}
+    }
+    @media (max-width:480px) {
+      .sidebar-header div{width:100%;justify-content:flex-start;flex-wrap:wrap}
+      .btn{padding:6px 8px;font-size:.7rem;min-width:36px}
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Markdown Notes</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <span class="sidebar-title">Files</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-secondary" id="toggleTreeBtn" title="Expand/Collapse">📂</button>
+        <button class="btn btn-secondary" id="newFolderBtn" title="New Folder">📁+</button>
+        <button class="btn btn-primary" id="loadFileBtn">Load</button>
+        <button class="btn btn-primary" id="newFileBtn">+ New</button>
+      </div>
+    </div>
+    <ul class="tree" id="fileTree"></ul>
+  </div>
+
+  <div class="editor-view">
+    <div class="editor-toolbar">
+      <span class="file-name" id="currentFileName">Select a file</span>
+      <button class="btn btn-secondary" id="viewToggleBtn">Split</button>
+      <button class="btn btn-secondary" id="rtlBtn">RTL</button>
+      <button class="btn btn-primary" id="saveBtn">Save</button>
+      <button class="btn btn-secondary btn-icon" id="deleteFileBtn" title="Delete">🗑</button>
+    </div>
+    <div class="editor-content" id="editorContent">
+      <div class="editor-pane">
+        <textarea id="mdEditor" placeholder="# Start writing..."></textarea>
+      </div>
+      <div class="preview-pane" id="mdPreview"></div>
+    </div>
+    <div class="empty-view" id="emptyView">Select or create a file to start</div>
+  </div>
+</div>
+
+<div class="modal" id="newModal">
+  <div class="modal-content">
+    <h2 class="modal-title">New File</h2>
+    <input type="text" class="form-input" id="newFileName" placeholder="filename.md">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="createFileBtn">Create</button>
+      <button class="btn btn-secondary" id="cancelNewBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="newFolderModal">
+  <div class="modal-content">
+    <h2 class="modal-title">New Folder</h2>
+    <input type="text" class="form-input" id="newFolderName" placeholder="folder name">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="createFolderBtn">Create</button>
+      <button class="btn btn-secondary" id="cancelFolderBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="renameModal">
+  <div class="modal-content">
+    <h2 class="modal-title">Rename</h2>
+    <input type="text" class="form-input" id="renameInput" placeholder="new name">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="confirmRenameBtn">Rename</button>
+      <button class="btn btn-secondary" id="cancelRenameBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="contextModal">
+  <div class="modal-content">
+    <h2 class="modal-title">Options</h2>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-secondary" id="ctxRenameBtn">Rename</button>
+      <button class="btn btn-secondary" id="ctxMoveBtn">Move</button>
+      <button class="btn btn-secondary" id="ctxDeleteBtn">Delete</button>
+      <button class="btn btn-secondary" id="cancelCtxBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="moveModal">
+  <div class="modal-content">
+    <h2 class="modal-title">Move to Folder</h2>
+    <input type="text" class="form-input" id="moveToFolder" placeholder="folder/name (empty for root)">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="moveFileBtn">Move</button>
+      <button class="btn btn-secondary" id="cancelMoveBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let files = [];
+let currentFile = null;
+let viewMode = 'split';
+let rtlMode = false;
+
+function loadFiles() {
+  var stored = localStorage.getItem('mdnotes');
+  if (!stored) {
+    files = [];
+    renderTree();
+    return;
+  }
+  var raw = JSON.parse(stored);
+  files = [];
+  for (var i = 0; i < raw.length; i++) {
+    var f = raw[i];
+    if (f.isFolder === true || (f.name && f.name.endsWith('/.folder'))) {
+      f.isFolder = true;
+    }
+    files.push(f);
+  }
+  renderTree();
+}
+
+function saveToStorage() {
+  localStorage.setItem('mdnotes', JSON.stringify(files));
+}
+
+function setView(mode) {
+  viewMode = mode;
+  const content = document.getElementById('editorContent');
+  content.className = 'editor-content show view-' + mode;
+  const btn = document.getElementById('viewToggleBtn');
+  btn.textContent = mode === 'split' ? 'Split' : mode === 'preview' ? 'Edit' : 'Preview';
+}
+
+function renderTree() {
+  var tree = document.getElementById('fileTree');
+  var folders = {};
+  var rootFiles = [];
+  var folderMarkers = {};
+  
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    if (f.isFolder) {
+      folderMarkers[f.name.replace('/.folder', '')] = f;
+    } else {
+      var parts = f.name.split('/');
+      if (parts.length > 1) {
+        var folder = parts[0];
+        if (!folders[folder]) folders[folder] = [];
+        folders[folder].push(f);
+      } else {
+        rootFiles.push(f);
+      }
+    }
+  }
+  
+  var html = '';
+  var folderKeys = Object.keys(folderMarkers).sort();
+  for (var fi = 0; fi < folderKeys.length; fi++) {
+    var folder = folderKeys[fi];
+    var folderFiles = folders[folder] || [];
+    var fileHtml = '';
+    for (var j = 0; j < folderFiles.length; j++) {
+      fileHtml += renderFileItem(folderFiles[j]);
+    }
+    html += '<li class="tree-item folder" data-folder="' + folder + '" onclick="toggleFolder(\'' + folder + '\')" oncontextmenu="folderContext(event, \'' + folder + '\'); return false;">' +
+      '<span class="tree-icon">📁</span>' + folder +
+    '</li>' +
+    '<ul class="tree-children show" id="folder-' + folder + '">' +
+      fileHtml + '</ul>';
+  }
+  var implicitKeys = Object.keys(folders).filter(function(f) { return !folderMarkers[f]; }).sort();
+  for (var fi = 0; fi < implicitKeys.length; fi++) {
+    var folder = implicitKeys[fi];
+    var folderFiles = folders[folder];
+    var fileHtml = '';
+    for (var j = 0; j < folderFiles.length; j++) {
+      fileHtml += renderFileItem(folderFiles[j]);
+    }
+    html += '<li class="tree-item folder" data-folder="' + folder + '" onclick="toggleFolder(\'' + folder + '\')" oncontextmenu="folderContext(event, \'' + folder + '\'); return false;">' +
+      '<span class="tree-icon">📁</span>' + folder +
+    '</li>' +
+    '<ul class="tree-children show" id="folder-' + folder + '">' +
+      fileHtml + '</ul>';
+  }
+  for (var j = 0; j < rootFiles.length; j++) {
+    html += renderFileItem(rootFiles[j]);
+  }
+  if (folderKeys.length === 0 && implicitKeys.length === 0 && rootFiles.length === 0) {
+    html = '<li class="tree-item" style="opacity:.5">No files</li>';
+  }
+  tree.innerHTML = html;
+}
+
+function renderFileItem(f) {
+  if (f.isFolder) return '';
+  const active = currentFile && currentFile.id === f.id ? 'active' : '';
+  return `<li class="tree-item ${active}" onclick="openFile(${f.id}, event)" oncontextmenu="fileContext(event, ${f.id}); return false;">
+    <span class="tree-icon">📄</span>${f.name.split('/').pop()}
+  </li>`;
+}
+
+function fileContext(e, id) {
+  e.preventDefault();
+  var f = files.find(function(x) { return x.id === id; });
+  if (!f) return;
+  currentFile = f;
+  document.getElementById('contextModal').classList.add('show');
+}
+
+function toggleFolder(name) {
+  var el = document.getElementById('folder-' + name);
+  if (el) el.classList.toggle('show');
+}
+
+function folderContext(e, folderName) {
+  e.preventDefault();
+  var folder = files.find(function(f) { return f.isFolder && f.name === folderName + '/.folder'; });
+  if (folder) {
+    currentFile = folder;
+    document.getElementById('contextModal').classList.add('show');
+  } else {
+    var implicitFiles = files.filter(function(f) { return !f.isFolder && f.name.split('/')[0] === folderName; });
+    if (implicitFiles.length > 0) {
+      alert('This folder is implicit. Move files to a real folder first to rename.');
+    } else {
+      alert('Folder not found.');
+    }
+  }
+}
+
+function openFile(id, e) {
+  if (e) e.stopPropagation();
+  const f = files.find(x => x.id === id);
+  if (!f) return;
+  currentFile = f;
+  document.getElementById('currentFileName').textContent = f.name;
+  document.getElementById('mdEditor').value = f.content || '';
+  document.getElementById('editorContent').classList.add('show');
+  document.getElementById('emptyView').style.display = 'none';
+  renderPreview();
+  renderTree();
+}
+
+function renderPreview() {
+  const md = document.getElementById('mdEditor').value;
+  const preview = document.getElementById('mdPreview');
+  if (!md.trim()) { preview.innerHTML = '<em style="opacity:.5">Start typing to see preview...</em>'; return; }
+  try {
+    marked.setOptions({ highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try { return hljs.highlight(code, { language: lang }).value; }
+        catch(e) { return code; }
+      }
+      try { return hljs.highlightAuto(code).value; }
+      catch(e) { return code; }
+    }});
+    const html = marked.parse(md);
+    preview.innerHTML = html;
+    preview.querySelectorAll('pre code').forEach((block) => { hljs.highlightElement(block); });
+    preview.style.direction = rtlMode ? 'rtl' : 'ltr';
+    preview.style.textAlign = rtlMode ? 'right' : 'left';
+  } catch(e) { preview.innerHTML = '<span style="color:var(--accent3)">Error: ' + e.message + '</span>'; }
+}
+
+function saveFile() {
+  if (!currentFile) return;
+  const content = document.getElementById('mdEditor').value;
+  const f = files.find(x => x.id === currentFile.id);
+  if (f) f.content = content;
+  saveToStorage();
+  alert('Saved!');
+}
+
+function createFile() {
+  const name = document.getElementById('newFileName').value.trim();
+  if (!name) return;
+  if (files.find(f => f.name === name)) {
+    alert('File already exists!');
+    return;
+  }
+  files.push({id: Date.now(), name: name, content: ''});
+  saveToStorage();
+  document.getElementById('newModal').classList.remove('show');
+  document.getElementById('newFileName').value = '';
+  loadFiles();
+}
+
+function createFolder() {
+  const name = document.getElementById('newFolderName').value.trim();
+  if (!name) return;
+  if (files.find(f => f.isFolder && f.name === name + '/.folder')) {
+    alert('Folder already exists!');
+    return;
+  }
+  files.push({id: Date.now(), name: name + '/.folder', content: '', isFolder: true});
+  saveToStorage();
+  document.getElementById('newFolderModal').classList.remove('show');
+  document.getElementById('newFolderName').value = '';
+  loadFiles();
+}
+
+function moveFile() {
+  if (!currentFile) return;
+  const folder = document.getElementById('moveToFolder').value.trim();
+  const f = files.find(x => x.id === currentFile.id);
+  if (!f) return;
+  const baseName = f.name.split('/').pop();
+  const newName = folder ? folder + '/' + baseName : baseName;
+  if (files.find(x => x.name === newName && x.id !== currentFile.id)) {
+    alert('File already exists in that location!');
+    return;
+  }
+  f.name = newName;
+  currentFile.name = newName;
+  document.getElementById('currentFileName').textContent = newName;
+  saveToStorage();
+  document.getElementById('moveModal').classList.remove('show');
+  loadFiles();
+}
+
+function deleteFile() {
+  if (!currentFile || !confirm('Delete this file?')) return;
+  files = files.filter(f => f.id !== currentFile.id);
+  saveToStorage();
+  currentFile = null;
+  document.getElementById('editorContent').classList.remove('show');
+  document.getElementById('emptyView').style.display = 'flex';
+  loadFiles();
+}
+
+document.getElementById('mdEditor').addEventListener('input', renderPreview);
+document.getElementById('saveBtn').addEventListener('click', saveFile);
+document.getElementById('deleteFileBtn').addEventListener('click', deleteFile);
+document.getElementById('newFileBtn').addEventListener('click', () => document.getElementById('newModal').classList.add('show'));
+document.getElementById('createFileBtn').addEventListener('click', createFile);
+document.getElementById('cancelNewBtn').addEventListener('click', function() { document.getElementById('newModal').classList.remove('show'); });
+
+document.getElementById('cancelRenameBtn').addEventListener('click', function() { document.getElementById('renameModal').classList.remove('show'); });
+document.getElementById('cancelCtxBtn').addEventListener('click', function() { document.getElementById('contextModal').classList.remove('show'); });
+document.getElementById('ctxRenameBtn').addEventListener('click', function() {
+  document.getElementById('contextModal').classList.remove('show');
+  document.getElementById('renameInput').value = currentFile.isFolder ? currentFile.name.replace('/.folder', '') : currentFile.name;
+  document.getElementById('renameModal').classList.add('show');
+});
+document.getElementById('ctxMoveBtn').addEventListener('click', function() {
+  document.getElementById('contextModal').classList.remove('show');
+  document.getElementById('moveToFolder').value = currentFile.isFolder ? currentFile.name.replace('/.folder', '') : (currentFile.name.includes('/') ? currentFile.name.split('/').slice(0, -1).join('/') : '');
+  document.getElementById('moveModal').classList.add('show');
+});
+document.getElementById('ctxDeleteBtn').addEventListener('click', function() {
+  document.getElementById('contextModal').classList.remove('show');
+  if (!currentFile) return;
+  var confirmDelete = currentFile.isFolder ? confirm('Delete folder "' + currentFile.name.replace('/.folder', '') + '" and all its files?') : confirm('Delete "' + currentFile.name + '"?');
+  if (!confirmDelete) return;
+  
+  if (currentFile.isFolder) {
+    var folderName = currentFile.name.replace('/.folder', '');
+    var remaining = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (f.isFolder && f.name === currentFile.name) continue;
+      if (!f.isFolder && f.name.split('/')[0] === folderName) continue;
+      remaining.push(f);
+    }
+    files = remaining;
+  } else {
+    files = files.filter(function(f) { return f.id !== currentFile.id; });
+  }
+  
+  saveToStorage();
+  currentFile = null;
+  document.getElementById('editorContent').classList.remove('show');
+  document.getElementById('emptyView').style.display = 'flex';
+  loadFiles();
+});
+document.getElementById('confirmRenameBtn').addEventListener('click', function() {
+  var newName = document.getElementById('renameInput').value.trim();
+  if (!newName || !currentFile) return;
+  if (currentFile.isFolder) {
+    var existing = files.find(function(f) { return f.isFolder && f.name === newName + '/.folder' && f.id !== currentFile.id; });
+    if (existing) {
+      alert('Folder already exists!');
+      return;
+    }
+  } else {
+    var existing = files.find(function(f) { return !f.isFolder && f.name === newName && f.id !== currentFile.id; });
+    if (existing) {
+      alert('File already exists!');
+      return;
+    }
+  }
+  var oldFile = files.find(function(f) { return f.id === currentFile.id; });
+  if (oldFile) {
+    if (currentFile.isFolder) {
+      var oldFolderName = oldFile.name.replace('/.folder', '');
+      var newFolderName = newName;
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        if (!f.isFolder && f.name.split('/')[0] === oldFolderName) {
+          var parts = f.name.split('/');
+          parts[0] = newFolderName;
+          f.name = parts.join('/');
+        }
+      }
+      oldFile.name = newName + '/.folder';
+    } else {
+      oldFile.name = newName;
+    }
+    currentFile.name = oldFile.name;
+    document.getElementById('currentFileName').textContent = oldFile.name;
+  }
+  saveToStorage();
+  document.getElementById('renameModal').classList.remove('show');
+  loadFiles();
+});
+
+document.getElementById('newFolderBtn').addEventListener('click', () => document.getElementById('newFolderModal').classList.add('show'));
+
+document.getElementById('toggleTreeBtn').addEventListener('click', () => {
+  const folders = document.querySelectorAll('.tree-children');
+  const btn = document.getElementById('toggleTreeBtn');
+  const isExpanded = btn.classList.contains('active');
+  if (isExpanded) {
+    folders.forEach(f => f.classList.remove('show'));
+    btn.classList.remove('active');
+    btn.textContent = '📂';
+  } else {
+    folders.forEach(f => f.classList.add('show'));
+    btn.classList.add('active');
+    btn.textContent = '📁';
+  }
+});
+document.getElementById('createFolderBtn').addEventListener('click', createFolder);
+document.getElementById('cancelFolderBtn').addEventListener('click', () => document.getElementById('newFolderModal').classList.remove('show'));
+
+document.getElementById('loadFileBtn').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.md,.markdown,.txt';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const name = document.getElementById('newFileName').value.trim() || file.name;
+      if (files.find(f => f.name === name)) {
+        alert('File already exists!');
+        return;
+      }
+      files.push({id: Date.now(), name: name, content: ev.target.result});
+      saveToStorage();
+      loadFiles();
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+document.getElementById('moveFileBtn').addEventListener('click', moveFile);
+document.getElementById('cancelMoveBtn').addEventListener('click', () => document.getElementById('moveModal').classList.remove('show'));
+
+var vToggle = document.getElementById('viewToggleBtn');
+if (vToggle) {
+  vToggle.addEventListener('click', function() {
+    if (viewMode === 'split') setView('preview');
+    else if (viewMode === 'preview') setView('editor');
+    else setView('split');
+  });
+}
+
+document.getElementById('rtlBtn').addEventListener('click', () => {
+  rtlMode = !rtlMode;
+  document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
+  renderPreview();
+});
+
+loadFiles();
+setView('split');
+</script>
+</body>
+</html>

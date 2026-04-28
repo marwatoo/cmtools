@@ -11,7 +11,7 @@
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
     const icon = document.querySelector('.theme-icon');
-    if (icon) icon.textContent = theme === 'dark' ? '☽' : '○';
+    if (icon) icon.textContent = theme === 'dark' ? '○' : '☽';
   }
 
   // Apply on load

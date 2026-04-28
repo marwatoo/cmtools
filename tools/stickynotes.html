@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sticky Notes — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="../assets/theme.js"></script>
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+    .nav{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;font-size:1rem}
+    .theme-icon{font-size:1rem}
+
+    .board{width:100vw;height:calc(100vh - 60px);position:relative;overflow:hidden}
+    .board-bg{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);background-size:24px 24px;pointer-events:none}
+
+    .sticky{position:absolute;width:200px;min-height:150px;padding:12px;border-radius:var(--radius-sm);cursor:move;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:box-shadow .2s;display:flex;flex-direction:column;touch-action:none}
+    .sticky:hover{box-shadow:0 8px 30px rgba(0,0,0,0.4)}
+    .sticky-yellow{background:#fef3c7;color:#92400e}
+    .sticky-green{background:#d1fae5;color:#065f46}
+    .sticky-blue{background:#dbeafe;color:#1e40af}
+    .sticky-pink{background:#fce7f3;color:#9d174d}
+    .sticky-purple{background:#ede9fe;color:#4c1d95}
+    .sticky-orange{background:#ffedd5;color:#9a3412}
+    [data-theme="light"] .sticky-yellow{background:#fef3c7}
+    [data-theme="light"] .sticky-green{background:#d1fae5}
+    [data-theme="light"] .sticky-blue{background:#dbeafe}
+    [data-theme="light"] .sticky-pink{background:#fce7f3}
+    [data-theme="light"] .sticky-purple{background:#ede9fe}
+    [data-theme="light"] .sticky-orange{background:#ffedd5}
+
+    .sticky-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .sticky-name{font-size:.75rem;font-weight:600;opacity:.7;margin-bottom:4px;border:none;background:transparent;width:100%;color:inherit;outline:none;pointer-events:auto}
+    .sticky-name::placeholder{opacity:.5}
+    .sticky-close{width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem;opacity:.6}
+    .sticky-close:hover{opacity:1}
+    .sticky-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,0.2)}
+    .sticky-resize{position:absolute;bottom:4px;right:4px;width:16px;height:16px;cursor:se-resize;opacity:.5;font-size:12px}
+    .sticky-resize::after{content:'⋱'}
+    .sticky-text{width:100%;flex:1;border:none;background:transparent;resize:none;font-family:'DM Sans',sans-serif;font-size:.9rem;line-height:1.5;color:inherit;outline:none;pointer-events:auto}
+    .sticky-text::placeholder{opacity:.5}
+
+    .add-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--btn-text);border:none;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:transform .2s,box-shadow .2s;z-index:100}
+    .add-btn:hover{transform:scale(1.1);box-shadow:0 8px 30px rgba(0,0,0,0.4)}
+
+    .help{position:fixed;bottom:24px;left:24px;font-size:.75rem;color:var(--text3)}
+    .help span{color:var(--accent)}
+
+    @media (max-width:480px) {
+      .sticky{width:140px;min-height:100px;padding:8px}
+      .add-btn{width:48px;height:48px;bottom:16px;right:16px}
+      .sticky-name{font-size:.65rem}
+      .sticky-text{font-size:.75rem}
+      .sticky-resize{width:12px;height:12px}
+      .help{font-size:.65rem;bottom:16px;left:16px}
+      .color-picker{transform:scale(0.85)}
+    }
+    @media (max-width:360px) {
+      .sticky{width:120px}
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Sticky Notes</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="board" id="board">
+  <div class="board-bg"></div>
+</div>
+
+<button class="add-btn" id="addBtn">+</button>
+
+<div class="color-picker" id="colorPicker" style="display:none;position:fixed;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-xs);z-index:200;box-shadow:0 4px 12px rgba(0,0,0,0.3)">
+  <div style="display:grid;grid-template-columns:repeat(3,20px);gap:6px">
+    <div class="color-opt" id="c-yellow" data-c="yellow" style="width:20px;height:20px;border-radius:4px;background:#fef3c7;cursor:pointer"></div>
+    <div class="color-opt" id="c-green" data-c="green" style="width:20px;height:20px;border-radius:4px;background:#d1fae5;cursor:pointer"></div>
+    <div class="color-opt" id="c-blue" data-c="blue" style="width:20px;height:20px;border-radius:4px;background:#dbeafe;cursor:pointer"></div>
+    <div class="color-opt" id="c-pink" data-c="pink" style="width:20px;height:20px;border-radius:4px;background:#fce7f3;cursor:pointer"></div>
+    <div class="color-opt" id="c-purple" data-c="purple" style="width:20px;height:20px;border-radius:4px;background:#ede9fe;cursor:pointer"></div>
+    <div class="color-opt" id="c-orange" data-c="orange" style="width:20px;height:20px;border-radius:4px;background:#ffedd5;cursor:pointer"></div>
+  </div>
+</div>
+
+<div class="help">Drag to move • <span>Click +</span> to add</div>
+
+<script>
+var notes = [];
+var dragNote = null;
+var dragOffset = { x: 0, y: 0 };
+
+function loadNotes() {
+  try {
+    var s = localStorage.getItem('sticky-notes');
+    notes = s ? JSON.parse(s) : [];
+  } catch(e) { notes = []; }
+  renderNotes();
+}
+
+function saveNotes() {
+  localStorage.setItem('sticky-notes', JSON.stringify(notes));
+}
+
+function renderNotes() {
+  var board = document.getElementById('board');
+  var existing = board.querySelectorAll('.sticky');
+  for (var i = 0; i < existing.length; i++) existing[i].remove();
+  for (var i = 0; i < notes.length; i++) {
+    var note = notes[i];
+    var el = document.createElement('div');
+    el.className = 'sticky sticky-' + note.color;
+    el.style.left = (note.x || 50) + 'px';
+    el.style.top = (note.y || 50) + 'px';
+    el.style.width = (note.w || 200) + 'px';
+    el.style.minHeight = (note.h || 150) + 'px';
+    el.dataset.id = note.id;
+    el.innerHTML = '<div class="sticky-header"><div class="sticky-color" data-c="' + note.color + '"></div><div class="sticky-close" title="Delete">×</div></div><input class="sticky-name" placeholder="Title..."><textarea class="sticky-text">' + (note.text || '') + '</textarea><div class="sticky-resize"></div>';
+    if (note.name) el.querySelector('.sticky-name').value = note.name;
+    el.querySelector('.sticky-name').oninput = function() {
+      var n = notes.find(function(x) { return x.id === note.id; });
+      if (n) { n.name = this.value; saveNotes(); }
+    };
+    el.querySelector('.sticky-text').oninput = function() {
+      var n = notes.find(function(x) { return x.id === note.id; });
+      if (n) { n.text = this.value; saveNotes(); }
+    };
+    el.querySelector('.sticky-close').onclick = function() {
+      if (confirm('Delete "' + (note.name || 'note') + '"?')) {
+        notes = notes.filter(function(n) { return n.id !== note.id; });
+        saveNotes();
+        renderNotes();
+      }
+    };
+    el.querySelector('.sticky-close').ontouchend = function(e) {
+      e.preventDefault();
+      if (confirm('Delete "' + (note.name || 'note') + '"?')) {
+        notes = notes.filter(function(n) { return n.id !== note.id; });
+        saveNotes();
+        renderNotes();
+      }
+    };
+    el.querySelector('.sticky-color').onclick = function(e) {
+      currentNoteId = note.id;
+      showColorPicker(e.target);
+    };
+    el.querySelector('.sticky-color').ontouchend = function(e) {
+      e.preventDefault();
+      currentNoteId = note.id;
+      showColorPicker(e.target);
+    };
+    el.onmousedown = startDrag;
+    el.ontouchstart = startDrag;
+    el.querySelector('.sticky-resize').onmousedown = function(e) { e.stopPropagation(); startResize(e); };
+    el.querySelector('.sticky-resize').ontouchstart = function(e) { e.stopPropagation(); startResize(e); };
+    el.onmousedown = function(e) { e.stopPropagation(); startDrag(e); };
+    el.ontouchstart = function(e) { e.stopPropagation(); startDrag(e); };
+    board.appendChild(el);
+  }
+}
+
+var currentNoteId = null;
+
+function showColorPicker(el) {
+  var picker = document.getElementById('colorPicker');
+  var rect = el.getBoundingClientRect();
+  picker.style.top = (rect.bottom + 8) + 'px';
+  picker.style.left = rect.left + 'px';
+  picker.style.display = 'flex';
+}
+
+var resizingNote = null;
+var resizeStart = { x: 0, y: 0, w: 0, h: 0 };
+
+function startDrag(e) {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  e.preventDefault();
+  e.stopPropagation();
+  dragNote = e.currentTarget;
+  var cx = e.touches ? e.touches[0].clientX : e.clientX;
+  var cy = e.touches ? e.touches[0].clientY : e.clientY;
+  var rect = dragNote.getBoundingClientRect();
+  dragOffset.x = cx - rect.left;
+  dragOffset.y = cy - rect.top;
+  document.onmousemove = doDrag;
+  document.onmouseup = endDrag;
+  document.ontouchmove = doDrag;
+  document.ontouchend = endDrag;
+}
+
+function doDrag(e) {
+  if (!dragNote) return;
+  e.preventDefault();
+  var cx = e.touches ? e.touches[0].clientX : e.clientX;
+  var cy = e.touches ? e.touches[0].clientY : e.clientY;
+  var x = cx - dragOffset.x;
+  var y = cy - dragOffset.y - 60;
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  dragNote.style.left = x + 'px';
+  dragNote.style.top = y + 'px';
+}
+
+function endDrag() {
+  if (dragNote) {
+    var note = notes.find(function(n) { return n.id === parseInt(dragNote.dataset.id); });
+    if (note) {
+      note.x = parseInt(dragNote.style.left);
+      note.y = parseInt(dragNote.style.top);
+      saveNotes();
+    }
+  }
+  dragNote = null;
+  document.onmousemove = null;
+  document.onmouseup = null;
+  document.ontouchmove = null;
+  document.ontouchend = null;
+}
+
+function startResize(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  resizingNote = e.target.closest('.sticky');
+  var cx = e.touches ? e.touches[0].clientX : e.clientX;
+  var cy = e.touches ? e.touches[0].clientY : e.clientY;
+  resizeStart.x = cx;
+  resizeStart.y = cy;
+  resizeStart.w = resizingNote.offsetWidth;
+  resizeStart.h = resizingNote.offsetHeight;
+  document.onmousemove = doResize;
+  document.onmouseup = endResize;
+  document.ontouchmove = doResize;
+  document.ontouchend = endResize;
+}
+
+function doResize(e) {
+  if (!resizingNote) return;
+  e.preventDefault();
+  var cx = e.touches ? e.touches[0].clientX : e.clientX;
+  var cy = e.touches ? e.touches[0].clientY : e.clientY;
+  var w = Math.max(100, resizeStart.w + (cx - resizeStart.x));
+  var h = Math.max(80, resizeStart.h + (cy - resizeStart.y));
+  resizingNote.style.width = w + 'px';
+  resizingNote.style.minHeight = h + 'px';
+}
+
+function endResize() {
+  if (resizingNote) {
+    var note = notes.find(function(n) { return n.id === parseInt(resizingNote.dataset.id); });
+    if (note) {
+      note.w = resizingNote.offsetWidth;
+      note.h = resizingNote.offsetHeight;
+      saveNotes();
+    }
+  }
+  resizingNote = null;
+  document.onmousemove = null;
+  document.onmouseup = null;
+  document.ontouchmove = null;
+  document.ontouchend = null;
+}
+
+function addNote() {
+  var colors = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
+  var color = colors[Math.floor(Math.random() * colors.length)];
+  notes.push({
+    id: Date.now(),
+    name: '',
+    text: '',
+    color: color,
+    x: 50 + Math.random() * 200,
+    y: 50 + Math.random() * 150,
+    w: 200,
+    h: 150
+  });
+  saveNotes();
+  renderNotes();
+}
+
+var currentNoteId = null;
+
+function showColorPicker(el) {
+  var picker = document.getElementById('colorPicker');
+  var rect = el.getBoundingClientRect();
+  picker.style.top = (rect.bottom + 8) + 'px';
+  picker.style.left = rect.left + 'px';
+  picker.style.display = 'flex';
+}
+
+document.getElementById('colorPicker').onclick = function(e) {
+  if (e.target.classList.contains('color-opt')) {
+    var c = e.target.dataset.c;
+    if (currentNoteId) {
+      var n = notes.find(function(x) { return x.id === currentNoteId; });
+      if (n) { n.color = c; saveNotes(); renderNotes(); }
+    }
+    document.getElementById('colorPicker').style.display = 'none';
+  }
+};
+
+document.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('sticky-color')) {
+    document.getElementById('colorPicker').style.display = 'none';
+  }
+});
+document.addEventListener('touchend', function(e) {
+  if (!e.target.classList.contains('sticky-color')) {
+    document.getElementById('colorPicker').style.display = 'none';
+  }
+});
+
+document.getElementById('addBtn').onclick = addNote;
+loadNotes();
+
+// Color pickers
+var colorIds = ['c-yellow','c-green','c-blue','c-pink','c-purple','c-orange'];
+for (var i = 0; i < colorIds.length; i++) {
+  (function(id) {
+    var el = document.getElementById(id);
+    el.onclick = function() { pickColor(id); };
+    el.ontouchend = function(e) { e.preventDefault(); pickColor(id); };
+  })(colorIds[i]);
+}
+
+function pickColor(id) {
+  var c = document.getElementById(id).dataset.c;
+  if (currentNoteId) {
+    var n = notes.find(function(x) { return x.id === currentNoteId; });
+    if (n) { n.color = c; saveNotes(); renderNotes(); }
+  }
+  document.getElementById('colorPicker').style.display = 'none';
+}
+</script>
+</body>
+</html>
