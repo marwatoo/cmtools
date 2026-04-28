@@ -138,9 +138,11 @@
 
     <ul class="file-list" id="fileList"></ul>
 
+    <button class="btn btn-secondary" id="clearBtn" style="display:none;margin-bottom:12px;">✕ Clear All</button>
+
     <div class="section-head">Layout</div>
     <div class="layout-grid" id="layoutGrid">
-      <div class="layout-btn active" data-cols="2" data-rows="1">
+      <div class="layout-btn" data-cols="2" data-rows="1">
         <div class="cells" style="grid-template-columns:repeat(2,1fr)"><div class="cell"></div><div class="cell"></div></div>
         <span class="label">2</span>
       </div>
@@ -239,22 +241,32 @@
     const offsetYVal = document.getElementById('offsetYVal');
     const previewCanvas = document.getElementById('previewCanvas');
     const downloadBtn = document.getElementById('downloadBtn');
+    const clearBtn = document.getElementById('clearBtn');
     const doneMsg = document.getElementById('doneMsg');
 
     const sizes = { '16:9': [1920, 1080], '1:1': [1080, 1080], '4:5': [1080, 1350], '9:16': [1080, 1920] };
 
     let files = [];
     let imageData = [];
-    let currentLayout = { cols: 2, rows: 1 };
+    let currentLayout = null;
     let selectedIdx = -1;
     let draggedIdx = null;
 
     const dims = () => sizes[aspectRatioEl.value];
 
-    uploadInput.addEventListener('change', () => {
-      files = [...uploadInput.files];
-      imageData = files.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+    function clearAll() {
+      files = [];
+      imageData = [];
       selectedIdx = -1;
+      renderFileList();
+    }
+
+    uploadInput.addEventListener('change', () => {
+      const newFiles = [...uploadInput.files];
+      const newData = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      files = [...files, ...newFiles];
+      imageData = [...imageData, ...newData];
+      if (files.length >= 2 && selectedIdx < 0) selectedIdx = 0;
       renderFileList();
     });
 
@@ -262,9 +274,11 @@
     uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
     uploadZone.addEventListener('drop', e => {
       e.preventDefault(); uploadZone.classList.remove('dragover');
-      files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-      imageData = files.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
-      selectedIdx = -1;
+      const newFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+      const newData = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      files = [...files, ...newFiles];
+      imageData = [...imageData, ...newData];
+      if (files.length >= 2 && selectedIdx < 0) selectedIdx = 0;
       renderFileList();
     });
 
@@ -272,6 +286,7 @@
       fileListEl.innerHTML = '';
       doneMsg.style.display = 'none';
       downloadBtn.disabled = files.length < 2;
+      clearBtn.style.display = files.length > 0 ? 'block' : 'none';
 
       files.forEach((f, i) => {
         const li = document.createElement('li');
@@ -331,7 +346,11 @@
       document.querySelectorAll('.layout-btn').forEach(btn => {
         const needed = parseInt(btn.dataset.cols) * parseInt(btn.dataset.rows);
         btn.style.opacity = files.length >= 2 && files.length <= needed ? '1' : '0.3';
-        btn.classList.toggle('active', btn.dataset.cols == currentLayout.cols && btn.dataset.rows == currentLayout.rows);
+        if (currentLayout) {
+          btn.classList.toggle('active', btn.dataset.cols == currentLayout.cols && btn.dataset.rows == currentLayout.rows);
+        } else {
+          btn.classList.remove('active');
+        }
       });
     }
 
@@ -368,7 +387,7 @@
     }
 
     async function renderPreview() {
-      if (files.length < 2) { 
+      if (files.length < 2 || !currentLayout) { 
         previewCanvas.width = 0;
         previewCanvas.style.display = 'none';
         return; 
@@ -449,6 +468,8 @@
       downloadBtn.textContent = '⊕ Download Collage';
       doneMsg.style.display = 'block';
     });
+
+    clearBtn.addEventListener('click', clearAll);
   </script>
 </body>
 </html>
