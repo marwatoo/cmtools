@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WiFi Card — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .wifi-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .wifi-editor, .wifi-preview {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .wifi-editor { animation-delay: 0.1s; }
+    .wifi-preview { animation-delay: 0.15s; }
+
+    @media (max-width: 750px) {
+      .wifi-layout { grid-template-columns: 1fr; }
+    }
+
+    .editor-section {
+      margin-bottom: 20px;
+    }
+
+    .editor-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .wifi-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .wifi-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-btn {
+      padding: 12px 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .preset-btn.active {
+      background: var(--accent);
+      color: var(--btn-text);
+      border-color: var(--accent);
+    }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border2);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .color-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .color-btn.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    }
+
+    .preview-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: sticky;
+      top: 80px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .preview-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .canvas-wrap {
+      background: repeating-conic-gradient(#33333366 0% 25%, transparent 0% 50%) 0 0/16px 16px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+    }
+
+    #wifiCanvas {
+      max-width: 100%;
+      display: block;
+    }
+
+    .export-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(232, 255, 71, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-xs);
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">WiFi Card</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>WiFi Card</h1>
+    <p>Create WiFi QR codes for easy network sharing. Export as PNG.</p>
+  </div>
+
+  <div class="wifi-layout">
+    <div class="wifi-editor">
+      <div class="editor-section">
+        <p class="editor-label">Network Name (SSID)</p>
+        <input type="text" class="wifi-input" id="ssid" placeholder="WiFi Network Name" value="MyWiFi" />
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Password</p>
+        <input type="text" class="wifi-input" id="password" placeholder="WiFi Password" value="password123" />
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Security Type</p>
+        <div class="preset-grid">
+          <button class="preset-btn security-btn active" data-security="WPA">WPA</button>
+          <button class="preset-btn security-btn" data-security="WEP">WEP</button>
+          <button class="preset-btn security-btn" data-security="nopass">Open</button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Theme</p>
+        <div class="color-grid" id="bgColors">
+          <button class="color-btn active" style="background:#0a0a0f" data-bg="#0a0a0f"></button>
+          <button class="color-btn" style="background:#1a1a2e" data-bg="#1a1a2e"></button>
+          <button class="color-btn" style="background:#16213e" data-bg="#16213e"></button>
+          <button class="color-btn" style="background:#1f4037" data-bg="#1f4037"></button>
+          <button class="color-btn" style="background:#faf8f5" data-bg="#faf8f5"></button>
+          <button class="color-btn" style="background:#ffffff" data-bg="#ffffff"></button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Accent Color</p>
+        <div class="color-grid" id="accentColors">
+          <button class="color-btn active" style="background:#e8ff47" data-accent="#e8ff47"></button>
+          <button class="color-btn" style="background:#48dbfb" data-accent="#48dbfb"></button>
+          <button class="color-btn" style="background:#1dd1a1" data-accent="#1dd1a1"></button>
+          <button class="color-btn" style="background:#ff6b6b" data-accent="#ff6b6b"></button>
+          <button class="color-btn" style="background:#ff9f43" data-accent="#ff9f43"></button>
+          <button class="color-btn" style="background:#5f27cd" data-accent="#5f27cd"></button>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <span>📶</span>
+        <span>Scan QR code to connect instantly</span>
+      </div>
+    </div>
+
+    <div class="wifi-preview">
+      <div class="preview-card">
+        <div class="preview-header">
+          <span class="preview-title">Preview</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="wifiCanvas"></canvas>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-primary" id="downloadPngBtn">⬇ Download PNG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+let bgColor = '#0a0a0f';
+let accentColor = '#e8ff47';
+let security = 'WPA';
+let canvasW = 400;
+let canvasH = 500;
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+function getContrastColor(hex) {
+  const rgb = hexToRgb(hex);
+  return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 186 ? '#000000' : '#ffffff';
+}
+
+function escapeWifi(s) {
+  return s.replace(/([\\:;"])/g, '\\$1');
+}
+
+function generateWifiString(ssid, password, security) {
+  if (security === 'nopass') {
+    return 'WIFI:T:nopass;S:' + escapeWifi(ssid) + ';;';
+  }
+  return 'WIFI:T:' + security + ';S:' + escapeWifi(ssid) + ';P:' + escapeWifi(password) + ';;';
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('wifiCanvas');
+  const ctx = canvas.getContext('2d');
+  const textColor = getContrastColor(bgColor);
+  const ssid = document.getElementById('ssid').value || 'WiFi';
+  const password = document.getElementById('password').value || '';
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const qrCanvas = document.createElement('canvas');
+  const qrText = generateWifiString(ssid, password, security);
+  
+  try {
+    QRCode.toCanvas(qrCanvas, qrText, {
+      width: 220,
+      margin: 1,
+      color: {
+        dark: textColor,
+        light: bgColor
+      }
+    });
+    ctx.drawImage(qrCanvas, (canvasW - 220) / 2, 60);
+  } catch(e) {
+    ctx.fillStyle = textColor;
+    ctx.font = '14px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR: ' + qrText.substring(0, 30), canvasW / 2, 170);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = accentColor;
+  ctx.font = 'bold 40px Syne, sans-serif';
+  ctx.fillText('📶', canvasW / 2, 340);
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 24px Syne, sans-serif';
+  ctx.fillText(ssid, canvasW / 2, 375);
+
+  if (password) {
+    ctx.font = '18px DM Mono, monospace';
+    ctx.fillStyle = textColor;
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(password, canvasW / 2, 405);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.font = '14px DM Sans, sans-serif';
+  ctx.fillStyle = accentColor;
+  ctx.fillText(security === 'nopass' ? 'Open' : security, canvasW / 2, 435);
+
+  ctx.font = '12px DM Sans, sans-serif';
+  ctx.fillStyle = textColor;
+  ctx.globalAlpha = 0.5;
+  ctx.fillText('Scan to connect', canvasW / 2, 470);
+  ctx.globalAlpha = 1;
+}
+
+document.querySelectorAll('.security-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.security-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    security = e.target.dataset.security;
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('accentColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#accentColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    accentColor = e.target.dataset.accent;
+    renderCanvas();
+  }
+});
+
+['ssid', 'password'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderCanvas);
+});
+
+document.getElementById('downloadPngBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('wifiCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wifi-card.png';
+    a.click();
+  }, 'image/png');
+});
+
+renderCanvas();
+</script>
+</body>
+</html>

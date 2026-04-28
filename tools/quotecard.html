@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quote Card — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .quote-layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .quote-editor, .quote-preview {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .quote-editor { animation-delay: 0.1s; }
+    .quote-preview { animation-delay: 0.15s; }
+
+    @media (max-width: 850px) {
+      .quote-layout { grid-template-columns: 1fr; }
+    }
+
+    .editor-section {
+      margin-bottom: 20px;
+    }
+
+    .editor-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .quote-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .quote-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .quote-input.small {
+      min-height: 50px;
+    }
+
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .style-btn {
+      padding: 10px 6px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .style-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .style-btn.active {
+      background: var(--accent);
+      color: var(--btn-text);
+      border-color: var(--accent);
+    }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border2);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .color-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .color-btn.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-btn {
+      padding: 10px 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .range-label {
+      font-size: 0.75rem;
+      color: var(--text2);
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    .range-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text3);
+      width: 40px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border2);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .preview-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: sticky;
+      top: 80px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .preview-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .canvas-wrap {
+      background: repeating-conic-gradient(#33333366 0% 25%, transparent 0% 50%) 0 0/16px 16px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+    }
+
+    #quoteCanvas {
+      max-width: 100%;
+      display: block;
+    }
+
+    .export-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      margin-bottom: 10px;
+      user-select: none;
+    }
+
+    .check-row input {
+      display: none;
+    }
+
+    .chk-box {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      transition: all 0.15s;
+    }
+
+    .check-row input:checked ~ .chk-box {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--btn-text);
+    }
+
+    .chk-label {
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius);
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg2);
+    }
+
+    .dropzone:hover,
+    .dropzone.drag-over {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dz-icon {
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+      opacity: 0.5;
+    }
+
+    .dz-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
+
+    .dz-sub {
+      font-size: 0.7rem;
+      color: var(--text3);
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Quote Card</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Quote Card</h1>
+    <p>Create beautiful quote cards. Export as PNG/JPG.</p>
+  </div>
+
+  <div class="quote-layout">
+    <div class="quote-editor">
+      <div class="editor-section">
+        <p class="editor-label">Quote</p>
+        <textarea class="quote-input" id="quoteText" placeholder="Enter your quote...">The only way to do great work is to love what you do.</textarea>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Author</p>
+        <input type="text" class="quote-input small" id="quoteAuthor" placeholder="Author name..." value="- Steve Jobs" />
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Author Image</p>
+        <div class="dropzone" id="authorDropzone" style="margin-bottom:10px;position:relative;padding:20px;">
+          <input type="file" id="authorImageInput" accept="image/*" />
+          <div class="dz-icon">◧</div>
+          <div class="dz-text" id="authorImageText">Drop author image or click</div>
+          <div class="dz-sub">JPG, PNG • Circle crop</div>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="showAuthorImage" />
+          <span class="chk-box">✓</span>
+          <span class="chk-label">Show author image</span>
+        </label>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Size Preset</p>
+        <div class="preset-grid">
+          <button class="preset-btn" data-w="1080" data-h="1080">IG Post<br>1080×1080</button>
+          <button class="preset-btn" data-w="1080" data-h="1350">IG Portrait<br>1080×1350</button>
+          <button class="preset-btn" data-w="1200" data-h="630">Facebook<br>1200×630</button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Font Style</p>
+        <div class="style-grid">
+          <button class="style-btn" data-font="Playfair Display">Playfair</button>
+          <button class="style-btn" data-font="Lora">Lora</button>
+          <button class="style-btn" data-font="Merriweather">Merriweather</button>
+          <button class="style-btn" data-font="DM Sans">DM Sans</button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Background</p>
+        <div class="color-grid" id="bgColors">
+          <button class="color-btn active" style="background:#0a0a0f" data-bg="#0a0a0f"></button>
+          <button class="color-btn" style="background:#1a1a2e" data-bg="#1a1a2e"></button>
+          <button class="color-btn" style="background:#16213e" data-bg="#16213e"></button>
+          <button class="color-btn" style="background:#1f4037" data-bg="#1f4037"></button>
+          <button class="color-btn" style="background:#2d132c" data-bg="#2d132c"></button>
+          <button class="color-btn" style="background:#0f2027" data-bg="#0f2027"></button>
+          <button class="color-btn" style="background:#2b2d42" data-bg="#2b2d42"></button>
+          <button class="color-btn" style="background:#702632" data-bg="#702632"></button>
+          <button class="color-btn" style="background:#1e3d59" data-bg="#1e3d59"></button>
+          <button class="color-btn" style="background:#2c363f" data-bg="#2c363f"></button>
+          <button class="color-btn" style="background:#3d1c02" data-bg="#3d1c02"></button>
+          <button class="color-btn" style="background:#1a1a1a" data-bg="#1a1a1a"></button>
+          <button class="color-btn" style="background:#f8f8f8" data-bg="#f8f8f8"></button>
+          <button class="color-btn" style="background:#faf8f5" data-bg="#faf8f5"></button>
+          <button class="color-btn" style="background:#f0eee6" data-bg="#f0eee6"></button>
+          <button class="color-btn" style="background:#e8e4dc" data-bg="#e8e4dc"></button>
+          <button class="color-btn" style="background:#e8dfd0" data-bg="#e8dfd0"></button>
+          <button class="color-btn" style="background:#d4c5b0" data-bg="#d4c5b0"></button>
+          <button class="color-btn" style="background:#c9b896" data-bg="#c9b896"></button>
+          <button class="color-btn" style="background:#8b5a2b" data-bg="#8b5a2b"></button>
+          <button class="color-btn" style="background:#d4af37" data-bg="#d4af37"></button>
+          <button class="color-btn" style="background:#b8860b" data-bg="#b8860b"></button>
+          <button class="color-btn" style="background:#2f4f4f" data-bg="#2f4f4f"></button>
+          <button class="color-btn" style="background:#191970" data-bg="#191970"></button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Accent Color</p>
+        <div class="color-grid" id="accentColors">
+          <button class="color-btn" style="background:#e8ff47" data-accent="#e8ff47"></button>
+          <button class="color-btn active" style="background:#ff6b6b" data-accent="#ff6b6b"></button>
+          <button class="color-btn" style="background:#48dbfb" data-accent="#48dbfb"></button>
+          <button class="color-btn" style="background:#1dd1a1" data-accent="#1dd1a1"></button>
+          <button class="color-btn" style="background:#feca57" data-accent="#feca57"></button>
+          <button class="color-btn" style="background:#5f27cd" data-accent="#5f27cd"></button>
+          <button class="color-btn" style="background:#ff9f43" data-accent="#ff9f43"></button>
+          <button class="color-btn" style="background:#222222" data-accent="#222222"></button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Layout</p>
+        <label class="check-row">
+          <input type="checkbox" id="showQuoteMark" checked />
+          <span class="chk-box">✓</span>
+          <span class="chk-label">Show large quote mark</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="showBorder" />
+          <span class="chk-box">✓</span>
+          <span class="chk-label">Show border</span>
+        </label>
+      </div>
+
+      <div class="editor-section">
+        <div class="range-row">
+          <span class="range-label">Quote Size</span>
+          <input type="range" id="quoteSize" min="24" max="72" value="42" />
+          <span class="range-value" id="quoteSizeVal">42</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">Author Size</span>
+          <input type="range" id="authorSize" min="14" max="36" value="20" />
+          <span class="range-value" id="authorSizeVal">20</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">Padding</span>
+          <input type="range" id="padding" min="20" max="100" value="60" />
+          <span class="range-value" id="paddingVal">60</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-preview">
+      <div class="preview-card">
+        <div class="preview-header">
+          <span class="preview-title">Preview</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="quoteCanvas"></canvas>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-primary" id="downloadPngBtn">⬇ Download PNG</button>
+          <button class="btn btn-secondary" id="downloadJpgBtn">⬇ Download JPG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let fontStyle = 'Playfair Display';
+let bgColor = '#0a0a0f';
+let accentColor = '#ff6b6b';
+let canvasW = 1080;
+let canvasH = 1080;
+let authorImage = null;
+let authorImageSrc = '';
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+function getContrastColor(hex) {
+  const rgb = hexToRgb(hex);
+  return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 186 ? '#000000' : '#ffffff';
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('quoteCanvas');
+  const ctx = canvas.getContext('2d');
+  const padding = parseInt(document.getElementById('padding').value);
+  const quoteSize = parseInt(document.getElementById('quoteSize').value);
+  const authorSize = parseInt(document.getElementById('authorSize').value);
+  const quoteText = document.getElementById('quoteText').value;
+  const authorText = document.getElementById('quoteAuthor').value;
+  const showQuoteMark = document.getElementById('showQuoteMark').checked;
+  const showBorder = document.getElementById('showBorder').checked;
+  const showAuthorImage = document.getElementById('showAuthorImage').checked;
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  if (showBorder) {
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(20, 20, canvasW - 40, canvasH - 40);
+  }
+
+  const textColor = getContrastColor(bgColor);
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'center';
+  
+  if (showQuoteMark) {
+    ctx.font = `${quoteSize * 3}px ${fontStyle}`;
+    ctx.fillStyle = accentColor;
+    ctx.globalAlpha = 0.3;
+    ctx.fillText('"', canvasW / 2, padding + quoteSize);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.font = `${quoteSize}px ${fontStyle}`;
+  ctx.fillStyle = textColor;
+  
+  let quoteCenterY = canvasH / 2;
+  if (showAuthorImage && authorImage) {
+    quoteCenterY = canvasH / 2 - 80;
+  }
+  
+  const lines = wrapText(ctx, quoteText, canvasW - padding * 2);
+  let y = quoteCenterY - (lines.length * quoteSize) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, canvasW / 2, y + i * quoteSize * 1.3);
+  });
+
+  const authorY = quoteCenterY + (lines.length * quoteSize) / 2 + 40;
+  
+  if (showAuthorImage && authorImage) {
+    const circleRadius = 60;
+    const circleX = canvasW / 2;
+    const circleY = authorY + 80;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    
+    const imgSize = circleRadius * 2;
+    ctx.drawImage(authorImage, circleX - circleRadius, circleY - circleRadius, imgSize, imgSize);
+    ctx.restore();
+    
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    
+    ctx.font = `${authorSize}px DM Sans`;
+    ctx.fillStyle = accentColor;
+    ctx.fillText(authorText, canvasW / 2, authorY);
+  } else {
+    ctx.font = `${authorSize}px DM Sans`;
+    ctx.fillStyle = accentColor;
+    ctx.fillText(authorText, canvasW / 2, authorY);
+  }
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    if (ctx.measureText(testLine).width < maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function updateSize(w, h) {
+  canvasW = parseInt(w);
+  canvasH = parseInt(h);
+  renderCanvas();
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    updateSize(e.target.dataset.w, e.target.dataset.h);
+  });
+});
+
+document.querySelectorAll('.style-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    fontStyle = e.target.dataset.font;
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('accentColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#accentColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    accentColor = e.target.dataset.accent;
+    renderCanvas();
+  }
+});
+
+document.getElementById('quoteSize').addEventListener('input', e => {
+  document.getElementById('quoteSizeVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('authorSize').addEventListener('input', e => {
+  document.getElementById('authorSizeVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('padding').addEventListener('input', e => {
+  document.getElementById('paddingVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('showQuoteMark').addEventListener('change', renderCanvas);
+document.getElementById('showBorder').addEventListener('change', renderCanvas);
+
+document.getElementById('quoteText').addEventListener('input', renderCanvas);
+document.getElementById('quoteAuthor').addEventListener('input', renderCanvas);
+
+document.getElementById('downloadPngBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('quoteCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'quote-card.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('downloadJpgBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('quoteCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'quote-card.jpg';
+    a.click();
+  }, 'image/jpeg', 0.92);
+});
+
+const authorDropzone = document.getElementById('authorDropzone');
+const authorImageInput = document.getElementById('authorImageInput');
+
+authorDropzone.addEventListener('dragover', e => { e.preventDefault(); authorDropzone.classList.add('drag-over'); });
+authorDropzone.addEventListener('dragleave', () => authorDropzone.classList.remove('drag-over'));
+authorDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  authorDropzone.classList.remove('drag-over');
+  loadAuthorImage(e.dataTransfer.files[0]);
+});
+authorImageInput.addEventListener('change', () => loadAuthorImage(authorImageInput.files[0]));
+
+function loadAuthorImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      authorImage = img;
+      authorImageSrc = e.target.result;
+      document.getElementById('authorImageText').textContent = file.name.substring(0, 20);
+      renderCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('showAuthorImage').addEventListener('change', renderCanvas);
+
+renderCanvas();
+</script>
+</body>
+</html>

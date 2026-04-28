@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tier List Maker — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .tool-page{max-width:1200px;margin:0 auto;padding:32px 24px 80px}
+    .tool-header{margin-bottom:28px}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:6px}
+    .tool-header p{color:var(--text2);font-size:.9rem}
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    .tier-layout{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+    
+    .tier-board{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-height:500px}
+    .tier-row{display:flex;margin-bottom:4px;min-height:50px}
+    .tier-label{width:100px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;border-radius:var(--radius-xs) 0 0 var(--radius-xs);padding:8px;color:#fff;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg)}
+    .tier-items{flex:1;display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg3);border-radius:0 var(--radius-xs) var(--radius-xs) 0;min-height:50px;align-content:flex-start}
+    .tier-items.drag-over{background:var(--accent3);background:rgba(232,255,71,0.1)}
+    
+    .tier-item{width:48px;height:48px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:grab;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;transition:transform .15s,border-color .15s}
+    .tier-item:hover{border-color:var(--accent);transform:scale(1.05)}
+    .tier-item.dragging{opacity:.5}
+    .tier-item img{width:100%;height:100%;object-fit:cover}
+    .tier-item .item-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);font-size:.5rem;text-align:center;padding:2px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tier-item .remove-item{position:absolute;top:2px;right:2px;width:14px;height:14px;background:var(--accent3);border-radius:50%;display:none;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;color:#fff}
+    .tier-item:hover .remove-item{display:flex}
+
+    .pool-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:12px}
+    .pool-items{display:flex;flex-wrap:wrap;gap:4px;min-height:60px;padding:12px;background:var(--bg3);border-radius:var(--radius-xs);align-content:flex-start}
+    
+    .controls-panel{position:sticky;top:73px}
+    .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+    
+    .input-row{margin-bottom:12px}
+    .input-row label{display:block;font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin-bottom:6px}
+    .input-row input[type=text],.input-row textarea{width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s}
+    .input-row input:focus,.input-row textarea:focus{border-color:var(--accent)}
+    .input-row textarea{resize:vertical;min-height:80px;font-family:monospace;font-size:.85rem}
+    
+    .color-picker-row{display:flex;gap:6px;margin-bottom:12px}
+    .color-input{width:44px;height:44px;border:2px solid var(--border2);border-radius:var(--radius-xs);cursor:pointer;padding:0;overflow:hidden}
+    .color-input::-webkit-color-swatch-wrapper{padding:2px}
+    .color-input::-webkit-color-swatch{border:none;border-radius:2px}
+    
+    .dropzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:30px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
+    .dropzone:hover,.dropzone.drag-over{border-color:var(--accent);background:var(--card-hover)}
+    .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .dz-icon{font-size:1.5rem;margin-bottom:6px;opacity:.5}
+    .dz-text{font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;margin-bottom:2px}
+    .dz-sub{font-size:.7rem;color:var(--text3)}
+    
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;width:100%;margin-bottom:8px}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    
+    .tier-label-input{width:100%;padding:8px 10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;text-align:center;outline:none}
+    .tier-label-input:focus{border-color:var(--accent)}
+    
+    .add-tier-row{display:flex;gap:6px;margin-bottom:12px}
+    .add-tier-row input[type=text]{flex:1;padding:10px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;outline:none}
+    .add-tier-row input:focus{border-color:var(--accent)}
+    
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .card, .tier-board, .pool-section {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .card { animation-delay: 0.1s; }
+    .tier-board { animation-delay: 0.15s; }
+    .pool-section { animation-delay: 0.2s; }
+
+    @media(max-width:900px){.tier-layout{grid-template-columns:1fr}.controls-panel{position:static}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Tier List Maker</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Tier List Maker</h1>
+    <p>Create ranked tier lists. Add images, drag to tiers, export as image.</p>
+  </div>
+
+  <div class="tier-layout">
+    <div>
+      <div class="tier-board" id="tierBoard">
+        <!-- Tiers render here -->
+      </div>
+      
+      <div class="pool-section">
+        <p class="section-head" style="margin-top:0;margin-bottom:12px">Item Pool</p>
+        <div class="dropzone" style="position:relative;margin-bottom:12px;padding:20px">
+          <input type="file" id="fileInput" accept="image/*" multiple />
+          <div class="dz-icon">◧</div>
+          <div class="dz-text">Drop images or click to browse</div>
+          <div class="dz-sub">JPG, PNG, WebP • Multiple allowed</div>
+        </div>
+        <div class="pool-items" id="poolItems">
+          <!-- Unassigned items go here -->
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-panel">
+      <div class="card">
+        <p class="section-head" style="margin-top:0">Tier Labels</p>
+        <div id="tierLabelsList">
+          <!-- Tier label inputs -->
+        </div>
+        <div class="add-tier-row">
+          <input type="text" id="newTierLabel" placeholder="New tier label..." />
+          <button class="btn btn-secondary" id="addTierBtn" style="width:auto;padding:10px 16px;margin:0">+</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section-head" style="margin-top:0">Export</p>
+        <div class="input-row">
+          <label>Dimensions</label>
+          <div style="display:flex;gap:6px">
+            <input type="number" id="exportW" value="1200" style="width:80px;padding:10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);text-align:center" />
+            <span style="align-self:center;color:var(--text3)">×</span>
+            <input type="number" id="exportH" value="800" style="width:80px;padding:10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);text-align:center" />
+          </div>
+        </div>
+        <button class="btn btn-primary" id="exportBtn">⬇ Export as PNG</button>
+        <button class="btn btn-secondary" id="clearAllBtn">✕ Clear All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+
+const TIER_COLORS = ['#ff6b6b','#ff9f43','#feca57','#48dbfb','#1dd1a1','#5f27cd','#ee5a24','#009432'];
+let tiers = [
+  { label: 'S', color: TIER_COLORS[0] },
+  { label: 'A', color: TIER_COLORS[1] },
+  { label: 'B', color: TIER_COLORS[2] },
+  { label: 'C', color: TIER_COLORS[3] }
+];
+let items = [];
+let nextId = 1;
+
+function renderTiers() {
+  const board = document.getElementById('tierBoard');
+  board.innerHTML = tiers.map((t, i) => `
+    <div class="tier-row" data-tier="${i}">
+      <div class="tier-label" style="background:${t.color}">${t.label}</div>
+      <div class="tier-items" data-tier="${i}"></div>
+    </div>
+  `).join('');
+  
+  document.querySelectorAll('.tier-items').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const tierIndex = parseInt(zone.dataset.tier);
+      const item = items.find(it => it.id == id);
+      if (item) { item.tier = tierIndex; renderItems(); }
+    });
+  });
+  
+  renderItems();
+  renderTierLabels();
+}
+
+function renderItems() {
+  document.querySelectorAll('.tier-items').forEach(z => z.innerHTML = '');
+  const pool = document.getElementById('poolItems');
+  pool.innerHTML = '';
+  
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tier-item';
+    el.draggable = true;
+    el.dataset.id = item.id;
+    
+    if (item.src.startsWith('data:image')) {
+      el.innerHTML = `<img src="${item.src}" /><span class="remove-item">×</span>`;
+    } else {
+      el.innerHTML = `<span class="item-label">${item.src}</span><span class="remove-item">×</span>`;
+    }
+    
+    el.querySelector('.remove-item').addEventListener('click', (e) => {
+      e.stopPropagation();
+      items = items.filter(it => it.id != item.id);
+      renderItems();
+    });
+    
+    el.addEventListener('dragstart', e => {
+      el.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', item.id);
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    
+    if (item.tier === null) {
+      pool.appendChild(el);
+    } else {
+      const zone = document.querySelector(`.tier-items[data-tier="${item.tier}"]`);
+      if (zone) zone.appendChild(el);
+    }
+  });
+}
+
+function renderTierLabels() {
+  const list = document.getElementById('tierLabelsList');
+  list.innerHTML = tiers.map((t, i) => `
+    <div class="input-row" style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="color" class="color-input" value="${t.color}" data-index="${i}" />
+      <input type="text" class="tier-label-input" value="${t.label}" placeholder="Label" data-index="${i}" />
+    </div>
+  `).join('');
+  
+  list.querySelectorAll('.tier-label-input').forEach(input => {
+    input.addEventListener('change', e => {
+      tiers[parseInt(e.target.dataset.index)].label = e.target.value;
+    });
+  });
+  
+  list.querySelectorAll('.color-input').forEach(input => {
+    input.addEventListener('change', e => {
+      tiers[parseInt(e.target.dataset.index)].color = e.target.value;
+      renderTiers();
+    });
+  });
+}
+
+document.getElementById('addTierBtn').addEventListener('click', () => {
+  const label = document.getElementById('newTierLabel').value.trim();
+  if (label) {
+    tiers.push({ label, color: TIER_COLORS[tiers.length % TIER_COLORS.length] });
+    document.getElementById('newTierLabel').value = '';
+    renderTiers();
+  }
+});
+
+const dropzone = document.querySelector('.dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      items.push({ id: nextId++, src: e.target.result, tier: null });
+      renderItems();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const w = parseInt(document.getElementById('exportW').value) || 1200;
+  const h = parseInt(document.getElementById('exportH').value) || 800;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+  
+  const rowH = h / tiers.length;
+  const labelW = 100;
+  
+  tiers.forEach((t, i) => {
+    ctx.fillStyle = t.color;
+    ctx.fillRect(0, i * rowH, labelW, rowH);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Syne, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.save();
+    ctx.translate(labelW/ 2, i * rowH + rowH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(t.label, 0, 5);
+    ctx.restore();
+  });
+  
+  let yOffset = 0;
+  tiers.forEach((t, i) => {
+    const tierItems = items.filter(it => it.tier === i);
+    let x = labelW + 10;
+    const zone = document.querySelector(`.tier-items[data-tier="${i}"]`);
+    const itemSize = zone ? Math.min(48, (w - labelW - 20) / Math.max(1, tierItems.length)) : 48;
+    
+    tierItems.forEach(item => {
+      if (item.src.startsWith('data:image')) {
+        const img = new Image();
+        img.src = item.src;
+        ctx.drawImage(img, x, yOffset + 5, itemSize - 4, itemSize - 4);
+      }
+      x += itemSize;
+    });
+    yOffset += rowH;
+  });
+  
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tier-list.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (confirm('Clear all items?')) {
+    items = [];
+    renderItems();
+  }
+});
+
+renderTiers();
+</script>
+</body>
+</html>
