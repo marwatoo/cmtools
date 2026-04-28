@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collage Maker — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .file-list { list-style:none; margin:0 0 16px; }
+    .file-list li {
+      display:flex; align-items:center; gap:10px;
+      font-size:0.8rem; color:var(--text2); padding:8px 10px;
+      background:var(--card-bg); border:1px solid var(--border);
+      border-radius:var(--radius-xs); margin-bottom:4px;
+      cursor:pointer;
+    }
+    .file-list li:hover { border-color:var(--accent2); }
+    .file-list li.active { border-color:var(--accent); background:rgba(232,255,71,0.08); }
+    .file-list li.dragging { opacity:0.5; }
+    .file-list li.drag-over { border-color:var(--accent); background:rgba(232,255,71,0.15); }
+    .file-list li .thumb {
+      width:32px; height:32px; border-radius:4px; object-fit:cover;
+      background:var(--bg3);
+    }
+    .file-list li .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-list li .remove {
+      font-size:0.8rem; cursor:pointer; color:var(--text3); padding:4px;
+    }
+    .file-list li .remove:hover { color:var(--accent3); }
+
+    .layout-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-bottom:16px; }
+    .layout-btn {
+      aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+      background:var(--card-bg); border:2px solid var(--border); border-radius:var(--radius-sm);
+      cursor:pointer; transition:all 0.2s;
+    }
+    .layout-btn:hover { border-color:var(--accent2); }
+    .layout-btn.active { border-color:var(--accent); background:rgba(232,255,71,0.1); }
+    .layout-btn .cells { display:grid; gap:2px; width:24px; height:24px; }
+    .layout-btn .cells .cell { background:var(--text3); border-radius:2px; }
+    .layout-btn.active .cells .cell { background:var(--accent); }
+    .layout-btn .label { font-size:0.5rem; font-weight:700; color:var(--text3); margin-top:2px; }
+    .layout-btn.active .label { color:var(--accent); }
+
+    .config-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+    .config-row label {
+      display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+      color:var(--text2); margin-bottom:6px;
+    }
+    .config-row select, .config-row input {
+      width:100%; padding:10px 12px; background:var(--input-bg);
+      border:1px solid var(--border2); border-radius:var(--radius-xs);
+      color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.85rem; outline:none;
+    }
+    .config-row select:focus, .config-row input:focus { border-color:var(--accent); }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin: 18px 0 10px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-head::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .color-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .color-row label { font-size:0.7rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--text2); }
+    .color-row input[type="color"] {
+      width:36px; height:36px; border:2px solid var(--border2); border-radius:var(--radius-xs); cursor:pointer;
+    }
+    .color-row input::-webkit-color-swatch-wrapper { padding:2px; }
+    .color-row input::-webkit-color-swatch { border:none; border-radius:2px; }
+
+    .image-controls {
+      background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm);
+      padding:12px; margin-bottom:16px;
+    }
+    .image-controls h4 {
+      font-size:0.7rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+      color:var(--accent); margin-bottom:10px;
+    }
+    .image-controls.disabled { opacity:0.4; pointer-events:none; }
+    .ctrl-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .ctrl-row label { font-size:0.65rem; color:var(--text2); margin-bottom:2px; }
+    .ctrl-row input[type="range"] { width:100%; cursor:pointer; }
+    .ctrl-row .val { font-size:0.75rem; color:var(--text); text-align:right; }
+
+    .preview-section {
+      background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px; margin-bottom:16px;
+    }
+    .preview-canvas-wrap {
+      display:flex; justify-content:center; align-items:center;
+      background:var(--bg3); border-radius:var(--radius-xs);
+      min-height:280px; overflow:hidden; position:relative;
+    }
+    .preview-canvas-wrap canvas { width:100%; height:auto; display:block; }
+    .preview-hint { font-size:0.7rem; color:var(--text3); text-align:center; margin-top:6px; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Collage Maker</span>
+    <span class="nav-num">38 / 38</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Collage Maker</h1>
+      <p>Create photo grid collages. Click an image in the list to adjust position and size.</p>
+    </div>
+
+    <label class="upload-zone" id="uploadZone" for="uploadInput">
+      <div class="upload-icon">⊕</div>
+      <div class="upload-text">Drop images (2-9)<br><span style="font-size:0.75rem;color:var(--text3);">Click image in list to adjust</span></div>
+      <input type="file" id="uploadInput" accept="image/*" multiple />
+    </label>
+
+    <ul class="file-list" id="fileList"></ul>
+
+    <div class="section-head">Layout</div>
+    <div class="layout-grid" id="layoutGrid">
+      <div class="layout-btn active" data-cols="2" data-rows="1">
+        <div class="cells" style="grid-template-columns:repeat(2,1fr)"><div class="cell"></div><div class="cell"></div></div>
+        <span class="label">2</span>
+      </div>
+      <div class="layout-btn" data-cols="2" data-rows="2">
+        <div class="cells" style="grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr)">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+        <span class="label">2×2</span>
+      </div>
+      <div class="layout-btn" data-cols="3" data-rows="1">
+        <div class="cells" style="grid-template-columns:repeat(3,1fr)"><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>
+        <span class="label">3</span>
+      </div>
+      <div class="layout-btn" data-cols="3" data-rows="2">
+        <div class="cells" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+        <span class="label">3×2</span>
+      </div>
+      <div class="layout-btn" data-cols="3" data-rows="3">
+        <div class="cells" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr)">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+        <span class="label">3×3</span>
+</div>
+    </div>
+
+    <div class="config-row">
+      <div>
+        <label>Aspect</label>
+        <select id="aspectRatio">
+          <option value="16:9" selected>16:9 (1920×1080)</option>
+          <option value="1:1">1:1 (1080×1080)</option>
+          <option value="4:5">4:5 (1080×1350)</option>
+          <option value="9:16">9:16 (1080×1920)</option>
+        </select>
+      </div>
+      <div>
+        <label>Inner Gap (px)</label>
+        <input type="number" id="gapSize" value="4" min="0" max="30" />
+      </div>
+    </div>
+    <div class="config-row">
+      <div>
+        <label>Outer Gap (px)</label>
+        <input type="number" id="borderSize" value="0" min="0" max="50" />
+      </div>
+    </div>
+
+    <div class="color-row">
+      <label>Background</label>
+      <input type="color" id="bgColor" value="#ffffff" />
+    </div>
+
+    <div class="image-controls disabled" id="imageControls">
+      <h4>Selected Image</h4>
+      <div class="ctrl-row">
+        <div><label>Scale</label><input type="range" id="imgScale" min="50" max="200" value="100"><span class="val" id="scaleVal">100%</span></div>
+        <div><label>Offset X</label><input type="range" id="imgOffsetX" min="-100" max="100" value="0"><span class="val" id="offsetXVal">0</span></div>
+      </div>
+      <div class="ctrl-row">
+        <div><label>Offset Y</label><input type="range" id="imgOffsetY" min="-100" max="100" value="0"><span class="val" id="offsetYVal">0</span></div>
+      </div>
+    </div>
+
+    <div class="preview-section">
+      <div class="section-head">Preview</div>
+      <div class="preview-canvas-wrap" id="previewWrap">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+      <p class="preview-hint">Click image in list above to adjust position/scale</p>
+    </div>
+
+    <button class="btn btn-primary" id="downloadBtn" disabled>⊕ Download Collage</button>
+    <div id="doneMsg" style="display:none;margin-top:10px;text-align:center;font-size:0.85rem;color:var(--accent);">✓ Done!</div>
+  </div>
+
+  <script>
+    const uploadInput = document.getElementById('uploadInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileListEl = document.getElementById('fileList');
+    const layoutGrid = document.getElementById('layoutGrid');
+    const aspectRatioEl = document.getElementById('aspectRatio');
+    const gapSizeEl = document.getElementById('gapSize');
+    const bgColorEl = document.getElementById('bgColor');
+    const borderSizeEl = document.getElementById('borderSize');
+    const imageControls = document.getElementById('imageControls');
+    const imgScaleEl = document.getElementById('imgScale');
+    const imgOffsetXEl = document.getElementById('imgOffsetX');
+    const imgOffsetYEl = document.getElementById('imgOffsetY');
+    const scaleVal = document.getElementById('scaleVal');
+    const offsetXVal = document.getElementById('offsetXVal');
+    const offsetYVal = document.getElementById('offsetYVal');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const doneMsg = document.getElementById('doneMsg');
+
+    const sizes = { '16:9': [1920, 1080], '1:1': [1080, 1080], '4:5': [1080, 1350], '9:16': [1080, 1920] };
+
+    let files = [];
+    let imageData = [];
+    let currentLayout = { cols: 2, rows: 1 };
+    let selectedIdx = -1;
+    let draggedIdx = null;
+
+    const dims = () => sizes[aspectRatioEl.value];
+
+    uploadInput.addEventListener('change', () => {
+      files = [...uploadInput.files];
+      imageData = files.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      selectedIdx = -1;
+      renderFileList();
+    });
+
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault(); uploadZone.classList.remove('dragover');
+      files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+      imageData = files.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      selectedIdx = -1;
+      renderFileList();
+    });
+
+    function renderFileList() {
+      fileListEl.innerHTML = '';
+      doneMsg.style.display = 'none';
+      downloadBtn.disabled = files.length < 2;
+
+      files.forEach((f, i) => {
+        const li = document.createElement('li');
+        li.draggable = true;
+        li.dataset.index = i;
+        li.className = i === selectedIdx ? 'active' : '';
+        li.innerHTML = `
+          <span class="num">${i + 1}</span>
+          <img class="thumb" src="${URL.createObjectURL(f)}">
+          <span class="name">${f.name}</span>
+          <span class="remove">✕</span>
+        `;
+        li.onclick = (e) => { if (!e.target.classList.contains('remove')) selectImage(i); };
+        li.ondragstart = (e) => { draggedIdx = i; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+        li.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; li.classList.add('drag-over'); };
+        li.ondragleave = () => { li.classList.remove('drag-over'); };
+        li.ondrop = (e) => {
+          e.preventDefault();
+          li.classList.remove('drag-over');
+          if (draggedIdx !== null && draggedIdx !== i) {
+            const item = files.splice(draggedIdx, 1)[0];
+            const data = imageData.splice(draggedIdx, 1)[0];
+            files.splice(i, 0, item);
+            imageData.splice(i, 0, data);
+            if (selectedIdx === draggedIdx) selectedIdx = i;
+            else if (draggedIdx < selectedIdx && i >= selectedIdx) selectedIdx--;
+            else if (draggedIdx > selectedIdx && i <= selectedIdx) selectedIdx++;
+            draggedIdx = null;
+            renderFileList();
+            return;
+          }
+          draggedIdx = null;
+        };
+        li.ondragend = () => { li.classList.remove('dragging'); draggedIdx = null; };
+        li.querySelector('.remove').onclick = () => { files.splice(i, 1); imageData.splice(i, 1); if (selectedIdx >= files.length) selectedIdx = files.length - 1; renderFileList(); };
+        fileListEl.appendChild(li);
+      });
+
+      updateLayoutButtons();
+      imageControls.classList.toggle('disabled', selectedIdx < 0);
+      if (selectedIdx >= 0) {
+        imgScaleEl.value = imageData[selectedIdx].scale;
+        imgOffsetXEl.value = imageData[selectedIdx].offsetX;
+        imgOffsetYEl.value = imageData[selectedIdx].offsetY;
+        scaleVal.textContent = imageData[selectedIdx].scale + '%';
+        offsetXVal.textContent = imageData[selectedIdx].offsetX;
+        offsetYVal.textContent = imageData[selectedIdx].offsetY;
+      } else {
+        previewCanvas.style.display = 'none';
+      }
+      renderPreview();
+    }
+
+    function selectImage(idx) { selectedIdx = idx; renderFileList(); }
+
+    function updateLayoutButtons() {
+      document.querySelectorAll('.layout-btn').forEach(btn => {
+        const needed = parseInt(btn.dataset.cols) * parseInt(btn.dataset.rows);
+        btn.style.opacity = files.length >= 2 && files.length <= needed ? '1' : '0.3';
+        btn.classList.toggle('active', btn.dataset.cols == currentLayout.cols && btn.dataset.rows == currentLayout.rows);
+      });
+    }
+
+    layoutGrid.addEventListener('click', e => {
+      const btn = e.target.closest('.layout-btn');
+      if (!btn || btn.style.opacity === '0.3') return;
+      currentLayout = { cols: parseInt(btn.dataset.cols), rows: parseInt(btn.dataset.rows) };
+      updateLayoutButtons();
+      renderPreview();
+    });
+
+    aspectRatioEl.addEventListener('change', renderPreview);
+    gapSizeEl.addEventListener('input', renderPreview);
+    borderSizeEl.addEventListener('input', renderPreview);
+    bgColorEl.addEventListener('input', renderPreview);
+
+    imgScaleEl.addEventListener('input', () => {
+      if (selectedIdx >= 0) { imageData[selectedIdx].scale = parseInt(imgScaleEl.value); scaleVal.textContent = imgScaleEl.value + '%'; renderPreview(); }
+    });
+    imgOffsetXEl.addEventListener('input', () => {
+      if (selectedIdx >= 0) { imageData[selectedIdx].offsetX = parseInt(imgOffsetXEl.value); offsetXVal.textContent = imgOffsetXEl.value; renderPreview(); }
+    });
+    imgOffsetYEl.addEventListener('input', () => {
+      if (selectedIdx >= 0) { imageData[selectedIdx].offsetY = parseInt(imgOffsetYEl.value); offsetYVal.textContent = imgOffsetYEl.value; renderPreview(); }
+    });
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = src;
+      });
+    }
+
+    async function renderPreview() {
+      if (files.length < 2) { 
+        previewCanvas.width = 0;
+        previewCanvas.style.display = 'none';
+        return; 
+      }
+
+      const [w, h] = dims();
+      const { cols, rows } = currentLayout;
+      const gap = parseInt(gapSizeEl.value) || 0;
+      const border = parseInt(borderSizeEl.value) || 0;
+
+      previewCanvas.width = w;
+      previewCanvas.height = h;
+      const ctx = previewCanvas.getContext('2d');
+
+      ctx.fillStyle = bgColorEl.value;
+      ctx.fillRect(0, 0, w, h);
+
+      const availW = w - border * 2;
+      const availH = h - border * 2;
+      const cellW = (availW - gap * (cols - 1)) / cols;
+      const cellH = (availH - gap * (rows - 1)) / rows;
+
+      const loadAndDraw = async (file, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = border + col * (cellW + gap);
+        const y = border + row * (cellH + gap);
+
+        const img = await loadImg(URL.createObjectURL(file));
+
+        const data = imageData[idx] || { scale: 100, offsetX: 0, offsetY: 0 };
+        const scale = data.scale / 100;
+        const ox = (data.offsetX / 100) * cellW;
+        const oy = (data.offsetY / 100) * cellH;
+
+        const baseScale = Math.max(cellW / img.width, cellH / img.height);
+        const finalScale = baseScale * scale;
+        const iw = img.width * finalScale;
+        const ih = img.height * finalScale;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, cellW, cellH);
+        ctx.clip();
+        ctx.drawImage(img, x + (cellW - iw) / 2 + ox, y + (cellH - ih) / 2 + oy, iw, ih);
+        ctx.restore();
+      };
+
+      const maxCells = Math.min(files.length, cols * rows);
+      for (let i = 0; i < maxCells; i++) {
+        await loadAndDraw(files[i], i);
+      }
+
+      previewCanvas.style.display = 'block';
+    }
+
+    function timestamp() {
+      const d = new Date();
+      return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') +
+             '_' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    downloadBtn.addEventListener('click', async () => {
+      if (files.length < 2) return;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = 'Downloading...';
+      doneMsg.style.display = 'none';
+
+      const dataUrl = previewCanvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `collage_${timestamp()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = '⊕ Download Collage';
+      doneMsg.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
