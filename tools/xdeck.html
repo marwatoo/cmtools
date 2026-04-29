@@ -150,7 +150,7 @@
     .tweet-text {
       font-size: 0.88rem; color: var(--text);
       line-height: 1.5; margin-bottom: 10px;
-      word-break: break-word;
+      word-break: break-word; white-space: pre-wrap;
     }
     .tweet-text a { color: var(--accent); text-decoration: none; }
     .tweet-text a:hover { text-decoration: underline; }
@@ -227,6 +227,21 @@
     .tweet-btn.copied { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
     .tweet-btn.open-x { color: var(--text3); }
 
+    /* Engagement stats */
+    .tweet-stats {
+      display: flex; gap: 12px; margin-top: 8px;
+      padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .tweet-stat {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.72rem; color: var(--text3);
+    }
+    .tweet-stat .stat-icon { font-size: 0.8rem; }
+    .tweet-stat .stat-count { font-weight: 500; }
+    .stat-likes .stat-icon { color: #ff6b6b; }
+    .stat-retweets .stat-icon { color: #4ade80; }
+    .stat-replies .stat-icon { color: var(--accent2); }
+
     /* ── Modal ── */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.78);
@@ -266,6 +281,7 @@
     .modal-text {
       font-size: 0.95rem; line-height: 1.6;
       color: var(--text); margin-bottom: 14px; word-break: break-word;
+      white-space: pre-wrap;
     }
     .modal-text a { color: var(--accent); }
     .modal-media-grid {
@@ -285,6 +301,17 @@
       padding-top: 14px; margin-top: 4px;
     }
     .modal-date { font-size: 0.78rem; color: var(--text3); flex: 1; }
+    .modal-stats {
+      display: flex; gap: 14px; margin-bottom: 12px;
+      padding: 8px 0; border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-stat {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.82rem; color: var(--text2);
+    }
+    .modal-stat .stat-icon { font-size: 0.9rem; }
+    .modal-stat .stat-count { font-weight: 600; }
     .modal-open-btn {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 7px 14px; border-radius: var(--radius-xs);
@@ -441,6 +468,11 @@ function mapItem(item, colKey) {
   // Convert nitter link → x.com
   const xLink = (item.link || '').replace(/https?:\/\/[^/]+/, 'https://x.com');
 
+  // Extract tweet ID from link
+  let tweetId = '';
+  const idMatch = (item.link || '').match(/status\/(\d+)/);
+  if (idMatch) tweetId = idMatch[1];
+
   // Strip HTML from title for display text
   const div = document.createElement('div');
   div.innerHTML = item.title || '';
@@ -448,6 +480,7 @@ function mapItem(item, colKey) {
 
   return {
     id:         item.id || item.link,
+    tweetId,
     text,
     link:       xLink,
     rawLink:    item.link,
@@ -459,10 +492,45 @@ function mapItem(item, colKey) {
     author:     item.author || colKey,
     isRetweet,
     colKey,
+    likes:      null,
+    retweets:   null,
+    replies:    null,
   };
 }
 
+// ── Fetch engagement stats from fxtwitter ──────────────────────────────────
+async function fetchTweetStats(tweetId) {
+  if (!tweetId) return null;
+  try {
+    const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code === 200 && data.tweet) {
+      return {
+        likes: data.tweet.likes || 0,
+        retweets: data.tweet.retweets || 0,
+        replies: data.tweet.replies || 0,
+      };
+    }
+    return null;
+  } catch(e) {
+    console.warn('fxtwitter API error:', e);
+    return null;
+  }
+}
+
+function formatCount(n) {
+  if (n === null || n === undefined) return '';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K';
+  return n.toString();
+}
+
 // ── Media tags ─────────────────────────────────────────────────────────────
+function isArabic(text) {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+}
+
 function getMediaTags(tweet) {
   const tags = [];
   if (tweet.isRetweet)          tags.push({ cls: 'tag-retweet', icon: '🔁', label: 'RT' });
@@ -522,6 +590,7 @@ function createTweetCard(tweet) {
     const p = document.createElement('div');
     p.className = 'tweet-text';
     p.textContent = tweet.text.length > 220 ? tweet.text.slice(0, 220) + '…' : tweet.text;
+    if (isArabic(tweet.text)) p.dir = 'rtl';
     card.appendChild(p);
   }
 
@@ -570,6 +639,33 @@ function createTweetCard(tweet) {
       grid.appendChild(img);
     });
     card.appendChild(grid);
+  }
+
+  // Engagement stats
+  if (tweet.tweetId) {
+    const statsRow = document.createElement('div');
+    statsRow.className = 'tweet-stats';
+    statsRow.innerHTML = `
+      <div class="tweet-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count" id="likes-${tweet.tweetId}">...</span></div>
+      <div class="tweet-stat stat-retweets"><span class="stat-icon">🔁</span><span class="stat-count" id="retweets-${tweet.tweetId}">...</span></div>
+      <div class="tweet-stat stat-replies"><span class="stat-icon">💬</span><span class="stat-count" id="replies-${tweet.tweetId}">...</span></div>
+    `;
+    card.appendChild(statsRow);
+
+    // Fetch stats asynchronously
+    fetchTweetStats(tweet.tweetId).then(stats => {
+      if (stats) {
+        const likesEl = document.getElementById(`likes-${tweet.tweetId}`);
+        const retweetsEl = document.getElementById(`retweets-${tweet.tweetId}`);
+        const repliesEl = document.getElementById(`replies-${tweet.tweetId}`);
+        if (likesEl) likesEl.textContent = formatCount(stats.likes);
+        if (retweetsEl) retweetsEl.textContent = formatCount(stats.retweets);
+        if (repliesEl) repliesEl.textContent = formatCount(stats.replies);
+        tweet.likes = stats.likes;
+        tweet.retweets = stats.retweets;
+        tweet.replies = stats.replies;
+      }
+    });
   }
 
   // Buttons
@@ -651,12 +747,39 @@ function openModal(tweet) {
     body.appendChild(row);
   }
 
+  // Engagement stats in modal
+  if (tweet.tweetId) {
+    const statsRow = document.createElement('div');
+    statsRow.className = 'modal-stats';
+    statsRow.innerHTML = `
+      <div class="modal-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count" id="modal-likes-${tweet.tweetId}">${tweet.likes !== null ? formatCount(tweet.likes) : '...'}</span></div>
+      <div class="modal-stat stat-retweets"><span class="stat-icon">🔁</span><span class="stat-count" id="modal-retweets-${tweet.tweetId}">${tweet.retweets !== null ? formatCount(tweet.retweets) : '...'}</span></div>
+      <div class="modal-stat stat-replies"><span class="stat-icon">💬</span><span class="stat-count" id="modal-replies-${tweet.tweetId}">${tweet.replies !== null ? formatCount(tweet.replies) : '...'}</span></div>
+    `;
+    body.appendChild(statsRow);
+
+    // Fetch stats if not already loaded
+    if (tweet.likes === null) {
+      fetchTweetStats(tweet.tweetId).then(stats => {
+        if (stats) {
+          const likesEl = document.getElementById(`modal-likes-${tweet.tweetId}`);
+          const retweetsEl = document.getElementById(`modal-retweets-${tweet.tweetId}`);
+          const repliesEl = document.getElementById(`modal-replies-${tweet.tweetId}`);
+          if (likesEl) likesEl.textContent = formatCount(stats.likes);
+          if (retweetsEl) retweetsEl.textContent = formatCount(stats.retweets);
+          if (repliesEl) repliesEl.textContent = formatCount(stats.replies);
+        }
+      });
+    }
+  }
+
   // Full text
   if (tweet.text) {
     const p = document.createElement('div');
     p.className = 'modal-text';
     p.innerHTML = tweet.text.replace(/(https?:\/\/[^\s<>"']+)/g,
       '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    if (isArabic(tweet.text)) p.dir = 'rtl';
     body.appendChild(p);
   }
 
