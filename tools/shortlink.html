@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Url Shortener — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/global.css" />
+  <script src="/assets/theme.js"></script>
+  <style>
+    /* ── Custom styling for the shortener UI ── */
+    .url-input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .url-input-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 16px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .url-input-row input:focus {
+      border-color: var(--accent);
+    }
+    .url-input-row button {
+      padding: 12px 20px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .url-input-row button:hover {
+      opacity: 0.9;
+    }
+    .url-input-row button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ── History table ── */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .history-table th,
+    .history-table td {
+      padding: 12px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .history-table th {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+    .history-table td {
+      color: var(--text2);
+      word-break: break-all;
+    }
+    .history-table td.short-url {
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .copy-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      margin-left: 8px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .copy-btn.copied {
+      background: var(--accent);
+      color: var(--btn-text);
+      border-color: var(--accent);
+    }
+
+    .status-msg {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-top: 6px;
+      min-height: 20px;
+    }
+
+    /* Fade-in animations (same as instapost) */
+    .tool-header, .controls-card, .history-section, .history-toggle {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header   { animation-delay: 0.05s; }
+    .controls-card { animation-delay: 0.15s; }
+    .history-toggle { animation-delay: 0.25s; }
+    .history-section { animation-delay: 0.25s; display: none; }
+    .history-section.visible { display: block; }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Url Shortener</span>
+    <span class="nav-num">le360.info</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-page">
+    <!-- Page header -->
+    <div class="tool-header">
+      <h1>Url Shortener</h1>
+      <p>Shorten links using le360.info — live history from the server.</p>
+    </div>
+
+    <!-- Controls card (same visual style as instapost) -->
+    <div class="controls-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:24px;">
+      <div class="url-input-row">
+        <input type="url" id="longUrl" placeholder="Paste a long URL here…" />
+        <button id="shortenBtn" disabled>Shorten</button>
+      </div>
+      <div id="status" class="status-msg"></div>
+    </div>
+
+    <!-- History toggle -->
+    <button class="history-toggle" id="historyToggle" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-bottom:16px;">
+      Show History
+    </button>
+
+    <!-- History section -->
+    <div class="history-section" id="historySection" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;">
+      <div class="section-head" style="margin-top:0;">Short link history</div>
+      <div style="overflow-x:auto;">
+        <table class="history-table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Long URL</th>
+              <th>Short URL</th>
+              <th>Clicks</th>
+              <th>Date</th>
+              <th>Copy</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr>
+              <td colspan="5" style="text-align:center; color:var(--text3);">Loading history…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const shortenBtn = document.getElementById('shortenBtn');
+    const longUrlInput = document.getElementById('longUrl');
+    const statusDiv = document.getElementById('status');
+    const historyBody = document.getElementById('historyBody');
+
+    // Enable button only when input is non‑empty
+    longUrlInput.addEventListener('input', () => {
+      shortenBtn.disabled = !longUrlInput.value.trim();
+    });
+
+const API_BASE = 'https://shortlink-production-fdbf.up.railway.app';
+const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+
+    // Shorten action
+    shortenBtn.addEventListener('click', async () => {
+      const url = longUrlInput.value.trim();
+      if (!url) return;
+      shortenBtn.disabled = true;
+      statusDiv.textContent = 'Shortening…';
+      try {
+        const resp = await fetch(PROXY(`${API_BASE}/api/shorten`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+          mode: 'cors'
+        });
+        const data = await resp.json();
+        if (resp.ok && data.short_url) {
+          longUrlInput.value = '';
+          longUrlInput.focus();
+          statusDiv.textContent = `✅ Shortened: ${data.short_url}`;
+          const shortUrl = data.short_url.replace(/[^a-zA-Z0-9:/.-].*$/, '');
+          await navigator.clipboard.writeText(shortUrl);
+          await loadHistory();
+        } else {
+          statusDiv.textContent = '❌ ' + (data.error || 'Failed');
+        }
+      } catch (e) {
+        statusDiv.textContent = '❌ Network error';
+      } finally {
+        shortenBtn.disabled = true;
+      }
+    });
+
+    // Copy helper
+    async function copyToClipboard(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = '✓ Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.textContent = 'Copy';
+          button.classList.remove('copied');
+        }, 1500);
+      } catch {
+        alert('Copy manually: ' + text);
+      }
+    }
+
+    // Render history table from API (with cache‑buster)
+    async function loadHistory() {
+      historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">Loading…</td></tr>';
+      try {
+        // Append a unique timestamp to force the proxy to bypass its cache
+        const innerUrl = `${API_BASE}/api/history?_=${Date.now()}`;
+        const resp = await fetch(PROXY(innerUrl), { mode: 'cors' });
+        const rows = await resp.json();
+        if (!rows.length) {
+          historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">No links yet.</td></tr>';
+          return;
+        }
+        let html = '';
+        rows.forEach(entry => {
+          html += `<tr>
+            <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(entry.long_url)}">${escapeHtml(entry.long_url)}</td>
+            <td class="short-url">${escapeHtml(entry.short_url)}</td>
+            <td>${entry.clicks}</td>
+            <td style="white-space:nowrap;">${entry.date}</td>
+            <td><button class="copy-btn" data-url="${escapeHtml(entry.short_url)}">Copy</button></td>
+          </tr>`;
+        });
+        historyBody.innerHTML = html;
+        // Attach copy events
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            copyToClipboard(btn.dataset.url, btn);
+          });
+        });
+      } catch (e) {
+        historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">Failed to load history.</td></tr>';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initial load
+    let historyLoaded = false;
+    historyToggle.addEventListener('click', async () => {
+      if (historySection.classList.contains('visible')) {
+        historySection.classList.remove('visible');
+        historyToggle.textContent = 'Show History';
+      } else {
+        historySection.classList.add('visible');
+        historyToggle.textContent = 'Hide History';
+        if (!historyLoaded) {
+          historyLoaded = true;
+          await loadHistory();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

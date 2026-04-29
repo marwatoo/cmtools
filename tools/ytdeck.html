@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YT Deck — MediaTools Studio</title>
+  <link rel="preconnect" href="https://api.allorigins.win">
+  <link rel="preconnect" href="https://corsproxy.io">
+  <link rel="preconnect" href="https://api.codetabs.com">
+  <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0; --text2:#8888a8; --text3:#555570;
+      --accent:#e8ff47; --accent2:#7c6bff; --accent3:#ff6b6b;
+      --card-bg:#13131c; --card-hover:#1e1e2e;
+      --btn-bg:#e8ff47; --btn-text:#0a0a0f;
+      --shadow:0 4px 32px rgba(0,0,0,0.5);
+      --radius:16px; --radius-sm:10px; --radius-xs:6px;
+      --yt-red:#ff0033;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0; --bg2:#ffffff; --bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07); --border2:rgba(0,0,0,0.13);
+      --text:#111118; --text2:#555570; --text3:#aaaacc;
+      --accent:#3a2fff; --accent2:#7c6bff; --accent3:#ff4444;
+      --card-bg:#ffffff; --card-hover:#f0f0ff;
+      --btn-bg:#111118; --btn-text:#ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text2); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .nav-stats {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text2); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+      background: transparent; cursor: pointer; font-family: inherit;
+    }
+    .nav-stats:hover { color: var(--text); border-color: var(--yt-red); }
+    .nav-title {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 1rem; flex: 1;
+    }
+    .theme-toggle {
+      width: 38px; height: 38px;
+      border: 1px solid var(--border2); border-radius: 50%;
+      background: transparent; color: var(--text2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    .deck-container {
+      display: flex; overflow-x: auto;
+      height: calc(100vh - 57px);
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .deck-column {
+      flex: 1 1 0; min-width: 280px; max-width: 420px;
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--bg2); overflow: hidden;
+    }
+    .deck-col-header {
+      position: sticky; top: 0;
+      padding: 14px 16px; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      z-index: 2; display: flex; align-items: center;
+      justify-content: space-between; flex-shrink: 0;
+    }
+    .col-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      margin-right: 10px; object-fit: cover;
+      background: var(--yt-red); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .deck-col-header h2 {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 0.95rem; color: var(--yt-red);
+    }
+    .deck-col-header .handle {
+      font-size: 0.72rem; color: var(--text3); margin-top: 2px;
+    }
+    .deck-col-badge {
+      font-size: 0.7rem; padding: 2px 8px;
+      background: var(--bg3); border-radius: 100px; color: var(--text2);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .deck-pulse {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--yt-red);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .deck-col-feed {
+      flex: 1; overflow-y: auto; padding: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .deck-loading {
+      padding: 24px 16px; text-align: center;
+      font-size: 0.8rem; color: var(--text3);
+    }
+
+    .video-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0;
+      margin-bottom: 10px; cursor: pointer; overflow: hidden;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .video-card:hover { background: var(--card-hover); border-color: var(--border2); }
+
+    .video-thumb-wrap {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      background: var(--bg3); overflow: hidden;
+    }
+    .video-thumb {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .video-duration {
+      position: absolute; bottom: 6px; right: 6px;
+      background: rgba(0,0,0,0.8); color: #fff;
+      font-size: 0.7rem; font-weight: 600;
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .video-play-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0); transition: background 0.2s;
+    }
+    .video-card:hover .video-play-overlay { background: rgba(0,0,0,0.3); }
+    .play-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); display: flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 1rem; opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .video-card:hover .play-icon { opacity: 1; }
+
+    .video-info { padding: 12px; }
+
+    .video-title {
+      font-size: 0.85rem; font-weight: 500;
+      color: var(--text); line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .video-meta {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 8px;
+    }
+    .video-date {
+      font-size: 0.72rem; color: var(--text3);
+    }
+    .video-channel {
+      font-size: 0.72rem; color: var(--text3);
+    }
+
+    .video-stats {
+      display: flex; gap: 12px;
+      padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .video-stat {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.72rem; color: var(--text3);
+    }
+    .video-stat .stat-icon { font-size: 0.8rem; }
+    .video-stat .stat-count { font-weight: 500; }
+    .stat-views .stat-icon { color: var(--accent2); }
+    .stat-likes .stat-icon { color: var(--yt-red); }
+
+    .video-desc {
+      font-size: 0.78rem; color: var(--text2);
+      line-height: 1.5; margin-bottom: 8px;
+      white-space: pre-wrap;
+      display: -webkit-box; -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .video-actions {
+      display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .video-btn {
+      font-size: 0.68rem; padding: 4px 9px;
+      border: 1px solid var(--border2); border-radius: var(--radius-xs);
+      background: var(--bg3); color: var(--text2); cursor: pointer;
+      transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+    }
+    .video-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .video-btn.open-yt { color: var(--yt-red); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px; backdrop-filter: blur(5px);
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius); max-width: 720px; width: 100%;
+      max-height: 90vh; overflow-y: auto; padding: 24px;
+      position: relative; scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--bg);
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text2); width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; z-index: 10;
+    }
+    .modal-close:hover { color: var(--text); border-color: var(--accent); }
+    .modal-video-wrap {
+      width: 100%; aspect-ratio: 16/9; border-radius: 10px;
+      background: var(--bg3); margin-bottom: 16px; overflow: hidden;
+      position: relative;
+    }
+    .modal-video-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .modal-video-play {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.3); cursor: pointer;
+    }
+    .modal-video-play span {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); display: flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 1.4rem;
+    }
+    .modal-title {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 1.1rem; color: var(--text);
+      line-height: 1.4; margin-bottom: 8px;
+    }
+    .modal-channel {
+      font-size: 0.85rem; color: var(--text2); margin-bottom: 12px;
+    }
+    .modal-stats {
+      display: flex; gap: 14px; margin-bottom: 14px;
+      padding: 10px 0; border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-stat {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.85rem; color: var(--text2);
+    }
+    .modal-stat .stat-icon { font-size: 0.9rem; }
+    .modal-stat .stat-count { font-weight: 600; }
+    .modal-desc {
+      font-size: 0.88rem; color: var(--text2);
+      line-height: 1.6; margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+    .modal-footer {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; border-top: 1px solid var(--border);
+      padding-top: 14px; margin-top: 4px;
+    }
+    .modal-date { font-size: 0.78rem; color: var(--text3); flex: 1; }
+    .modal-open-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: var(--radius-xs);
+      background: var(--yt-red); color: #fff;
+      font-size: 0.78rem; font-weight: 600; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .modal-open-btn:hover { opacity: 0.85; }
+    .modal-copy-btn {
+      padding: 7px 14px; border-radius: var(--radius-xs);
+      border: 1px solid var(--border2); background: var(--bg3);
+      color: var(--text2); font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .modal-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-copy-btn.copied { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
+
+    .stats-header {
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 1.1rem; color: var(--text); margin-bottom: 4px;
+    }
+    .stats-subtitle {
+      font-size: 0.82rem; color: var(--text3); margin-bottom: 16px;
+    }
+    .stats-channel {
+      margin-bottom: 20px;
+    }
+    .stats-channel-title {
+      font-family: 'Syne', sans-serif; font-weight: 600;
+      font-size: 0.95rem; color: var(--yt-red); margin-bottom: 10px;
+      padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    }
+    .stats-video {
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .stats-video:last-child { border-bottom: none; }
+    .stats-video-num {
+      font-size: 0.72rem; color: var(--text3);
+      min-width: 20px; flex-shrink: 0;
+    }
+    .stats-video-title {
+      font-size: 0.82rem; color: var(--text);
+      line-height: 1.4; flex: 1;
+    }
+    .stats-video-views {
+      font-size: 0.72rem; color: var(--text2);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .stats-loading {
+      text-align: center; padding: 40px;
+      color: var(--text3); font-size: 0.9rem;
+    }
+    .stats-total {
+      margin-top: 16px; padding-top: 12px;
+      border-top: 2px solid var(--border2);
+      font-size: 0.9rem; font-weight: 600; color: var(--text);
+    }
+
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .deck-col-header, .deck-column, .video-card {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .deck-column:nth-of-type(1) { animation-delay: 0.1s; }
+    .deck-column:nth-of-type(2) { animation-delay: 0.15s; }
+    .deck-column:nth-of-type(3) { animation-delay: 0.2s; }
+    .deck-column:nth-of-type(4) { animation-delay: 0.25s; }
+    .deck-column:nth-of-type(5) { animation-delay: 0.3s; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    @media (max-width: 480px) { .deck-column { min-width: 240px; } }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <button class="nav-stats" id="statsBtn">📊 Stats</button>
+    <span class="nav-title">YT Deck</span>
+    <span class="nav-x-icon" style="font-size:0.75rem;color:var(--text3);">via RSS</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+    </div>
+  </nav>
+
+  <div class="deck-container" id="deckContainer"></div>
+
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box" id="modalBox">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const KEY = 'mts-theme';
+  function getTheme(){
+    return localStorage.getItem(KEY) ||
+      (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(KEY, t);
+    const icon = document.querySelector('.theme-icon');
+    if (icon) icon.textContent = t === 'dark' ? '☽' : '○';
+  }
+  applyTheme(getTheme());
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+  });
+})();
+
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchWithProxy(url) {
+  for (const proxyFn of PROXIES) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(proxyFn(url), { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) return res.text();
+    } catch(e) {}
+  }
+  throw new Error('All proxies failed');
+}
+
+const CACHE_KEY = 'ytdeck-cache';
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getCache() {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function getCachedFeed(colKey) {
+  const cache = getCache();
+  const entry = cache[colKey];
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.videos;
+  return null;
+}
+
+function setCachedFeed(colKey, videos) {
+  const cache = getCache();
+  cache[colKey] = { ts: Date.now(), videos };
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
+const COLUMNS = [
+  { key: 'le360',       label: 'Le360',         handle: '@le360',        channelId: 'UCGYE6-D0--78oXa4wDiOk6g', avatar: 'https://yt3.googleusercontent.com/TPg6DBcLJ4sL4jglVZysejtLG7zsv2gldQ1ZBZxpcy-s6hwY54Eq-U2O4RUBjVAHIdR02SI5=s900-c-k-c0x00ffffff-no-rj' },
+  { key: 'le360news',   label: 'Le360 News',    handle: '@le360news',    channelId: 'UCN0qLWVjj_T_c2jPro25PBQ', avatar: 'https://yt3.googleusercontent.com/hCu6qQTMedm6Dkw-IXESbCfnmET5awsNFBSxQZnOo12FoAgFyp7ctXlBjm4kT8dWmpjHv1WEIg=s900-c-k-c0x00ffffff-no-rj' },
+  { key: 'le360sport',  label: 'Le360 Sport',   handle: '@le360sport',   channelId: 'UCbTsf-3-y9ULwMYF0qB8z6A', avatar: 'https://yt3.googleusercontent.com/CpKu7xUs1sOxvpA4IAdRQbRX4v5pg4Fv-qkYQE-RmulTtPI39KyavPBCV_wKXjh6IDQBsBxGkQ=s900-c-k-c0x00ffffff-no-rj' },
+  { key: 'le36cartoon', label: 'Le36 Cartoon',  handle: '@le36cartoon',  channelId: 'UChqCWmc9eLq6fBlam4MmZTw', avatar: 'https://yt3.googleusercontent.com/ff3l8mWFs0aAIj8bXzUSB3q5mc8VBPOKQWarM1lxtnDcyS-ZBxRKcXBLuDhxYvNRmIDi0Q4ihw=s900-c-k-c0x00ffffff-no-rj' },
+  { key: 'le360afrique',label: 'Le360 Afrique', handle: '@le360afrique', channelId: 'UChDA3N9lr2b3gvCfGUA6MYg', avatar: 'https://yt3.googleusercontent.com/HUId67--8NFQZP6Zh39mOsLdv2KASkTrevp9R6Ruo8_z60AdjxHT9ScCTbsWgs0UKlTHySCK=s900-c-k-c0x00ffffff-no-rj' },
+];
+
+const seen = {};
+
+function getFeedUrl(channelId) {
+  return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+}
+
+async function fetchFeed(col) {
+  const feedUrl = getFeedUrl(col.channelId);
+  const text = await fetchWithProxy(feedUrl, PROXIES);
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(text, 'application/xml');
+
+  const parseError = xml.querySelector('parsererror');
+  if (parseError) throw new Error('Invalid XML response');
+
+  const entries = xml.querySelectorAll('entry');
+  const videos = [];
+
+  entries.forEach(entry => {
+    const videoId = entry.getElementsByTagNameNS('http://www.youtube.com/xml/schemas/2015', 'videoId')[0]?.textContent;
+    const title = entry.querySelector('title')?.textContent || '';
+    const link = entry.querySelector('link[rel="alternate"]')?.getAttribute('href') || '';
+    const published = entry.querySelector('published')?.textContent || '';
+    const updated = entry.querySelector('updated')?.textContent || '';
+    const author = entry.querySelector('author name')?.textContent || col.label;
+    const authorUri = entry.querySelector('author uri')?.textContent || '';
+
+    const mediaGroup = entry.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'group')[0];
+    const thumbnail = mediaGroup?.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail')[0]?.getAttribute('url') || '';
+    const description = mediaGroup?.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'description')[0]?.textContent || '';
+    const communityStats = mediaGroup?.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'community')[0];
+    const statistics = communityStats?.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'statistics')[0];
+    const views = parseInt(statistics?.getAttribute('views') || '0', 10);
+    const starRating = communityStats?.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'starRating')[0];
+    const likes = parseInt(starRating?.getAttribute('count') || '0', 10);
+
+    videos.push({
+      videoId,
+      title,
+      link,
+      published,
+      updated,
+      author,
+      authorUri,
+      thumbnail,
+      description: description.replace(/<[^>]*>/g, '').trim(),
+      views,
+      likes,
+      colKey: col.key,
+    });
+  });
+
+  return videos;
+}
+
+function formatDate(ds) {
+  if (!ds) return '';
+  try {
+    const d = new Date(ds);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+    return d.toLocaleString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+  } catch(e) { return ds; }
+}
+
+function formatCount(n) {
+  if (!n || n === 0) return '0';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K';
+  return n.toString();
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1400);
+  });
+}
+
+function isArabic(text) {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+}
+
+function createVideoCard(video) {
+  const card = document.createElement('div');
+  card.className = 'video-card';
+
+  const thumbWrap = document.createElement('div');
+  thumbWrap.className = 'video-thumb-wrap';
+
+  const img = document.createElement('img');
+  img.className = 'video-thumb';
+  img.src = video.thumbnail;
+  img.alt = video.title;
+  img.loading = 'lazy';
+  img.onerror = function(){ this.style.display='none'; };
+  thumbWrap.appendChild(img);
+
+  const playOverlay = document.createElement('div');
+  playOverlay.className = 'video-play-overlay';
+  const playIcon = document.createElement('div');
+  playIcon.className = 'play-icon';
+  playIcon.textContent = '▶';
+  playOverlay.appendChild(playIcon);
+  thumbWrap.appendChild(playOverlay);
+
+  card.appendChild(thumbWrap);
+
+  const info = document.createElement('div');
+  info.className = 'video-info';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'video-title';
+  titleEl.textContent = video.title;
+  if (isArabic(video.title)) titleEl.dir = 'rtl';
+  info.appendChild(titleEl);
+
+  const meta = document.createElement('div');
+  meta.className = 'video-meta';
+  const dateEl = document.createElement('span');
+  dateEl.className = 'video-date';
+  dateEl.textContent = formatDate(video.published);
+  meta.appendChild(dateEl);
+  info.appendChild(meta);
+
+  const descEl = document.createElement('div');
+  descEl.className = 'video-desc';
+  descEl.textContent = video.description;
+  if (isArabic(video.description)) descEl.dir = 'rtl';
+  info.appendChild(descEl);
+
+  const stats = document.createElement('div');
+  stats.className = 'video-stats';
+  stats.innerHTML = `
+    <div class="video-stat stat-views"><span class="stat-icon">👁</span><span class="stat-count">${formatCount(video.views)} views</span></div>
+    <div class="video-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count">${formatCount(video.likes)} likes</span></div>
+  `;
+  info.appendChild(stats);
+
+  const actions = document.createElement('div');
+  actions.className = 'video-actions';
+
+  const copyLinkBtn = document.createElement('button');
+  copyLinkBtn.className = 'video-btn';
+  copyLinkBtn.textContent = 'Copy Link';
+  copyLinkBtn.addEventListener('click', e => { e.stopPropagation(); copyText(video.link, copyLinkBtn); });
+  actions.appendChild(copyLinkBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'video-btn open-yt';
+  openBtn.textContent = '↗ Watch';
+  openBtn.href = video.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.addEventListener('click', e => e.stopPropagation());
+  actions.appendChild(openBtn);
+
+  info.appendChild(actions);
+  card.appendChild(info);
+
+  card.addEventListener('click', () => openModal(video));
+  return card;
+}
+
+function openModal(video) {
+  const overlay = document.getElementById('modalOverlay');
+  const body    = document.getElementById('modalBody');
+  body.innerHTML = '';
+
+  const videoWrap = document.createElement('div');
+  videoWrap.className = 'modal-video-wrap';
+
+  const thumb = document.createElement('img');
+  thumb.src = video.thumbnail;
+  thumb.alt = video.title;
+  videoWrap.appendChild(thumb);
+
+  const playWrap = document.createElement('div');
+  playWrap.className = 'modal-video-play';
+  playWrap.addEventListener('click', () => window.open(video.link, '_blank'));
+  const playSpan = document.createElement('span');
+  playSpan.textContent = '▶';
+  playWrap.appendChild(playSpan);
+  videoWrap.appendChild(playWrap);
+
+  body.appendChild(videoWrap);
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'modal-title';
+  titleEl.textContent = video.title;
+  if (isArabic(video.title)) titleEl.dir = 'rtl';
+  body.appendChild(titleEl);
+
+  const channelEl = document.createElement('div');
+  channelEl.className = 'modal-channel';
+  channelEl.textContent = video.author;
+  body.appendChild(channelEl);
+
+  const statsRow = document.createElement('div');
+  statsRow.className = 'modal-stats';
+  statsRow.innerHTML = `
+    <div class="modal-stat stat-views"><span class="stat-icon">👁</span><span class="stat-count">${formatCount(video.views)} views</span></div>
+    <div class="modal-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count">${formatCount(video.likes)} likes</span></div>
+  `;
+  body.appendChild(statsRow);
+
+  if (video.description) {
+    const descEl = document.createElement('div');
+    descEl.className = 'modal-desc';
+    descEl.textContent = video.description;
+    if (isArabic(video.description)) descEl.dir = 'rtl';
+    body.appendChild(descEl);
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  const date = document.createElement('div');
+  date.className = 'modal-date';
+  date.textContent = formatDate(video.published);
+  footer.appendChild(date);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'modal-copy-btn';
+  copyBtn.textContent = 'Copy Link';
+  copyBtn.addEventListener('click', () => copyText(video.link, copyBtn));
+  footer.appendChild(copyBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'modal-open-btn';
+  openBtn.href = video.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.textContent = '↗ Watch on YouTube';
+  footer.appendChild(openBtn);
+  body.appendChild(footer);
+
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('modalClose').addEventListener('click', () =>
+  document.getElementById('modalOverlay').classList.add('hidden'));
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.add('hidden');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+});
+
+function getLowViewWeek() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const mostRecentSunday = new Date(now);
+  mostRecentSunday.setDate(now.getDate() - dayOfWeek);
+  mostRecentSunday.setHours(23, 59, 59, 999);
+  const start = new Date(mostRecentSunday);
+  start.setDate(mostRecentSunday.getDate() - 4);
+  start.setHours(0, 0, 0, 0);
+  return { start, end: mostRecentSunday };
+}
+
+async function openStatsModal() {
+  const overlay = document.getElementById('modalOverlay');
+  const body = document.getElementById('modalBody');
+  const week = getLowViewWeek();
+  const startStr = week.start.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const endStr = week.end.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+  body.innerHTML = `
+    <div class="stats-header">Videos sous 5K vues</div>
+    <div class="stats-subtitle">Semaine du ${startStr} au ${endStr}</div>
+    <div class="stats-loading">Chargement des donnÃ©es...</div>
+  `;
+  overlay.classList.remove('hidden');
+
+  let total = 0;
+  const channelResults = [];
+
+  for (const col of COLUMNS) {
+    try {
+      let videos;
+      const cached = getCachedFeed(col.key);
+      if (cached) {
+        videos = cached;
+      } else {
+        videos = await fetchFeed(col);
+      }
+
+      const lowViewVideos = videos.filter(v => {
+        const pubDate = new Date(v.published);
+        return v.views < 5000 && pubDate >= week.start && pubDate <= week.end;
+      });
+
+      if (lowViewVideos.length > 0) {
+        channelResults.push({ label: col.label, videos: lowViewVideos });
+        total += lowViewVideos.length;
+      }
+    } catch(e) {
+      console.warn('Stats fetch failed for', col.key, e);
+    }
+  }
+
+  body.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'stats-header';
+  header.textContent = 'Videos sous 5K vues';
+  body.appendChild(header);
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'stats-subtitle';
+  subtitle.textContent = `Semaine du ${startStr} au ${endStr}`;
+  body.appendChild(subtitle);
+
+  if (channelResults.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:40px;color:var(--text3);';
+    empty.textContent = 'Aucune video sous 5K vues cette semaine';
+    body.appendChild(empty);
+  } else {
+    for (const cr of channelResults) {
+      const chDiv = document.createElement('div');
+      chDiv.className = 'stats-channel';
+
+      const chTitle = document.createElement('div');
+      chTitle.className = 'stats-channel-title';
+      chTitle.textContent = cr.label;
+      chDiv.appendChild(chTitle);
+
+      cr.videos.forEach((v, i) => {
+        const vidDiv = document.createElement('div');
+        vidDiv.className = 'stats-video';
+        vidDiv.style.cursor = 'pointer';
+
+        const num = document.createElement('span');
+        num.className = 'stats-video-num';
+        num.textContent = `${i + 1}.`;
+        vidDiv.appendChild(num);
+
+        const title = document.createElement('span');
+        title.className = 'stats-video-title';
+        title.textContent = v.title;
+        if (isArabic(v.title)) title.dir = 'rtl';
+        vidDiv.appendChild(title);
+
+        const views = document.createElement('span');
+        views.className = 'stats-video-views';
+        views.textContent = `(${formatCount(v.views)} vues)`;
+        vidDiv.appendChild(views);
+
+        vidDiv.addEventListener('click', () => {
+          document.getElementById('modalOverlay').classList.add('hidden');
+          setTimeout(() => openModal(v), 100);
+        });
+
+        chDiv.appendChild(vidDiv);
+      });
+
+      body.appendChild(chDiv);
+    }
+
+    const totalEl = document.createElement('div');
+    totalEl.className = 'stats-total';
+    totalEl.textContent = `Total: ${total} video(s)`;
+    body.appendChild(totalEl);
+  }
+}
+
+document.getElementById('statsBtn').addEventListener('click', openStatsModal);
+
+const container = document.getElementById('deckContainer');
+
+COLUMNS.forEach(col => {
+  seen[col.key] = new Set();
+
+  const colEl = document.createElement('div');
+  colEl.className = 'deck-column';
+  colEl.id = `col-${col.key}`;
+  const initial = col.label.charAt(0).toUpperCase();
+  colEl.innerHTML = `
+    <div class="deck-col-header">
+      <div class="col-avatar" id="avatar-${col.key}">${initial}</div>
+      <div>
+        <h2>${col.label}</h2>
+        <div class="handle">${col.handle}</div>
+      </div>
+      <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+    </div>
+    <div class="deck-col-feed" id="feed-${col.key}">
+      <div class="deck-loading">Loading…</div>
+    </div>`;
+  container.appendChild(colEl);
+});
+
+async function updateColumn(col) {
+  const feed = document.getElementById(`feed-${col.key}`);
+  try {
+    const videos = await fetchFeed(col);
+    setCachedFeed(col.key, videos.map(v => ({ ...v })));
+
+    if (col.avatar) {
+      const avatarEl = document.getElementById(`avatar-${col.key}`);
+      if (avatarEl && avatarEl.tagName === 'DIV') {
+        const img = document.createElement('img');
+        img.className = 'col-avatar';
+        img.src = col.avatar;
+        img.alt = col.label;
+        img.onerror = function() {
+          this.style.display = 'none';
+          const fallback = document.createElement('div');
+          fallback.className = 'col-avatar';
+          fallback.textContent = col.label.charAt(0).toUpperCase();
+          avatarEl.parentNode.replaceChild(fallback, this);
+        };
+        avatarEl.parentNode.replaceChild(img, avatarEl);
+      }
+    }
+
+    const fresh = videos.filter(v => v.videoId && !seen[col.key].has(v.videoId));
+    if (!fresh.length) return;
+
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) loader.remove();
+
+    const frag = document.createDocumentFragment();
+    fresh.forEach(v => {
+      frag.appendChild(createVideoCard(v));
+      seen[col.key].add(v.videoId);
+    });
+    feed.insertBefore(frag, feed.firstChild);
+  } catch(e) {
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) {
+      loader.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.textContent = '⚠ Failed to load';
+      msg.style.cssText = 'margin-bottom:8px;font-size:0.8rem;color:var(--text3);';
+      const btn = document.createElement('button');
+      btn.textContent = '↺ Retry';
+      btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
+      btn.onmouseenter = () => btn.style.borderColor = 'var(--accent)';
+      btn.onmouseleave = () => btn.style.borderColor = 'var(--border2)';
+      btn.onclick = () => { loader.textContent = 'Retrying…'; updateColumn(col); };
+      loader.appendChild(msg);
+      loader.appendChild(btn);
+    }
+    console.warn('Feed error', col.key, e);
+  }
+}
+
+function updateLoop(background = false) {
+  COLUMNS.forEach((col, i) => {
+    setTimeout(() => {
+      if (!background) {
+        const cached = getCachedFeed(col.key);
+        if (cached) {
+          const feed = document.getElementById(`feed-${col.key}`);
+          const loader = feed.querySelector('.deck-loading');
+          if (loader) loader.remove();
+
+          if (col.avatar) {
+            const avatarEl = document.getElementById(`avatar-${col.key}`);
+            if (avatarEl && avatarEl.tagName === 'DIV') {
+              const img = document.createElement('img');
+              img.className = 'col-avatar';
+              img.src = col.avatar;
+              img.alt = col.label;
+              img.onerror = function() {
+                this.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.className = 'col-avatar';
+                fallback.textContent = col.label.charAt(0).toUpperCase();
+                avatarEl.parentNode.replaceChild(fallback, this);
+              };
+              avatarEl.parentNode.replaceChild(img, avatarEl);
+            }
+          }
+
+          cached.forEach(v => {
+            if (v.videoId && !seen[col.key].has(v.videoId)) {
+              feed.appendChild(createVideoCard(v));
+              seen[col.key].add(v.videoId);
+            }
+          });
+        }
+      }
+      updateColumn(col);
+    }, i * 50);
+  });
+  if (!background) {
+    setTimeout(() => updateLoop(true), 60000);
+  }
+}
+
+updateLoop(false);
+</script>
+</body>
+</html>
