@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Editor — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --shadow:0 4px 32px rgba(0,0,0,0.5);
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+      --shadow:0 4px 32px rgba(0,0,0,0.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .tool-header{padding:28px 24px 0;max-width:1140px;margin:0 auto}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:4px}
+    .tool-header p{color:var(--text2);font-size:.9rem;margin-bottom:20px}
+
+    .editor-layout{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start;padding:24px 24px 80px;max-width:1140px;margin:0 auto}
+    .controls-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:73px}
+    .editor-preview{min-width:0}
+
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:18px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    .field{margin-bottom:13px}
+    .field label{display:block;font-size:.75rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+    .range-row{display:flex;align-items:center;gap:10px}
+    .range-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--border2);outline:none;cursor:pointer;margin-top:4px}
+    .range-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .15s}
+    .range-row input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+    .range-row input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+    .range-row input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--border2)}
+    .range-val{font-size:.78rem;color:var(--text2);min-width:36px;text-align:right;font-weight:500;padding:2px 6px;border-radius:4px;background:var(--bg3)}
+
+    .preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+    .preset-btn{padding:8px;border:1px solid var(--border2);border-radius:var(--radius-xs);background:var(--input-bg);color:var(--text3);cursor:pointer;font-size:.75rem;transition:all .15s;text-align:center}
+    .preset-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .preset-btn.active{border-color:var(--accent);background:var(--accent);color:var(--btn-text);font-weight:700}
+
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.92rem;cursor:pointer;transition:all .2s;width:100%}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2);margin-top:8px}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+    .preview-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .preview-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+    .preview-label{font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3)}
+    .preview-meta{font-size:.72rem;color:var(--text3)}
+    .canvas-wrap{padding:16px;display:flex;justify-content:center;align-items:center;min-height:360px;background:repeating-conic-gradient(var(--bg3) 0% 25%, transparent 0% 50%) 0 0 / 20px 20px}
+    #mainCanvas{width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+
+    .upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+    .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--card-hover)}
+    .upload-icon{font-size:2rem;margin-bottom:8px;opacity:.5}
+    .upload-text{font-size:.85rem;color:var(--text2)}
+    .upload-text strong{color:var(--accent)}
+    .upload-input{display:none}
+
+    @media(max-width:760px){.editor-layout{grid-template-columns:1fr}.controls-card{position:static}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .editor-layout, .controls-card, .upload-zone, .field, .btn {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .editor-layout { animation-delay: 0.1s; }
+    .controls-card { animation-delay: 0.15s; }
+    .upload-zone { animation-delay: 0.2s; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Image Editor</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+  </nav>
+
+  <div class="tool-header">
+    <h1>Image Editor</h1>
+    <p>Lightroom-style photo editing with presets and adjustments — tweak exposure, color, contrast, and download instantly.</p>
+  </div>
+
+  <div class="editor-layout">
+    <!-- Controls -->
+    <div class="controls-card">
+      <!-- Upload -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">🖼</div>
+        <div class="upload-text"><strong>Click or drag</strong> an image here</div>
+        <input type="file" id="imageInput" class="upload-input" accept="image/*" />
+      </div>
+
+      <!-- Presets -->
+      <div class="section-head">Presets</div>
+      <div class="preset-grid" id="presetGrid">
+        <button class="preset-btn active" data-preset="normal">Normal</button>
+        <button class="preset-btn" data-preset="warm">Warm</button>
+        <button class="preset-btn" data-preset="cool">Cool</button>
+        <button class="preset-btn" data-preset="sepia">Sepia</button>
+        <button class="preset-btn" data-preset="vintage">Vintage</button>
+        <button class="preset-btn" data-preset="bw">B&W</button>
+        <button class="preset-btn" data-preset="vibrant">Vibrant</button>
+        <button class="preset-btn" data-preset="matte">Matte</button>
+      </div>
+
+      <!-- Adjustments -->
+      <div class="section-head">Adjustments</div>
+      <div class="field">
+        <label>Exposure</label>
+        <div class="range-row">
+          <input type="range" id="exposure" min="-100" max="100" value="0" />
+          <span class="range-val" id="exposureVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Contrast</label>
+        <div class="range-row">
+          <input type="range" id="contrast" min="-100" max="100" value="0" />
+          <span class="range-val" id="contrastVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Highlights</label>
+        <div class="range-row">
+          <input type="range" id="highlights" min="-100" max="100" value="0" />
+          <span class="range-val" id="highlightsVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Shadows</label>
+        <div class="range-row">
+          <input type="range" id="shadows" min="-100" max="100" value="0" />
+          <span class="range-val" id="shadowsVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Whites</label>
+        <div class="range-row">
+          <input type="range" id="whites" min="-100" max="100" value="0" />
+          <span class="range-val" id="whitesVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Blacks</label>
+        <div class="range-row">
+          <input type="range" id="blacks" min="-100" max="100" value="0" />
+          <span class="range-val" id="blacksVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Temperature</label>
+        <div class="range-row">
+          <input type="range" id="temperature" min="-100" max="100" value="0" />
+          <span class="range-val" id="temperatureVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tint</label>
+        <div class="range-row">
+          <input type="range" id="tint" min="-100" max="100" value="0" />
+          <span class="range-val" id="tintVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Saturation</label>
+        <div class="range-row">
+          <input type="range" id="saturation" min="-100" max="100" value="0" />
+          <span class="range-val" id="saturationVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Vibrance</label>
+        <div class="range-row">
+          <input type="range" id="vibrance" min="-100" max="100" value="0" />
+          <span class="range-val" id="vibranceVal">0</span>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" id="downloadBtn" disabled>⬇ Download Image</button>
+        <button class="btn btn-secondary" id="resetBtn">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="editor-preview">
+      <div class="preview-card">
+        <div class="preview-topbar">
+          <span class="preview-label">Preview</span>
+          <span class="preview-meta" id="canvasDim">—</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="mainCanvas"></canvas>
+          <canvas id="hiddenCanvas" style="display:none;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Theme toggle */
+    (function(){
+      var K='mts-theme';
+      function getTheme(){
+        return localStorage.getItem(K) || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      }
+      function applyTheme(t){
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem(K, t);
+        var icon = document.querySelector('.theme-icon');
+        if(icon) icon.textContent = t === 'dark' ? '○' : '☽';
+      }
+      applyTheme(getTheme());
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn = document.getElementById('themeToggle');
+        if(btn) btn.addEventListener('click', function(){
+          applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+      });
+    })();
+
+    /* Image Editor Logic */
+    var originalImage = null;
+    var originalImageData = null;
+    var canvas = document.getElementById('mainCanvas');
+    var ctx = canvas.getContext('2d');
+    var hiddenCanvas = document.getElementById('hiddenCanvas');
+    var hiddenCtx = hiddenCanvas.getContext('2d');
+
+    var adjustments = {
+      exposure:0, contrast:0, highlights:0, shadows:0, whites:0, blacks:0,
+      temperature:0, tint:0, saturation:0, vibrance:0
+    };
+
+    var presets = {
+      normal: { exposure:0, contrast:0, highlights:0, shadows:0, whites:0, blacks:0, temperature:0, tint:0, saturation:0, vibrance:0 },
+      warm: { temperature:30, saturation:10, exposure:5, contrast:5 },
+      cool: { temperature:-30, saturation:5, exposure:5 },
+      sepia: { temperature:20, saturation:-30, contrast:10 },
+      vintage: { temperature:15, saturation:-20, contrast:5, highlights:-10 },
+      bw: { saturation:-100, contrast:10 },
+      vibrant: { vibrance:40, saturation:20, contrast:5 },
+      matte: { contrast:-10, highlights:-5, shadows:5, saturation:10 }
+    };
+
+    /* Upload handling */
+    var uploadZone = document.getElementById('uploadZone');
+    var imageInput = document.getElementById('imageInput');
+
+    uploadZone.addEventListener('click', function() { imageInput.click(); });
+    uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('drag'); });
+    uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('drag'); });
+    uploadZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      uploadZone.classList.remove('drag');
+      loadImage(e.dataTransfer.files[0]);
+    });
+    imageInput.addEventListener('change', function(e) { loadImage(e.target.files[0]); });
+
+    function loadImage(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var img = new Image();
+        img.onload = function() {
+          originalImage = img;
+          hiddenCanvas.width = img.naturalWidth;
+          hiddenCanvas.height = img.naturalHeight;
+          hiddenCtx.drawImage(img, 0, 0);
+          originalImageData = hiddenCtx.getImageData(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+          var MAX = 1200;
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          canvas.width = w;
+          canvas.height = h;
+          document.getElementById('canvasDim').textContent = img.naturalWidth + ' × ' + img.naturalHeight + 'px';
+          render();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /* Wire range inputs */
+    function wireRange(id, valId, adjKey) {
+      var el = document.getElementById(id);
+      var val = document.getElementById(valId);
+      el.addEventListener('input', function() {
+        val.textContent = el.value;
+        adjustments[adjKey] = parseInt(el.value);
+        document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+        render();
+      });
+    }
+    wireRange('exposure','exposureVal','exposure');
+    wireRange('contrast','contrastVal','contrast');
+    wireRange('highlights','highlightsVal','highlights');
+    wireRange('shadows','shadowsVal','shadows');
+    wireRange('whites','whitesVal','whites');
+    wireRange('blacks','blacksVal','blacks');
+    wireRange('temperature','temperatureVal','temperature');
+    wireRange('tint','tintVal','tint');
+    wireRange('saturation','saturationVal','saturation');
+    wireRange('vibrance','vibranceVal','vibrance');
+
+    /* Presets */
+    document.getElementById('presetGrid').addEventListener('click', function(e) {
+      var btn = e.target.closest('.preset-btn');
+      if (!btn) return;
+      document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var preset = presets[btn.dataset.preset];
+      Object.keys(adjustments).forEach(function(key) { adjustments[key] = preset[key] || 0; });
+      Object.keys(adjustments).forEach(function(key) {
+        var el = document.getElementById(key);
+        var valEl = document.getElementById(key + 'Val');
+        if (el) el.value = adjustments[key];
+        if (valEl) valEl.textContent = adjustments[key];
+      });
+      render();
+    });
+
+    /* Reset */
+    document.getElementById('resetBtn').addEventListener('click', function() {
+      document.querySelector('[data-preset="normal"]').click();
+    });
+
+    /* Render */
+    function render() {
+      if (!originalImageData) return;
+      var imageData = new ImageData(
+        new Uint8ClampedArray(originalImageData.data),
+        originalImageData.width, originalImageData.height
+      );
+      var data = imageData.data;
+      var len = data.length;
+
+      for (var i = 0; i < len; i += 4) {
+        var r = data[i], g = data[i+1], b = data[i+2];
+        var lum = 0.299*r + 0.587*g + 0.114*b;
+
+        // Exposure
+        var expF = 1 + adjustments.exposure/100;
+        r = clamp(r*expF); g = clamp(g*expF); b = clamp(b*expF);
+
+        // Contrast
+        var conF = adjustments.contrast/100 + 1;
+        r = clamp((r-128)*conF + 128);
+        g = clamp((g-128)*conF + 128);
+        b = clamp((b-128)*conF + 128);
+
+        // Highlights
+        if (lum > 200) {
+          var f = 1 + adjustments.highlights/100;
+          r = clamp(r*f); g = clamp(g*f); b = clamp(b*f);
+        }
+
+        // Shadows
+        if (lum < 50) {
+          f = 1 + adjustments.shadows/100;
+          r = clamp(r*f); g = clamp(g*f); b = clamp(b*f);
+        }
+
+        // Whites
+        if (lum > 230) {
+          f = 1 + adjustments.whites/100;
+          r = clamp(r*f); g = clamp(g*f); b = clamp(b*f);
+        }
+
+        // Blacks
+        if (lum < 20) {
+          f = 1 + adjustments.blacks/100;
+          r = clamp(r*f); g = clamp(g*f); b = clamp(b*f);
+        }
+
+        // Temperature
+        var tmpF = adjustments.temperature/100;
+        r = clamp(r + tmpF*30);
+        b = clamp(b - tmpF*30);
+
+        // Tint
+        var tntF = adjustments.tint/100;
+        g = clamp(g + tntF*30);
+
+        // Saturation
+        if (adjustments.saturation !== 0) {
+          var hsl = rgbToHsl(r,g,b);
+          var newS = clamp(hsl[1] * (1 + adjustments.saturation/100), 0, 1);
+          var rgb = hslToRgb(hsl[0], newS, hsl[2]);
+          r = rgb[0]; g = rgb[1]; b = rgb[2];
+        }
+
+        // Vibrance
+        if (adjustments.vibrance !== 0) {
+          hsl = rgbToHsl(r,g,b);
+          var vF = adjustments.vibrance/100;
+          var adjS = hsl[1] * (1 + vF*(1-hsl[1]));
+          newS = clamp(adjS, 0, 1);
+          rgb = hslToRgb(hsl[0], newS, hsl[2]);
+          r = rgb[0]; g = rgb[1]; b = rgb[2];
+        }
+
+        data[i] = r; data[i+1] = g; data[i+2] = b;
+      }
+
+      hiddenCtx.putImageData(imageData, 0, 0);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(hiddenCanvas, 0, 0, canvas.width, canvas.height);
+      document.getElementById('downloadBtn').disabled = false;
+    }
+
+    /* Helpers */
+    function clamp(v, min, max) {
+      if (min === undefined) min = 0;
+      if (max === undefined) max = 255;
+      return Math.min(Math.max(v, min), max);
+    }
+
+    function rgbToHsl(r,g,b) {
+      r/=255; g/=255; b/=255;
+      var max=Math.max(r,g,b), min=Math.min(r,g,b);
+      var h,s,l=(max+min)/2;
+      if (max===min) { h=s=0; } else {
+        var d=max-min;
+        s=l>0.5?d/(2-max-min):d/(max+min);
+        switch(max) {
+          case r: h=(g-b)/d+(g<b?6:0); break;
+          case g: h=(b-r)/d+2; break;
+          case b: h=(r-g)/d+4; break;
+        }
+        h/=6;
+      }
+      return [h,s,l];
+    }
+
+    function hslToRgb(h,s,l) {
+      var r,g,b;
+      if (s===0) { r=g=b=l; } else {
+        var hue2rgb = function(p,q,t) {
+          if(t<0) t+=1; if(t>1) t-=1;
+          if(t<1/6) return p+(q-p)*6*t;
+          if(t<1/2) return q;
+          if(t<2/3) return p+(q-p)*(2/3-t)*6;
+          return p;
+        };
+        var q=l<0.5?l*(1+s):l+s-l*s;
+        var p=2*l-q;
+        r=hue2rgb(p,q,h+1/3);
+        g=hue2rgb(p,q,h);
+        b=hue2rgb(p,q,h-1/3);
+      }
+      return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+    }
+
+    /* Download */
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+      if (!originalImage) return;
+      var offscreen = document.createElement('canvas');
+      offscreen.width = originalImage.naturalWidth;
+      offscreen.height = originalImage.naturalHeight;
+      var octx = offscreen.getContext('2d');
+      var fullData = hiddenCtx.getImageData(0,0,offscreen.width,offscreen.height);
+      var data = fullData.data;
+      var len = data.length;
+
+      for (var i=0; i<len; i+=4) {
+        var r=data[i], g=data[i+1], b=data[i+2];
+        var lum=0.299*r+0.587*g+0.114*b;
+        var expF=1+adjustments.exposure/100;
+        r=clamp(r*expF); g=clamp(g*expF); b=clamp(b*expF);
+        var conF=adjustments.contrast/100+1;
+        r=clamp((r-128)*conF+128); g=clamp((g-128)*conF+128); b=clamp((b-128)*conF+128);
+        if (lum>200) { var f=1+adjustments.highlights/100; r=clamp(r*f); g=clamp(g*f); b=clamp(b*f); }
+        if (lum<50) { f=1+adjustments.shadows/100; r=clamp(r*f); g=clamp(g*f); b=clamp(b*f); }
+        if (lum>230) { f=1+adjustments.whites/100; r=clamp(r*f); g=clamp(g*f); b=clamp(b*f); }
+        if (lum<20) { f=1+adjustments.blacks/100; r=clamp(r*f); g=clamp(g*f); b=clamp(b*f); }
+        var tmpF=adjustments.temperature/100; r=clamp(r+tmpF*30); b=clamp(b-tmpF*30);
+        var tntF=adjustments.tint/100; g=clamp(g+tntF*30);
+        if (adjustments.saturation!==0) { var hsl=rgbToHsl(r,g,b); var newS=clamp(hsl[1]*(1+adjustments.saturation/100),0,1); var rgb=hslToRgb(hsl[0],newS,hsl[2]); r=rgb[0]; g=rgb[1]; b=rgb[2]; }
+        if (adjustments.vibrance!==0) { hsl=rgbToHsl(r,g,b); var vF=adjustments.vibrance/100; var adjS=hsl[1]*(1+vF*(1-hsl[1])); newS=clamp(adjS,0,1); rgb=hslToRgb(hsl[0],newS,hsl[2]); r=rgb[0]; g=rgb[1]; b=rgb[2]; }
+        data[i]=r; data[i+1]=g; data[i+2]=b;
+      }
+      octx.putImageData(fullData,0,0);
+      var a=document.createElement('a');
+      a.href=offscreen.toDataURL('image/png');
+      a.download='edited-image.png';
+      a.click();
+    });
+  </script>
+</body>
+</html>

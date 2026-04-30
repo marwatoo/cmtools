@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -112,7 +112,7 @@
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Image Converter</span>
-  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 <div class="tool-page">
   <div class="tool-header">
@@ -164,7 +164,7 @@
 
 <script>
   /* Theme */
-  (function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'☽':'○'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
+  (function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'○':'☽'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
 
   let files = [];
   let targetFmt = 'image/jpeg', targetExt = 'jpg';

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -242,7 +242,7 @@
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Text Transformer</span>
-  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 
 <div class="tool-page">
@@ -425,7 +425,7 @@
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem(KEY, theme);
       const icon = document.querySelector('.theme-icon');
-      if (icon) icon.textContent = theme === 'dark' ? '☽' : '○';
+      if (icon) icon.textContent = theme === 'dark' ? '○' : '☽';
     }
     applyTheme(getTheme());
     document.addEventListener('DOMContentLoaded', () => {

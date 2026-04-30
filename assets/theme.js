@@ -10,15 +10,20 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
-    const icon = document.querySelector('.theme-icon');
-    if (icon) icon.textContent = theme === 'dark' ? '○' : '☽';
+    updateIcon();
   }
 
-  // Apply on load
-  applyTheme(getTheme());
+  function updateIcon() {
+    const icon = document.querySelector('.theme-icon');
+    if (icon) {
+      const theme = document.documentElement.getAttribute('data-theme');
+      icon.textContent = theme === 'dark' ? '○' : '☽';
+    }
+  }
 
   // Wire toggle button
   document.addEventListener('DOMContentLoaded', () => {
+    updateIcon();
     const btn = document.getElementById('themeToggle');
     if (btn) {
       btn.addEventListener('click', () => {

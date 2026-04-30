@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aspect Ratio Calculator — MediaTools Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
 <link rel="stylesheet" href="../assets/global.css" />
 <style>
   .calc-wrap {
@@ -272,7 +282,7 @@
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Aspect Ratio Calculator</span>
-  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 
 <div class="calc-wrap">

@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MediaTools Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
 <link rel="stylesheet" href="assets/global.css" />
 </head>
 <body>
@@ -17,7 +27,7 @@
 <span class="logo-text">MediaTools<em>Studio</em></span>
 </div>
 <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
-<span class="theme-icon">☽</span>
+<span class="theme-icon">○</span>
 </button>
 </header>
 <!-- Hero -->
@@ -256,21 +266,35 @@
 <span class="card-arrow">→</span>
 </a>
 <a href="tools/water.html" class="tool-card" data-tool="Watermark">
-  <div class="card-number">17</div>
-  <div class="card-icon">☒</div>
-  <div class="card-body">
-  <h2>Watermark Tool</h2>
-  <p>Drag & drop image, add text or logo watermark, export PNG.</p>
-  <ul class="card-tags">
-  <li>Watermark</li>
-  <li>png</li>
-  <li>Cover</li>
-  </ul>
-  </div>
-  <span class="card-arrow">→</span>
+   <div class="card-number">17</div>
+   <div class="card-icon">☒</div>
+   <div class="card-body">
+   <h2>Watermark Tool</h2>
+   <p>Drag & drop image, add text or logo watermark, export PNG.</p>
+   <ul class="card-tags">
+   <li>Watermark</li>
+   <li>png</li>
+   <li>Cover</li>
+   </ul>
+   </div>
+   <span class="card-arrow">→</span>
+</a>
+<a href="tools/imageeditor.html" class="tool-card" data-tool="imgfilter">
+   <div class="card-number">18</div>
+   <div class="card-icon">◐</div>
+   <div class="card-body">
+   <h2>Image Filters Editor</h2>
+   <p>Adjust brightness, contrast, saturation and apply filters. Export as PNG/JPG.</p>
+   <ul class="card-tags">
+   <li>Filters</li>
+   <li>Adjustments</li>
+   <li>PNG / JPG</li>
+   </ul>
+   </div>
+   <span class="card-arrow">→</span>
 </a>
 <a href="tools/mark.html" class="tool-card" data-tool="mark">
-  <div class="card-number">18</div>
+   <div class="card-number">19</div>
   <div class="card-icon">◲</div>
   <div class="card-body">
   <h2>Markdown Viewer</h2>
@@ -284,7 +308,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/ogcard.html" class="tool-card" data-tool="ogcard">
-  <div class="card-number">19</div>
+   <div class="card-number">20</div>
   <div class="card-icon">⚆</div>
   <div class="card-body">
   <h2>OG Card Preview</h2>
@@ -298,7 +322,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/charcount.html" class="tool-card" data-tool="charcount">
-  <div class="card-number">20</div>
+   <div class="card-number">21</div>
   <div class="card-icon">#</div>
   <div class="card-body">
   <h2>Character Counter</h2>
@@ -312,7 +336,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/color.html" class="tool-card" data-tool="color">
-  <div class="card-number">21</div>
+   <div class="card-number">22</div>
   <div class="card-icon">🮼</div>
   <div class="card-body">
   <h2>Color Converter</h2>
@@ -326,7 +350,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/brandbook.html" class="tool-card" data-tool="brandbook">
-  <div class="card-number">22</div>
+   <div class="card-number">23</div>
   <div class="card-icon">𑗉</div>
   <div class="card-body">
   <h2>Le360 Brandbook</h2>
@@ -340,7 +364,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/sort.html" class="tool-card" data-tool="sort">
-  <div class="card-number">23</div>
+   <div class="card-number">24</div>
   <div class="card-icon">⇅</div>
   <div class="card-body">
   <h2>Text Sorter</h2>
@@ -354,7 +378,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/tweetdown.html" class="tool-card" data-tool="download">
-  <div class="card-number">24</div>
+   <div class="card-number">25</div>
   <div class="card-icon">⇊</div>
   <div class="card-body">
   <h2>Twitter Downloader</h2>
@@ -368,7 +392,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/xpostimage.html" class="tool-card" data-tool="postgen">
-  <div class="card-number">25</div>
+   <div class="card-number">26</div>
   <div class="card-icon">𝌐</div>
   <div class="card-body">
   <h2>X Post Image Generator</h2>
@@ -382,7 +406,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/stickynotes.html" class="tool-card" data-tool="stickynotes">
-<div class="card-number">26</div>
+ <div class="card-number">27</div>
   <div class="card-icon">🗇</div>
   <div class="card-body">
   <h2>Sticky Notes</h2>
@@ -396,7 +420,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/mdnotes.html" class="tool-card" data-tool="mdnotes">
-<div class="card-number">27</div>
+<div class="card-number">28</div>
   <div class="card-icon">✐</div>
   <div class="card-body">
   <h2>Markdown Notes (BETA)</h2>
@@ -410,7 +434,7 @@
 <span class="card-arrow">→</span>
 </a>
 <a href="tools/wificard.html" class="tool-card" data-tool="wificard">
-  <div class="card-number">28</div>
+   <div class="card-number">29</div>
   <div class="card-icon">w</div>
   <div class="card-body">
   <h2>WiFi Card</h2>
@@ -424,7 +448,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/quotecard.html" class="tool-card" data-tool="quotecard">
-  <div class="card-number">29</div>
+   <div class="card-number">30</div>
   <div class="card-icon">❞</div>
   <div class="card-body">
   <h2>Quote Card</h2>
@@ -438,7 +462,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/collage.html" class="tool-card" data-tool="collage">
-  <div class="card-number">3O</div>
+  <div class="card-number">31</div>
   <div class="card-icon">⊟</div>
   <div class="card-body">
     <h2>Collage Maker</h2>
@@ -452,7 +476,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/ytdeck.html" class="tool-card" data-tool="ytdeck">
-<div class="card-number">31</div>
+<div class="card-number">32</div>
 <div class="card-icon">▶</div>
 <div class="card-body">
 <h2>YT Deck</h2>
@@ -466,7 +490,7 @@
 <span class="card-arrow">→</span>
 </a>
 <a href="tools/aspectratio.html" class="tool-card" data-tool="aspectratio">
-  <div class="card-number">32</div>
+  <div class="card-number">33</div>
   <div class="card-icon">⊞</div>
   <div class="card-body">
     <h2>Aspect Ratio Calculator</h2>
@@ -480,7 +504,7 @@
   <span class="card-arrow">→</span>
 </a>
 <a href="tools/wikiflag.html" class="tool-card" data-tool="wikiflag">
-  <div class="card-number">33</div>
+  <div class="card-number">34</div>
   <div class="card-icon">▭</div>
   <div class="card-body">
     <h2>WikiFlag</h2>

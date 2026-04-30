@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -365,7 +365,7 @@
     <span class="nav-title">𝕏 Deck</span>
     <span class="nav-x-icon" style="font-size:0.75rem;color:var(--text3);">via nitter</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
     </div>
   </nav>
 
@@ -391,7 +391,7 @@
     document.documentElement.setAttribute('data-theme', t);
     localStorage.setItem(KEY, t);
     const icon = document.querySelector('.theme-icon');
-    if (icon) icon.textContent = t === 'dark' ? '☽' : '○';
+    if (icon) icon.textContent = t === 'dark' ? '○' : '☽';
   }
   applyTheme(getTheme());
   document.addEventListener('DOMContentLoaded', () => {

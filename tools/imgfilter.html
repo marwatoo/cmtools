@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Filters — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <style>
+    :root {
+      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
+      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
+      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
+      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
+      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    }
+    [data-theme="light"] {
+      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
+      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+      --text:#111118;--text2:#555570;--text3:#aaaacc;
+      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
+      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
+      --btn-bg:#111118;--btn-text:#ffffff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs);transition:all .2s}
+    .nav-back:hover{color:var(--text);border-color:var(--accent)}
+    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
+    .theme-toggle{margin-left:auto;width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+    .tool-page{max-width:1200px;margin:0 auto;padding:32px 24px 80px}
+    .tool-header{margin-bottom:28px}
+    .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:6px}
+    .tool-header p{color:var(--text2);font-size:.9rem}
+
+    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+    /* Drop zone */
+    .dropzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);position:relative}
+    .dropzone:hover,.dropzone.drag-over{border-color:var(--accent);background:var(--card-hover)}
+    .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .dz-icon{font-size:2.4rem;margin-bottom:10px;opacity:.5}
+    .dz-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:4px}
+    .dz-sub{font-size:.8rem;color:var(--text3)}
+
+    /* Workspace */
+    .workspace{display:grid;grid-template-columns:1fr 320px;gap:24px;margin-top:24px}
+    @media(max-width:900px){.workspace{grid-template-columns:1fr}}
+
+    /* Canvas area */
+    .canvas-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;justify-content:center;min-height:400px;position:relative;overflow:hidden}
+    .canvas-wrap canvas{max-width:100%;max-height:500px;object-fit:contain;border-radius:var(--radius-sm)}
+    .canvas-placeholder{color:var(--text3);font-size:.9rem}
+
+    /* Controls */
+    .controls{display:flex;flex-direction:column;gap:16px}
+    .control-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+    .control-card h3{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;margin-bottom:14px}
+
+    .srow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .srow:last-child{margin-bottom:0}
+    .srow label{font-size:.78rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);white-space:nowrap;width:80px;flex-shrink:0}
+    .sval{width:44px;flex-shrink:0;text-align:right;font-size:.8rem;font-variant-numeric:tabular-nums;color:var(--text3)}
+    input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:100px;background:var(--border2);outline:none;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+
+    /* Presets */
+    .preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .preset-btn{padding:10px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.75rem;color:var(--text2);text-align:center;transition:all .15s}
+    .preset-btn:hover{border-color:var(--accent);color:var(--text);background:var(--card-hover)}
+    .preset-btn.active{background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-bg)}
+
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;width:100%;margin-bottom:10px}
+    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+    .btn-row{display:flex;gap:10px}.btn-row .btn{margin-bottom:0}
+
+    /* Compare */
+    .compare-toggle{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text2);cursor:pointer;margin-top:8px}
+    .compare-toggle input{accent-color:var(--accent)}
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .upload-zone, .workspace {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .upload-zone { animation-delay: 0.1s; }
+    .workspace { animation-delay: 0.2s; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Image Filters</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+  </nav>
+
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Image Filters &amp; Adjustments</h1>
+      <p>Adjust brightness, contrast, saturation and apply filters to your images. Export as PNG or JPG.</p>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*">
+        <div class="dz-icon">🖼</div>
+        <div class="dz-text">Drop image here or click to upload</div>
+        <div class="dz-sub">Supports JPG, PNG, WebP — Max 10MB</div>
+      </div>
+    </div>
+
+    <div class="workspace" id="workspace" style="display:none">
+      <!-- Canvas preview -->
+      <div class="canvas-wrap">
+        <canvas id="previewCanvas"></canvas>
+        <span class="canvas-placeholder" id="placeholder" style="display:none">Load an image to start</span>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <!-- Adjustments -->
+        <div class="control-card">
+          <h3>Adjustments</h3>
+          <div class="srow">
+            <label>Brightness</label>
+            <input type="range" id="brightness" min="0" max="200" value="100">
+            <span class="sval" id="brightnessVal">100</span>
+          </div>
+          <div class="srow">
+            <label>Contrast</label>
+            <input type="range" id="contrast" min="0" max="200" value="100">
+            <span class="sval" id="contrastVal">100</span>
+          </div>
+          <div class="srow">
+            <label>Saturation</label>
+            <input type="range" id="saturate" min="0" max="200" value="100">
+            <span class="sval" id="saturateVal">100</span>
+          </div>
+          <div class="srow">
+            <label>Blur</label>
+            <input type="range" id="blur" min="0" max="20" value="0">
+            <span class="sval" id="blurVal">0</span>
+          </div>
+          <div class="srow">
+            <label>Hue Rotate</label>
+            <input type="range" id="hue" min="0" max="360" value="0">
+            <span class="sval" id="hueVal">0</span>
+          </div>
+          <div class="srow">
+            <label>Opacity</label>
+            <input type="range" id="opacity" min="0" max="100" value="100">
+            <span class="sval" id="opacityVal">100</span>
+          </div>
+          <div class="srow">
+            <label>Invert</label>
+            <input type="range" id="invert" min="0" max="100" value="0">
+            <span class="sval" id="invertVal">0</span>
+          </div>
+          <div class="srow">
+            <label>Vibrance</label>
+            <input type="range" id="vibrance" min="0" max="200" value="100">
+            <span class="sval" id="vibranceVal">100</span>
+          </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="control-card">
+          <h3>Filter Presets</h3>
+          <div class="preset-grid">
+            <button class="preset-btn" data-preset="none">None</button>
+            <button class="preset-btn" data-preset="vintage">Vintage</button>
+            <button class="preset-btn" data-preset="bw">B&W</button>
+            <button class="preset-btn" data-preset="sepia">Sepia</button>
+            <button class="preset-btn" data-preset="invert">Invert</button>
+            <button class="preset-btn" data-preset="cool">Cool</button>
+            <button class="preset-btn" data-preset="warm">Warm</button>
+            <button class="preset-btn" data-preset="dramatic">Dramatic</button>
+            <button class="preset-btn" data-preset="fade">Fade</button>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="control-card">
+          <h3>Export</h3>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="exportPNG">Export PNG</button>
+            <button class="btn btn-secondary" id="exportJPG">Export JPG</button>
+          </div>
+          <button class="btn btn-secondary" id="resetBtn" style="margin-top:8px">Reset All</button>
+        </div>
+
+        <!-- Compare -->
+        <div class="compare-toggle">
+          <input type="checkbox" id="compareToggle">
+          <label for="compareToggle">Show original on hover</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/theme.js"></script>
+  <script>
+    (function() {
+      const fileInput = document.getElementById('fileInput');
+      const dropzone = document.getElementById('dropzone');
+      const workspace = document.getElementById('workspace');
+      const canvas = document.getElementById('previewCanvas');
+      const ctx = canvas.getContext('2d');
+      const placeholder = document.getElementById('placeholder');
+
+      let originalImage = null;
+      let currentImage = null;
+      let showOriginal = false;
+
+      // Sliders
+      const sliders = {
+        brightness: document.getElementById('brightness'),
+        contrast: document.getElementById('contrast'),
+        saturate: document.getElementById('saturate'),
+        blur: document.getElementById('blur'),
+        hue: document.getElementById('hue'),
+        opacity: document.getElementById('opacity'),
+        invert: document.getElementById('invert'),
+        vibrance: document.getElementById('vibrance')
+      };
+
+      const valDisplays = {
+        brightness: document.getElementById('brightnessVal'),
+        contrast: document.getElementById('contrastVal'),
+        saturate: document.getElementById('saturateVal'),
+        blur: document.getElementById('blurVal'),
+        hue: document.getElementById('hueVal'),
+        opacity: document.getElementById('opacityVal'),
+        invert: document.getElementById('invertVal'),
+        vibrance: document.getElementById('vibranceVal')
+      };
+
+      // File handling
+      fileInput.addEventListener('change', handleFile);
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) loadImage(file);
+      });
+
+      function handleFile(e) {
+        const file = e.target.files[0];
+        if (file) loadImage(file);
+      }
+
+      function loadImage(file) {
+        if (file.size > 10 * 1024 * 1024) { alert('File too large. Max 10MB.'); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            originalImage = img;
+            currentImage = img;
+            workspace.style.display = 'grid';
+            placeholder.style.display = 'none';
+            resetSliders();
+            applyFilters();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // Slider events
+      Object.keys(sliders).forEach(key => {
+        sliders[key].addEventListener('input', () => {
+          valDisplays[key].textContent = sliders[key].value;
+          clearActivePreset();
+          applyFilters();
+        });
+      });
+
+      // Presets
+      const presets = {
+        none: { brightness: 100, contrast: 100, saturate: 100, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 100 },
+        vintage: { brightness: 110, contrast: 90, saturate: 70, blur: 0, hue: 25, opacity: 100, invert: 0, vibrance: 120 },
+        bw: { brightness: 100, contrast: 130, saturate: 0, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 100 },
+        sepia: { brightness: 105, contrast: 90, saturate: 50, blur: 0, hue: 30, opacity: 100, invert: 0, vibrance: 110 },
+        invert: { brightness: 100, contrast: 100, saturate: 100, blur: 0, hue: 0, opacity: 100, invert: 100, vibrance: 100 },
+        cool: { brightness: 105, contrast: 95, saturate: 85, blur: 0, hue: 190, opacity: 100, invert: 0, vibrance: 115 },
+        warm: { brightness: 115, contrast: 95, saturate: 130, blur: 0, hue: 20, opacity: 100, invert: 0, vibrance: 125 },
+        dramatic: { brightness: 85, contrast: 150, saturate: 90, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 90 },
+        fade: { brightness: 120, contrast: 80, saturate: 85, blur: 0, hue: 0, opacity: 80, invert: 0, vibrance: 95 }
+      };
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.preset;
+          document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (preset === 'none') { resetSliders(); }
+          else if (presets[preset]) {
+            const p = presets[preset];
+            Object.keys(sliders).forEach(key => {
+              if (p[key] !== undefined) {
+                sliders[key].value = p[key];
+                valDisplays[key].textContent = p[key];
+              }
+            });
+            applyFilters();
+          }
+        });
+      });
+
+      function clearActivePreset() {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      }
+
+      function resetSliders() {
+        Object.keys(sliders).forEach(key => {
+          sliders[key].value = key === 'brightness' || key === 'contrast' || key === 'saturate' || key === 'opacity' ? 100 : 0;
+          valDisplays[key].textContent = sliders[key].value;
+        });
+        clearActivePreset();
+        document.querySelector('[data-preset="none"]').classList.add('active');
+      }
+
+      // Apply filters
+      function applyFilters() {
+        if (!originalImage) return;
+        canvas.width = originalImage.width;
+        canvas.height = originalImage.height;
+
+        const b = sliders.brightness.value;
+        const c = sliders.contrast.value;
+        const s = sliders.saturate.value;
+        const bl = sliders.blur.value;
+        const h = sliders.hue.value;
+        const o = sliders.opacity.value;
+        const inv = sliders.invert.value;
+        const v = sliders.vibrance.value;
+
+        // Apply CSS filters first (brightness, contrast, blur, hue, opacity, invert)
+        ctx.filter = `brightness(${b}%) contrast(${c}%) blur(${bl}px) hue-rotate(${h}deg) opacity(${o}%) invert(${inv}%)`;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(originalImage, 0, 0);
+        ctx.filter = 'none';
+
+        // Apply saturation (CSS saturate)
+        if (s != 100) {
+          ctx.filter = `saturate(${s}%)`;
+          ctx.drawImage(canvas, 0, 0);
+          ctx.filter = 'none';
+        }
+
+        // Apply vibrance (smart saturation via pixel manipulation)
+        if (v != 100) {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const vibranceAmount = (v - 100) / 100; // -1 to 1
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            const max = Math.max(r, g, b);
+            const avg = (r + g + b) / 3;
+            const amt = ((Math.abs(max - avg) * 2 / 255) * vibranceAmount);
+
+            if (v > 100) {
+              // Boost less-saturated colors more
+              data[i]   += (max - r) * amt;
+              data[i+1] += (max - g) * amt;
+              data[i+2] += (max - b) * amt;
+            } else {
+              // Desaturate (move toward average)
+              data[i]   = r + (avg - r) * -amt;
+              data[i+1] = g + (avg - g) * -amt;
+              data[i+2] = b + (avg - b) * -amt;
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+      }
+
+      // Compare toggle
+      const compareToggle = document.getElementById('compareToggle');
+      const canvasWrap = canvas.parentElement;
+
+      canvasWrap.addEventListener('mouseenter', () => {
+        if (compareToggle.checked && originalImage) {
+          showOriginal = true;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(originalImage, 0, 0);
+        }
+      });
+
+      canvasWrap.addEventListener('mouseleave', () => {
+        if (showOriginal) {
+          showOriginal = false;
+          applyFilters();
+        }
+      });
+
+      // Reset
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        resetSliders();
+        applyFilters();
+      });
+
+      // Export
+      function exportCanvas(format) {
+        if (!originalImage) return;
+        const link = document.createElement('a');
+        link.download = `filtered-image.${format}`;
+        link.href = canvas.toDataURL(format === 'jpg' ? 'image/jpeg' : 'image/png', 0.92);
+        link.click();
+      }
+
+      document.getElementById('exportPNG').addEventListener('click', () => exportCanvas('png'));
+      document.getElementById('exportJPG').addEventListener('click', () => exportCanvas('jpg'));
+    })();
+  </script>
+</body>
+</html>

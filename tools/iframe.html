@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,6 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
   <style>
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
     /* Inlined global.css design tokens */
     :root {
       --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24;
@@ -275,7 +285,7 @@
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">iFrame Generator</span>
-  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 
 <div class="tool-page wide" style="max-width:100%;padding:0;">
@@ -501,7 +511,7 @@
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem(KEY, theme);
       const icon = document.querySelector('.theme-icon');
-      if (icon) icon.textContent = theme === 'dark' ? '☽' : '○';
+      if (icon) icon.textContent = theme === 'dark' ? '○' : '☽';
     }
     applyTheme(getTheme());
     document.addEventListener('DOMContentLoaded', () => {

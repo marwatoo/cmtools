@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Le360 Deck — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <style>
@@ -24,7 +34,7 @@
     <span class="nav-num">03 / 04</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
       <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
-      <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
+      <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">○</span></button>
     </div>
   </nav>
 

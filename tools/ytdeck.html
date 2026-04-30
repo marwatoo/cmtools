@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -409,7 +409,7 @@
     <span class="nav-title">YT Deck</span>
     <span class="nav-x-icon" style="font-size:0.75rem;color:var(--text3);">via RSS</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
-      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+      <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
     </div>
   </nav>
 
@@ -433,7 +433,7 @@
     document.documentElement.setAttribute('data-theme', t);
     localStorage.setItem(KEY, t);
     const icon = document.querySelector('.theme-icon');
-    if (icon) icon.textContent = t === 'dark' ? '☽' : '○';
+    if (icon) icon.textContent = t === 'dark' ? '○' : '☽';
   }
   applyTheme(getTheme());
   document.addEventListener('DOMContentLoaded', () => {
@@ -486,12 +486,12 @@ function setCachedFeed(colKey, videos) {
 }
 
 const COLUMNS = [
-  { key: 'le360',       label: 'Le360',         handle: '@le360',        channelId: 'UCGYE6-D0--78oXa4wDiOk6g', avatar: 'https://yt3.googleusercontent.com/TPg6DBcLJ4sL4jglVZysejtLG7zsv2gldQ1ZBZxpcy-s6hwY54Eq-U2O4RUBjVAHIdR02SI5=s900-c-k-c0x00ffffff-no-rj' },
-  { key: 'le360news',   label: 'Le360 News',    handle: '@le360news',    channelId: 'UCN0qLWVjj_T_c2jPro25PBQ', avatar: 'https://yt3.googleusercontent.com/hCu6qQTMedm6Dkw-IXESbCfnmET5awsNFBSxQZnOo12FoAgFyp7ctXlBjm4kT8dWmpjHv1WEIg=s900-c-k-c0x00ffffff-no-rj' },
-  { key: 'le360sport',  label: 'Le360 Sport',   handle: '@le360sport',   channelId: 'UCbTsf-3-y9ULwMYF0qB8z6A', avatar: 'https://yt3.googleusercontent.com/CpKu7xUs1sOxvpA4IAdRQbRX4v5pg4Fv-qkYQE-RmulTtPI39KyavPBCV_wKXjh6IDQBsBxGkQ=s900-c-k-c0x00ffffff-no-rj' },
-  { key: 'le36cartoon', label: 'Le36 Cartoon',  handle: '@le36cartoon',  channelId: 'UChqCWmc9eLq6fBlam4MmZTw', avatar: 'https://yt3.googleusercontent.com/ff3l8mWFs0aAIj8bXzUSB3q5mc8VBPOKQWarM1lxtnDcyS-ZBxRKcXBLuDhxYvNRmIDi0Q4ihw=s900-c-k-c0x00ffffff-no-rj' },
-  { key: 'le360afrique',label: 'Le360 Afrique', handle: '@le360afrique', channelId: 'UChDA3N9lr2b3gvCfGUA6MYg', avatar: 'https://yt3.googleusercontent.com/HUId67--8NFQZP6Zh39mOsLdv2KASkTrevp9R6Ruo8_z60AdjxHT9ScCTbsWgs0UKlTHySCK=s900-c-k-c0x00ffffff-no-rj' },
-];
+   { key: 'le360',       label: 'Le360',         handle: '@le360',        channelId: 'UCGYE6-D0--78oXa4wDiOk6g' },
+   { key: 'le360news',   label: 'Le360 News',    handle: '@le360news',    channelId: 'UCN0qLWVjj_T_c2jPro25PBQ' },
+   { key: 'le360sport',  label: 'Le360 Sport',   handle: '@le360sport',   channelId: 'UCbTsf-3-y9ULwMYF0qB8z6A' },
+   { key: 'le36cartoon', label: 'Le36 Cartoon',  handle: '@le36cartoon',  channelId: 'UChqCWmc9eLq6fBlam4MmZTw' },
+   { key: 'le360afrique',label: 'Le360 Afrique', handle: '@le360afrique', channelId: 'UChDA3N9lr2b3gvCfGUA6MYg' },
+ ];
 
 const seen = {};
 
@@ -947,22 +947,32 @@ async function updateColumn(col) {
     const videos = await fetchFeed(col);
     setCachedFeed(col.key, videos.map(v => ({ ...v })));
 
-    if (col.avatar) {
-      const avatarEl = document.getElementById(`avatar-${col.key}`);
-      if (avatarEl && avatarEl.tagName === 'DIV') {
-        const img = document.createElement('img');
-        img.className = 'col-avatar';
-        img.src = col.avatar;
-        img.alt = col.label;
-        const parent = avatarEl.parentNode;
-        img.onerror = function() {
-          this.style.display = 'none';
-          const fallback = document.createElement('div');
-          fallback.className = 'col-avatar';
-          fallback.textContent = col.label.charAt(0).toUpperCase();
-          parent.replaceChild(fallback, this);
-        };
-        parent.replaceChild(img, avatarEl);
+    // Load channel avatar
+    const avatarEl = document.getElementById(`avatar-${col.key}`);
+    if (avatarEl && avatarEl.tagName === 'DIV') {
+      try {
+        const channelUrl = `https://www.youtube.com/channel/${col.channelId}`;
+        const html = await fetchWithProxy(channelUrl);
+        // Extract avatar URL from the page
+        const match = html.match(/"avatar":\{"thumbnails":\[.*?"url":"([^"]+)"/);
+        if (match && match[1]) {
+          let avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+          const img = document.createElement('img');
+          img.className = 'col-avatar';
+          img.src = avatarUrl;
+          img.alt = col.label;
+          const parent = avatarEl.parentNode;
+          img.onerror = function() {
+            this.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.className = 'col-avatar';
+            fallback.textContent = col.label.charAt(0).toUpperCase();
+            parent.replaceChild(fallback, this);
+          };
+          parent.replaceChild(img, avatarEl);
+        }
+      } catch(e) {
+        console.warn('Avatar load failed for', col.key, e);
       }
     }
 
@@ -1008,23 +1018,28 @@ function updateLoop(background = false) {
           const loader = feed.querySelector('.deck-loading');
           if (loader) loader.remove();
 
-          if (col.avatar) {
-            const avatarEl = document.getElementById(`avatar-${col.key}`);
-            if (avatarEl && avatarEl.tagName === 'DIV') {
-              const img = document.createElement('img');
-              img.className = 'col-avatar';
-              img.src = col.avatar;
-              img.alt = col.label;
-              const parent = avatarEl.parentNode;
-              img.onerror = function() {
-                this.style.display = 'none';
-                const fallback = document.createElement('div');
-                fallback.className = 'col-avatar';
-                fallback.textContent = col.label.charAt(0).toUpperCase();
-                parent.replaceChild(fallback, this);
-              };
-              parent.replaceChild(img, avatarEl);
-            }
+          // Load avatar on first cache load
+          const avatarEl = document.getElementById(`avatar-${col.key}`);
+          if (avatarEl && avatarEl.tagName === 'DIV') {
+            fetchWithProxy(`https://www.youtube.com/channel/${col.channelId}`).then(html => {
+              const match = html.match(/"avatar":\{"thumbnails":\[.*?"url":"([^"]+)"/);
+              if (match && match[1]) {
+                let avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                const img = document.createElement('img');
+                img.className = 'col-avatar';
+                img.src = avatarUrl;
+                img.alt = col.label;
+                const parent = avatarEl.parentNode;
+                img.onerror = function() {
+                  this.style.display = 'none';
+                  const fallback = document.createElement('div');
+                  fallback.className = 'col-avatar';
+                  fallback.textContent = col.label.charAt(0).toUpperCase();
+                  parent.replaceChild(fallback, this);
+                };
+                parent.replaceChild(img, avatarEl);
+              }
+            }).catch(() => {});
           }
 
           cached.forEach(v => {
