@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiFlag — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .tool-wrap {
+      max-width: 640px; margin: 0 auto; padding: 32px 24px;
+    }
+    .search-row {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .search-row input {
+      flex: 1; height: 44px; padding: 0 14px;
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-row input::placeholder { color: var(--text3); }
+    .search-row input:focus { border-color: var(--accent); }
+    .search-btn {
+      height: 44px; padding: 0 20px;
+      background: var(--accent); color: var(--btn-text);
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'Syne', sans-serif; font-size: 0.78rem;
+      font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .search-btn:hover { opacity: 0.88; }
+    .search-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .suggestions {
+      position: relative; margin-bottom: 20px;
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); box-shadow: var(--shadow);
+      overflow: hidden; display: none;
+    }
+    .suggestions.visible { display: block; }
+    .suggestion-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--border);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: var(--card-hover); }
+    .suggestion-item img {
+      width: 48px; height: 32px; object-fit: cover;
+      border-radius: 4px; border: 1px solid var(--border);
+      flex-shrink: 0; background: var(--bg3);
+    }
+    .suggestion-item span {
+      font-size: 0.88rem; font-weight: 500; color: var(--text);
+    }
+
+    .preview-area {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      margin-bottom: 16px; display: none;
+    }
+    .preview-area.visible { display: block; }
+    .preview-inner {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 200px; max-height: 320px; background: #000;
+      position: relative;
+    }
+    .preview-inner img {
+      max-width: 100%; max-height: 320px;
+      object-fit: contain; display: block;
+    }
+    .preview-info {
+      padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid var(--border);
+    }
+    .preview-label {
+      font-size: 0.78rem; color: var(--text2); font-weight: 500;
+    }
+    .preview-label small {
+      display: block; font-size: 0.65rem; color: var(--text3);
+    }
+
+    .action-row {
+      display: flex; gap: 10px;
+    }
+    .action-btn {
+      flex: 1; padding: 12px 16px;
+      border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      background: var(--bg2); color: var(--text2);
+      font-family: 'Syne', sans-serif; font-size: 0.82rem;
+      font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; cursor: pointer;
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .action-btn.primary {
+      background: var(--accent); color: var(--btn-text);
+      border-color: var(--accent);
+    }
+    .action-btn.primary:hover { opacity: 0.88; color: var(--btn-text); }
+    .action-btn:disabled { opacity: 0.32; cursor: not-allowed; }
+
+    .status-msg {
+      padding: 12px 16px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.84rem; color: var(--text2);
+      margin-bottom: 16px; display: none;
+    }
+    .status-msg.visible { display: block; }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--text3); font-size: 0.9rem;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+    canvas { display: none; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">WikiFlag</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+  </nav>
+
+  <div class="tool-wrap">
+    <div class="search-row">
+      <input type="text" id="flagSearch" placeholder="Search for a flag (e.g. Morocco, Japan, Brazil…)" autocomplete="off">
+      <button class="search-btn" id="searchBtn">Search</button>
+    </div>
+
+    <div class="suggestions" id="suggestions"></div>
+
+    <div class="status-msg" id="statusMsg"></div>
+
+    <div id="emptyState" class="empty-state">
+      <div class="icon">🏳️</div>
+      <div>Search for a country flag on Wikipedia</div>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <div class="preview-inner">
+        <img id="previewImg" src="" alt="">
+      </div>
+      <div class="preview-info">
+        <div class="preview-label" id="previewLabel">
+          <span id="flagName">—</span>
+          <small id="flagRes">—</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row" id="actionRow" style="display:none;">
+      <button class="action-btn primary" id="dlBtn">↓ Download PNG</button>
+      <button class="action-btn" id="copyBtn">Copy to Clipboard</button>
+    </div>
+
+    <canvas id="exportCanvas"></canvas>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let hdImg = null;
+    let currentTitle = '';
+
+    function setStatus(msg) {
+      const el = $('statusMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideStatus() {
+      $('statusMsg').classList.remove('visible');
+    }
+
+    function wikiThumbURL(title, px) {
+      return `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${px}&origin=*`;
+    }
+
+    async function fetchThumb(title, px = 800) {
+      try {
+        const r = await fetch(wikiThumbURL(title, px));
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        return p.thumbnail ? p.thumbnail.source : null;
+      } catch { return null; }
+    }
+
+    async function fetchOriginal(title) {
+      try {
+        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url|size&format=json&origin=*`);
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        if (p.imageinfo && p.imageinfo.length > 0) {
+          return p.imageinfo[0].url;
+        }
+      } catch { return null; }
+      return null;
+    }
+
+    async function searchFlags(q) {
+      const words = [...new Set(
+        [q, ...q.trim().split(/\s+/)].filter(w => w.length >= 2)
+      )];
+
+      const queries = words.map(w =>
+        fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + w)}&limit=7&namespace=0&format=json&origin=*`)
+          .then(r => r.json()).then(d => d[1] || []).catch(() => [])
+      );
+
+      const results = await Promise.all(queries);
+
+      const seen = new Set();
+      const titles = [];
+      for (const batch of results) {
+        for (const t of batch) {
+          if (!seen.has(t) && /^Flag of /i.test(t)) {
+            seen.add(t);
+            titles.push(t);
+          }
+        }
+      }
+
+      const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
+      return titles
+        .map((t, i) => ({ title: t, thumb: thumbs[i] }))
+        .filter(x => x.thumb);
+    }
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => res(img);
+        img.onerror = () => rej(new Error('Failed: ' + src));
+        img.src = src;
+      });
+    }
+
+    async function doSearch(q) {
+      setStatus('Searching Wikipedia…');
+      $('searchBtn').disabled = true;
+      try {
+        const results = await searchFlags(q);
+        if (!results.length) {
+          setStatus('No flag results found — try a different country name.');
+          $('searchBtn').disabled = false;
+          return;
+        }
+        $('suggestions').innerHTML = '';
+        results.forEach(({ title, thumb }) => {
+          const item = document.createElement('div');
+          item.className = 'suggestion-item';
+          const label = title.replace(/^Flag of (?:the )?/i, '');
+          item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
+          item.addEventListener('click', () => selectFlag(title, thumb, label));
+          $('suggestions').appendChild(item);
+        });
+        $('suggestions').classList.add('visible');
+        setStatus(`${results.length} result(s) found — click to select.`);
+      } catch (err) {
+        setStatus('Search error. Check your connection.');
+        console.error(err);
+      }
+      $('searchBtn').disabled = false;
+    }
+
+    async function selectFlag(title, previewThumb, label) {
+      $('suggestions').classList.remove('visible');
+      $('flagSearch').value = label;
+      currentTitle = title;
+      setStatus('Fetching high-resolution flag…');
+      try {
+        const hdSrc = await fetchOriginal(title) || await fetchThumb(title, 1920) || previewThumb;
+        hdImg = await loadImg(hdSrc);
+
+      $('previewImg').src = hdSrc;
+      $('flagName').textContent = label;
+      $('flagRes').textContent = `${hdImg.width} × ${hdImg.height}px`;
+
+      $('previewArea').classList.add('visible');
+      $('actionRow').style.display = 'flex';
+      $('emptyState').style.display = 'none';
+        hideStatus();
+      } catch {
+        setStatus('Failed to load flag image.');
+      }
+    }
+
+    $('searchBtn').addEventListener('click', () => {
+      const q = $('flagSearch').value.trim();
+      if (q.length < 2) return;
+      $('suggestions').classList.remove('visible');
+      doSearch(q);
+    });
+
+    $('flagSearch').addEventListener('input', () => {
+      clearTimeout($('flagSearch').debounce);
+      const q = $('flagSearch').value.trim();
+      if (q.length < 2) { $('suggestions').classList.remove('visible'); return; }
+      $('flagSearch').debounce = setTimeout(() => doSearch(q), 420);
+    });
+
+    $('flagSearch').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const q = $('flagSearch').value.trim();
+        if (q.length < 2) return;
+        $('suggestions').classList.remove('visible');
+        doSearch(q);
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!$('suggestions').contains(e.target) && e.target !== $('flagSearch')) {
+        $('suggestions').classList.remove('visible');
+      }
+    });
+
+    $('dlBtn').addEventListener('click', () => {
+      if (!hdImg) return;
+      const canvas = $('exportCanvas');
+      canvas.width = hdImg.width;
+      canvas.height = hdImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(hdImg, 0, 0);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      const name = currentTitle.replace(/^Flag of (?:the )?/i, '').replace(/\s+/g, '_').toLowerCase();
+      a.download = `flag_${name}_${hdImg.width}x${hdImg.height}.png`;
+      a.click();
+    });
+
+    $('copyBtn').addEventListener('click', async () => {
+      if (!hdImg) return;
+      try {
+        const canvas = $('exportCanvas');
+        canvas.width = hdImg.width;
+        canvas.height = hdImg.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(hdImg, 0, 0);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        $('copyBtn').textContent = '✓ Copied!';
+        setTimeout(() => { $('copyBtn').textContent = 'Copy to Clipboard'; }, 2000);
+      } catch (err) {
+        setStatus('Failed to copy — try downloading instead.');
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
