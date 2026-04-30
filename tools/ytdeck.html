@@ -354,6 +354,33 @@
       border-top: 2px solid var(--border2);
       font-size: 0.9rem; font-weight: 600; color: var(--text);
     }
+    .stats-date-range {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .stats-date-label {
+      font-size: 0.78rem; color: var(--text2);
+    }
+    .stats-date-input {
+      font-size: 0.78rem; padding: 4px 8px;
+      border: 1px solid var(--border2); border-radius: var(--radius-xs);
+      background: var(--bg3); color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .stats-date-input::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
+    [data-theme="light"] .stats-date-input::-webkit-calendar-picker-indicator {
+      filter: none;
+    }
+    .stats-apply-btn {
+      font-size: 0.78rem; padding: 5px 14px;
+      border: none; border-radius: var(--radius-xs);
+      background: var(--yt-red); color: #fff;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      font-weight: 600; transition: opacity 0.2s;
+    }
+    .stats-apply-btn:hover { opacity: 0.85; }
 
     @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
     .deck-col-header, .deck-column, .video-card {
@@ -719,7 +746,30 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
 });
 
-function getLowViewWeek() {
+let statsStartDate = null;
+let statsEndDate = null;
+const STATS_DATES_KEY = 'ytdeck-stats-dates';
+
+function loadStatsDates() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATS_DATES_KEY));
+    if (saved && saved.start && saved.end) {
+      statsStartDate = new Date(saved.start);
+      statsEndDate = new Date(saved.end);
+    }
+  } catch(e) {}
+}
+
+function saveStatsDates() {
+  if (statsStartDate && statsEndDate) {
+    localStorage.setItem(STATS_DATES_KEY, JSON.stringify({
+      start: statsStartDate.toISOString(),
+      end: statsEndDate.toISOString()
+    }));
+  }
+}
+
+function getDefaultWeek() {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const mostRecentSunday = new Date(now);
@@ -732,18 +782,50 @@ function getLowViewWeek() {
 }
 
 async function openStatsModal() {
+  loadStatsDates();
   const overlay = document.getElementById('modalOverlay');
   const body = document.getElementById('modalBody');
-  const week = getLowViewWeek();
-  const startStr = week.start.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-  const endStr = week.end.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+  if (!statsStartDate || !statsEndDate) {
+    const week = getDefaultWeek();
+    statsStartDate = week.start;
+    statsEndDate = week.end;
+  }
+
+  const startDateStr = statsStartDate.toISOString().split('T')[0];
+  const endDateStr = statsEndDate.toISOString().split('T')[0];
 
   body.innerHTML = `
     <div class="stats-header">Videos sous 5K vues</div>
-    <div class="stats-subtitle">Semaine du ${startStr} au ${endStr}</div>
-    <div class="stats-loading">Chargement des donnÃ©es...</div>
+    <div class="stats-date-range">
+      <span class="stats-date-label">Du</span>
+      <input type="date" class="stats-date-input" id="statsStart" value="${startDateStr}">
+      <span class="stats-date-label">au</span>
+      <input type="date" class="stats-date-input" id="statsEnd" value="${endDateStr}">
+      <button class="stats-apply-btn" id="statsApplyBtn">Apply</button>
+    </div>
+    <div id="statsResults">
+      <div style="text-align:center;padding:20px;color:var(--text3);font-size:0.85rem;">Choose a date range and click Apply</div>
+    </div>
   `;
   overlay.classList.remove('hidden');
+
+  document.getElementById('statsApplyBtn').addEventListener('click', () => {
+    statsStartDate = new Date(document.getElementById('statsStart').value);
+    statsEndDate = new Date(document.getElementById('statsEnd').value);
+    statsEndDate.setHours(23, 59, 59, 999);
+    saveStatsDates();
+    loadStatsResults();
+  });
+}
+
+async function loadStatsResults() {
+  const body = document.getElementById('modalBody');
+  const resultsDiv = document.getElementById('statsResults');
+  const startStr = statsStartDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const endStr = statsEndDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+  resultsDiv.innerHTML = `<div class="stats-loading">Chargement des données...</div>`;
 
   let total = 0;
   const channelResults = [];
@@ -760,7 +842,7 @@ async function openStatsModal() {
 
       const lowViewVideos = videos.filter(v => {
         const pubDate = new Date(v.published);
-        return v.views < 5000 && pubDate >= week.start && pubDate <= week.end;
+        return v.views < 5000 && pubDate >= statsStartDate && pubDate <= statsEndDate;
       });
 
       if (lowViewVideos.length > 0) {
@@ -772,23 +854,18 @@ async function openStatsModal() {
     }
   }
 
-  body.innerHTML = '';
-
-  const header = document.createElement('div');
-  header.className = 'stats-header';
-  header.textContent = 'Videos sous 5K vues';
-  body.appendChild(header);
+  resultsDiv.innerHTML = '';
 
   const subtitle = document.createElement('div');
   subtitle.className = 'stats-subtitle';
   subtitle.textContent = `Semaine du ${startStr} au ${endStr}`;
-  body.appendChild(subtitle);
+  resultsDiv.appendChild(subtitle);
 
   if (channelResults.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'text-align:center;padding:40px;color:var(--text3);';
-    empty.textContent = 'Aucune video sous 5K vues cette semaine';
-    body.appendChild(empty);
+    empty.textContent = 'Aucune video sous 5K vues pour cette periode';
+    resultsDiv.appendChild(empty);
   } else {
     for (const cr of channelResults) {
       const chDiv = document.createElement('div');
@@ -828,13 +905,13 @@ async function openStatsModal() {
         chDiv.appendChild(vidDiv);
       });
 
-      body.appendChild(chDiv);
+      resultsDiv.appendChild(chDiv);
     }
 
     const totalEl = document.createElement('div');
     totalEl.className = 'stats-total';
     totalEl.textContent = `Total: ${total} video(s)`;
-    body.appendChild(totalEl);
+    resultsDiv.appendChild(totalEl);
   }
 }
 
@@ -877,14 +954,15 @@ async function updateColumn(col) {
         img.className = 'col-avatar';
         img.src = col.avatar;
         img.alt = col.label;
+        const parent = avatarEl.parentNode;
         img.onerror = function() {
           this.style.display = 'none';
           const fallback = document.createElement('div');
           fallback.className = 'col-avatar';
           fallback.textContent = col.label.charAt(0).toUpperCase();
-          avatarEl.parentNode.replaceChild(fallback, this);
+          parent.replaceChild(fallback, this);
         };
-        avatarEl.parentNode.replaceChild(img, avatarEl);
+        parent.replaceChild(img, avatarEl);
       }
     }
 
@@ -937,14 +1015,15 @@ function updateLoop(background = false) {
               img.className = 'col-avatar';
               img.src = col.avatar;
               img.alt = col.label;
+              const parent = avatarEl.parentNode;
               img.onerror = function() {
                 this.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.className = 'col-avatar';
                 fallback.textContent = col.label.charAt(0).toUpperCase();
-                avatarEl.parentNode.replaceChild(fallback, this);
+                parent.replaceChild(fallback, this);
               };
-              avatarEl.parentNode.replaceChild(img, avatarEl);
+              parent.replaceChild(img, avatarEl);
             }
           }
 
