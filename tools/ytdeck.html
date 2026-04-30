@@ -95,15 +95,14 @@
       padding: 14px 16px; background: var(--bg2);
       border-bottom: 1px solid var(--border);
       z-index: 2; display: flex; align-items: center;
-      justify-content: space-between; flex-shrink: 0;
+      gap: 10px; justify-content: space-between; flex-shrink: 0;
     }
     .col-avatar {
       width: 32px; height: 32px; border-radius: 50%;
-      margin-right: 10px; object-fit: cover;
-      background: var(--yt-red); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+      object-fit: cover; flex-shrink: 0;
+      background: var(--bg3); border: 1px solid var(--border2);
     }
+    .col-header-text { flex: 1; min-width: 0; }
     .deck-col-header h2 {
       font-family: 'Syne', sans-serif; font-weight: 700;
       font-size: 0.95rem; color: var(--yt-red);
@@ -486,7 +485,8 @@ function setCachedFeed(colKey, videos) {
 }
 
 const COLUMNS = [
-   { key: 'le360',       label: 'Le360',         handle: '@le360',        channelId: 'UCGYE6-D0--78oXa4wDiOk6g' },
+   { key: 'le360',       label: 'Le360',         handle: '@le360.',        channelId: 'UCGYE6-D0--78oXa4wDiOk6g' },
+   { key: 'le360es',     label: 'Le360 Es',      handle: '@le360es',      channelId: 'UCnEGRMh4BzCtnHXow2HuCvA' },
    { key: 'le360news',   label: 'Le360 News',    handle: '@le360news',    channelId: 'UCN0qLWVjj_T_c2jPro25PBQ' },
    { key: 'le360sport',  label: 'Le360 Sport',   handle: '@le360sport',   channelId: 'UCbTsf-3-y9ULwMYF0qB8z6A' },
    { key: 'le36cartoon', label: 'Le36 Cartoon',  handle: '@le36cartoon',  channelId: 'UChqCWmc9eLq6fBlam4MmZTw' },
@@ -925,11 +925,10 @@ COLUMNS.forEach(col => {
   const colEl = document.createElement('div');
   colEl.className = 'deck-column';
   colEl.id = `col-${col.key}`;
-  const initial = col.label.charAt(0).toUpperCase();
   colEl.innerHTML = `
     <div class="deck-col-header">
-      <div class="col-avatar" id="avatar-${col.key}">${initial}</div>
-      <div>
+      <img class="col-avatar" id="avatar-${col.key}" alt="" />
+      <div class="col-header-text">
         <h2>${col.label}</h2>
         <div class="handle">${col.handle}</div>
       </div>
@@ -941,40 +940,30 @@ COLUMNS.forEach(col => {
   container.appendChild(colEl);
 });
 
+async function loadAvatar(col) {
+  try {
+    const html = await fetchWithProxy(`https://www.youtube.com/@${col.handle.slice(1)}`);
+    let avatarUrl = '';
+    const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
+    if (avatarBlock) {
+      const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
+      if (thumbs && thumbs.length) {
+        avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+      }
+    }
+    avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    if (avatarUrl) {
+      const img = document.getElementById(`avatar-${col.key}`);
+      if (img) img.src = avatarUrl;
+    }
+  } catch(e) {}
+}
+
 async function updateColumn(col) {
   const feed = document.getElementById(`feed-${col.key}`);
   try {
     const videos = await fetchFeed(col);
     setCachedFeed(col.key, videos.map(v => ({ ...v })));
-
-    // Load channel avatar
-    const avatarEl = document.getElementById(`avatar-${col.key}`);
-    if (avatarEl && avatarEl.tagName === 'DIV') {
-      try {
-        const channelUrl = `https://www.youtube.com/channel/${col.channelId}`;
-        const html = await fetchWithProxy(channelUrl);
-        // Extract avatar URL from the page
-        const match = html.match(/"avatar":\{"thumbnails":\[.*?"url":"([^"]+)"/);
-        if (match && match[1]) {
-          let avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-          const img = document.createElement('img');
-          img.className = 'col-avatar';
-          img.src = avatarUrl;
-          img.alt = col.label;
-          const parent = avatarEl.parentNode;
-          img.onerror = function() {
-            this.style.display = 'none';
-            const fallback = document.createElement('div');
-            fallback.className = 'col-avatar';
-            fallback.textContent = col.label.charAt(0).toUpperCase();
-            parent.replaceChild(fallback, this);
-          };
-          parent.replaceChild(img, avatarEl);
-        }
-      } catch(e) {
-        console.warn('Avatar load failed for', col.key, e);
-      }
-    }
 
     const fresh = videos.filter(v => v.videoId && !seen[col.key].has(v.videoId));
     if (!fresh.length) return;
@@ -1012,35 +1001,12 @@ function updateLoop(background = false) {
   COLUMNS.forEach((col, i) => {
     setTimeout(() => {
       if (!background) {
+        loadAvatar(col);
         const cached = getCachedFeed(col.key);
         if (cached) {
           const feed = document.getElementById(`feed-${col.key}`);
           const loader = feed.querySelector('.deck-loading');
           if (loader) loader.remove();
-
-          // Load avatar on first cache load
-          const avatarEl = document.getElementById(`avatar-${col.key}`);
-          if (avatarEl && avatarEl.tagName === 'DIV') {
-            fetchWithProxy(`https://www.youtube.com/channel/${col.channelId}`).then(html => {
-              const match = html.match(/"avatar":\{"thumbnails":\[.*?"url":"([^"]+)"/);
-              if (match && match[1]) {
-                let avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-                const img = document.createElement('img');
-                img.className = 'col-avatar';
-                img.src = avatarUrl;
-                img.alt = col.label;
-                const parent = avatarEl.parentNode;
-                img.onerror = function() {
-                  this.style.display = 'none';
-                  const fallback = document.createElement('div');
-                  fallback.className = 'col-avatar';
-                  fallback.textContent = col.label.charAt(0).toUpperCase();
-                  parent.replaceChild(fallback, this);
-                };
-                parent.replaceChild(img, avatarEl);
-              }
-            }).catch(() => {});
-          }
 
           cached.forEach(v => {
             if (v.videoId && !seen[col.key].has(v.videoId)) {
