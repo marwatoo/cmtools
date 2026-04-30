@@ -8,7 +8,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
-  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <style>
     @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
     .deck-container {
@@ -22,6 +21,7 @@
   <nav class="nav">
     <a href="../index.html" class="nav-back">← Back</a>
     <span class="nav-title">Le360 Deck</span>
+    <span class="nav-num">03 / 04</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
       <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
       <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><span class="theme-icon">☽</span></button>
@@ -40,7 +40,7 @@
   </div>
 
   <script>
-    // ── CORS proxies (tried in order) ──────────────────────────────────────
+    // ── CORS proxies (raced in parallel) ──────────────────────────────────
     const PROXIES = [
       url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
       url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -57,6 +57,49 @@
 
     const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
     const cache  = {};
+    const CACHE_KEY = 'le360deck_cache';
+    const CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (Date.now() - data.ts < CACHE_TTL) {
+          Object.entries(data.feeds || {}).forEach(([k, articles]) => {
+            cache[k] = new Set(articles.map(a => a.link));
+            const feed = document.getElementById(`feed-${k}`);
+            if (feed && articles.length) {
+              const loader = feed.querySelector('.deck-loading');
+              if (loader) loader.remove();
+              const frag = document.createDocumentFragment();
+              articles.forEach((a, i) => frag.appendChild(createCard(a, i === 0)));
+              feed.appendChild(frag);
+            }
+          });
+        }
+      } catch(e) {}
+    }
+
+    function saveCache() {
+      try {
+        const data = { ts: Date.now(), feeds: {} };
+        Object.entries(cache).forEach(([k, links]) => {
+          const feed = document.getElementById(`feed-${k}`);
+          if (feed) {
+            const cards = feed.querySelectorAll('.deck-card');
+            const articles = [];
+            cards.forEach(c => {
+              const link = c.querySelector('.copy-link')?.dataset.link || '';
+              const title = c.querySelector('h3')?.textContent || '';
+              if (link) articles.push({ link, title });
+            });
+            data.feeds[k] = articles.slice(0, 12);
+          }
+        });
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      } catch(e) {}
+    }
 
     // ── Build columns ──────────────────────────────────────────────────────
     const container = document.getElementById('deckContainer');
@@ -76,17 +119,18 @@
       container.appendChild(col);
     });
 
-    // ── Fetch with proxy fallback ──────────────────────────────────────────
+    // ── Fetch with proxy race (fastest wins) ──────────────────────────────
     async function fetchWithProxy(url) {
       const cacheBuster = '?_t=' + Date.now();
       const bustUrl = url + (url.includes('?') ? '&' : '') + cacheBuster;
-      for (const proxy of PROXIES) {
-        try {
-          const res = await fetch(proxy(bustUrl), { signal: AbortSignal.timeout(8000) });
-          if (res.ok) return await res.text();
-        } catch(e) { /* try next proxy */ }
-      }
-      throw new Error('All proxies failed for ' + url);
+      const results = PROXIES.map(proxy =>
+        fetch(proxy(bustUrl), { signal: AbortSignal.timeout(8000) })
+          .then(res => { if (!res.ok) throw new Error('not ok'); return res.text(); })
+          .catch(() => null)
+      );
+      const text = await Promise.any(results);
+      if (!text) throw new Error('All proxies failed for ' + url);
+      return text;
     }
 
     function extractImagesFromHTML(html) {
@@ -148,17 +192,17 @@
     }
 
     // ── Render card ────────────────────────────────────────────────────────
-    function createCard(article) {
+    function createCard(article, eager = false) {
       const card = document.createElement('div');
       card.className = 'deck-card';
       const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
       const hasCarousel = article.contentImages.length > 1;
 
-      // Use DOM methods instead of innerHTML to avoid escaping issues
       const img = document.createElement('img');
       img.className = 'deck-card-img';
       img.src = article.img || fallback;
-      img.loading = 'lazy';
+      img.loading = eager ? 'eager' : 'lazy';
+      img.fetchPriority = eager ? 'high' : 'auto';
       img.alt = '';
       img.onerror = `this.src='${fallback}'`;
       card.appendChild(img);
@@ -260,7 +304,10 @@
         if (loader) loader.remove();
 
         const frag = document.createDocumentFragment();
-        fresh.forEach(a => { frag.appendChild(createCard(a)); cache[key].add(a.link); });
+        fresh.forEach((a, i) => {
+          frag.appendChild(createCard(a, i === 0 && !feed.querySelector('.deck-card')));
+          cache[key].add(a.link);
+        });
         feed.insertBefore(frag, feed.firstChild);
       } catch(e) {
         const loader = feed.querySelector('.deck-loading');
@@ -271,10 +318,19 @@
 
     async function updateLoop() {
       await Promise.allSettled(Object.entries(sources).map(([k, u]) => updateColumn(k, u)));
-      setTimeout(updateLoop, 15000);
+      saveCache();
+      setTimeout(updateLoop, 30000);
     }
 
-    updateLoop();
+    // Load from cache immediately, then fetch fresh
+    loadCache();
+    setTimeout(() => {
+      const keys = Object.keys(sources);
+      keys.forEach((key, i) => {
+        setTimeout(() => updateColumn(key, sources[key]), i * 300);
+      });
+      setTimeout(updateLoop, 15000);
+    }, 200);
 
     // ── Modal ──────────────────────────────────────────────────────────────
     function openModal(article) {
@@ -309,7 +365,17 @@
         <div class="modal-content-html">${contentHTML}</div>`;
 
       overlay.classList.remove('hidden');
-      if (window.twttr?.widgets) twttr.widgets.load(body);
+
+      // Load Twitter widgets on-demand
+      if (!window.twttr?.widgets) {
+        const s = document.createElement('script');
+        s.src = 'https://platform.twitter.com/widgets.js';
+        s.charset = 'utf-8';
+        s.onload = () => window.twttr?.widgets?.load(body);
+        document.head.appendChild(s);
+      } else {
+        twttr.widgets.load(body);
+      }
 
       // Slider
       const slides = body.querySelectorAll('.slide');

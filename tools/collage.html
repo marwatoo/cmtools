@@ -99,7 +99,20 @@
     .image-controls.disabled { opacity:0.4; pointer-events:none; }
     .ctrl-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
     .ctrl-row label { font-size:0.65rem; color:var(--text2); margin-bottom:2px; }
-    .ctrl-row input[type="range"] { width:100%; cursor:pointer; }
+    .ctrl-row input[type="range"] {
+      width:100%; cursor:pointer; -webkit-appearance:none; appearance:none;
+      height:6px; border-radius:3px; outline:none;
+      background:var(--bg3);
+    }
+    .ctrl-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none; appearance:none;
+      width:16px; height:16px; border-radius:50%;
+      background:var(--accent); border:none; cursor:pointer;
+    }
+    .ctrl-row input[type="range"]::-moz-range-thumb {
+      width:16px; height:16px; border-radius:50%;
+      background:var(--accent); border:none; cursor:pointer;
+    }
     .ctrl-row .val { font-size:0.75rem; color:var(--text); text-align:right; }
 
     .preview-section {

@@ -43,12 +43,30 @@
     .sticky-pink{background:#fce7f3;color:#9d174d}
     .sticky-purple{background:#ede9fe;color:#4c1d95}
     .sticky-orange{background:#ffedd5;color:#9a3412}
-    [data-theme="light"] .sticky-yellow{background:#fef3c7}
-    [data-theme="light"] .sticky-green{background:#d1fae5}
-    [data-theme="light"] .sticky-blue{background:#dbeafe}
-    [data-theme="light"] .sticky-pink{background:#fce7f3}
-    [data-theme="light"] .sticky-purple{background:#ede9fe}
-    [data-theme="light"] .sticky-orange{background:#ffedd5}
+    .sticky-white{background:#f5f5f5;color:#1f2937}
+    .sticky-red{background:#fee2e2;color:#991b1b}
+    .sticky-cyan{background:#cffafe;color:#155e75}
+    .sticky-lime{background:#ecfccb;color:#3f6212}
+    .sticky-gray{background:#e5e7eb;color:#374151}
+    .sticky-rose{background:#ffe4e6;color:#9f1239}
+    .sticky-teal{background:#ccfbf1;color:#115e59}
+    .sticky-indigo{background:#e0e7ff;color:#3730a3}
+    .sticky-amber{background:#fef3c7;color:#92400e}
+    [data-theme="dark"] .sticky-yellow{background:#fef3c7;color:#92400e}
+    [data-theme="dark"] .sticky-green{background:#d1fae5;color:#065f46}
+    [data-theme="dark"] .sticky-blue{background:#dbeafe;color:#1e40af}
+    [data-theme="dark"] .sticky-pink{background:#fce7f3;color:#9d174d}
+    [data-theme="dark"] .sticky-purple{background:#ede9fe;color:#4c1d95}
+    [data-theme="dark"] .sticky-orange{background:#ffedd5;color:#9a3412}
+    [data-theme="dark"] .sticky-white{background:#f5f5f5;color:#1f2937}
+    [data-theme="dark"] .sticky-red{background:#fee2e2;color:#991b1b}
+    [data-theme="dark"] .sticky-cyan{background:#cffafe;color:#155e75}
+    [data-theme="dark"] .sticky-lime{background:#ecfccb;color:#3f6212}
+    [data-theme="dark"] .sticky-gray{background:#e5e7eb;color:#374151}
+    [data-theme="dark"] .sticky-rose{background:#ffe4e6;color:#9f1239}
+    [data-theme="dark"] .sticky-teal{background:#ccfbf1;color:#115e59}
+    [data-theme="dark"] .sticky-indigo{background:#e0e7ff;color:#3730a3}
+    [data-theme="dark"] .sticky-amber{background:#fef3c7;color:#92400e}
 
     .sticky-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
     .sticky-name{font-size:.75rem;font-weight:600;opacity:.7;margin-bottom:4px;border:none;background:transparent;width:100%;color:inherit;outline:none;pointer-events:auto}
@@ -58,6 +76,8 @@
     .sticky-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,0.2)}
     .sticky-resize{position:absolute;bottom:4px;right:4px;width:16px;height:16px;cursor:se-resize;opacity:.5;font-size:12px}
     .sticky-resize::after{content:'⋱'}
+    .sticky-font-controls{position:absolute;bottom:8px;right:24px;display:flex;gap:4px}
+    .sticky-font-btn{width:20px;height:20px;border-radius:3px;border:1px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.2);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
     .sticky-text{width:100%;flex:1;border:none;background:transparent;resize:none;font-family:'DM Sans',sans-serif;font-size:.9rem;line-height:1.5;color:inherit;outline:none;pointer-events:auto}
     .sticky-text::placeholder{opacity:.5}
 
@@ -83,7 +103,7 @@
 </head>
 <body>
 <nav class="nav">
-  <a href="../index.html" class="nav-back">← Back</a>
+  <a href="index.html" class="nav-back">← Back</a>
   <span class="nav-title">Sticky Notes</span>
   <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
 </nav>
@@ -95,13 +115,22 @@
 <button class="add-btn" id="addBtn">+</button>
 
 <div class="color-picker" id="colorPicker" style="display:none;position:fixed;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-xs);z-index:200;box-shadow:0 4px 12px rgba(0,0,0,0.3)">
-  <div style="display:grid;grid-template-columns:repeat(3,20px);gap:6px">
-    <div class="color-opt" id="c-yellow" data-c="yellow" style="width:20px;height:20px;border-radius:4px;background:#fef3c7;cursor:pointer"></div>
-    <div class="color-opt" id="c-green" data-c="green" style="width:20px;height:20px;border-radius:4px;background:#d1fae5;cursor:pointer"></div>
-    <div class="color-opt" id="c-blue" data-c="blue" style="width:20px;height:20px;border-radius:4px;background:#dbeafe;cursor:pointer"></div>
-    <div class="color-opt" id="c-pink" data-c="pink" style="width:20px;height:20px;border-radius:4px;background:#fce7f3;cursor:pointer"></div>
-    <div class="color-opt" id="c-purple" data-c="purple" style="width:20px;height:20px;border-radius:4px;background:#ede9fe;cursor:pointer"></div>
-    <div class="color-opt" id="c-orange" data-c="orange" style="width:20px;height:20px;border-radius:4px;background:#ffedd5;cursor:pointer"></div>
+  <div style="display:grid;grid-template-columns:repeat(5,20px);gap:6px">
+    <div class="color-opt" data-c="yellow" style="width:20px;height:20px;border-radius:4px;background:#fef3c7;cursor:pointer"></div>
+    <div class="color-opt" data-c="green" style="width:20px;height:20px;border-radius:4px;background:#d1fae5;cursor:pointer"></div>
+    <div class="color-opt" data-c="blue" style="width:20px;height:20px;border-radius:4px;background:#dbeafe;cursor:pointer"></div>
+    <div class="color-opt" data-c="pink" style="width:20px;height:20px;border-radius:4px;background:#fce7f3;cursor:pointer"></div>
+    <div class="color-opt" data-c="purple" style="width:20px;height:20px;border-radius:4px;background:#ede9fe;cursor:pointer"></div>
+    <div class="color-opt" data-c="orange" style="width:20px;height:20px;border-radius:4px;background:#ffedd5;cursor:pointer"></div>
+    <div class="color-opt" data-c="white" style="width:20px;height:20px;border-radius:4px;background:#f5f5f5;cursor:pointer"></div>
+    <div class="color-opt" data-c="red" style="width:20px;height:20px;border-radius:4px;background:#fee2e2;cursor:pointer"></div>
+    <div class="color-opt" data-c="cyan" style="width:20px;height:20px;border-radius:4px;background:#cffafe;cursor:pointer"></div>
+    <div class="color-opt" data-c="lime" style="width:20px;height:20px;border-radius:4px;background:#ecfccb;cursor:pointer"></div>
+    <div class="color-opt" data-c="gray" style="width:20px;height:20px;border-radius:4px;background:#e5e7eb;cursor:pointer"></div>
+    <div class="color-opt" data-c="rose" style="width:20px;height:20px;border-radius:4px;background:#ffe4e6;cursor:pointer"></div>
+    <div class="color-opt" data-c="teal" style="width:20px;height:20px;border-radius:4px;background:#ccfbf1;cursor:pointer"></div>
+    <div class="color-opt" data-c="indigo" style="width:20px;height:20px;border-radius:4px;background:#e0e7ff;cursor:pointer"></div>
+    <div class="color-opt" data-c="amber" style="width:20px;height:20px;border-radius:4px;background:#fef3c7;cursor:pointer"></div>
   </div>
 </div>
 
@@ -111,11 +140,16 @@
 var notes = [];
 var dragNote = null;
 var dragOffset = { x: 0, y: 0 };
+var zCounter = 0;
 
 function loadNotes() {
   try {
     var s = localStorage.getItem('sticky-notes');
     notes = s ? JSON.parse(s) : [];
+    for (var i = 0; i < notes.length; i++) {
+      if (notes[i].zIndex > zCounter) zCounter = notes[i].zIndex;
+      if (notes[i].zIndex == null) notes[i].zIndex = ++zCounter;
+    }
   } catch(e) { notes = []; }
   renderNotes();
 }
@@ -130,24 +164,29 @@ function renderNotes() {
   for (var i = 0; i < existing.length; i++) existing[i].remove();
   for (var i = 0; i < notes.length; i++) {
     var note = notes[i];
+    (function(note) {
     var el = document.createElement('div');
     el.className = 'sticky sticky-' + note.color;
     el.style.left = (note.x || 50) + 'px';
     el.style.top = (note.y || 50) + 'px';
     el.style.width = (note.w || 200) + 'px';
     el.style.minHeight = (note.h || 150) + 'px';
+    el.style.zIndex = note.zIndex || 1;
     el.dataset.id = note.id;
-    el.innerHTML = '<div class="sticky-header"><div class="sticky-color" data-c="' + note.color + '"></div><div class="sticky-close" title="Delete">×</div></div><input class="sticky-name" placeholder="Title..."><textarea class="sticky-text">' + (note.text || '') + '</textarea><div class="sticky-resize"></div>';
+    el.innerHTML = '<div class="sticky-header"><div class="sticky-color" data-c="' + note.color + '"></div><div class="sticky-close" title="Delete">×</div></div><input class="sticky-name" placeholder="Title..."><textarea class="sticky-text" style="font-size:' + (note.fontSize || 14) + 'px">' + (note.text || '') + '</textarea><div class="sticky-font-controls"><button class="sticky-font-btn" data-action="decrease">-</button><button class="sticky-font-btn" data-action="increase">+</button></div><div class="sticky-resize"></div>';
     if (note.name) el.querySelector('.sticky-name').value = note.name;
     el.querySelector('.sticky-name').oninput = function() {
+      bringToFront(el);
       var n = notes.find(function(x) { return x.id === note.id; });
       if (n) { n.name = this.value; saveNotes(); }
     };
     el.querySelector('.sticky-text').oninput = function() {
+      bringToFront(el);
       var n = notes.find(function(x) { return x.id === note.id; });
       if (n) { n.text = this.value; saveNotes(); }
     };
     el.querySelector('.sticky-close').onclick = function() {
+      bringToFront(el);
       if (confirm('Delete "' + (note.name || 'note') + '"?')) {
         notes = notes.filter(function(n) { return n.id !== note.id; });
         saveNotes();
@@ -162,12 +201,32 @@ function renderNotes() {
         renderNotes();
       }
     };
+    el.querySelectorAll('.sticky-font-btn').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        var action = this.dataset.action;
+        var n = notes.find(function(x) { return x.id === note.id; });
+        if (n) {
+          n.fontSize = (n.fontSize || 14) + (action === 'increase' ? 2 : -2);
+          if (n.fontSize < 10) n.fontSize = 10;
+          if (n.fontSize > 48) n.fontSize = 48;
+          saveNotes();
+          var ta = el.querySelector('.sticky-text');
+          ta.style.fontSize = n.fontSize + 'px';
+        }
+      };
+      btn.ontouchend = function(e) {
+        e.preventDefault(); e.stopPropagation(); this.onclick();
+      };
+    });
     el.querySelector('.sticky-color').onclick = function(e) {
+      bringToFront(el);
       currentNoteId = note.id;
       showColorPicker(e.target);
     };
     el.querySelector('.sticky-color').ontouchend = function(e) {
       e.preventDefault();
+      bringToFront(el);
       currentNoteId = note.id;
       showColorPicker(e.target);
     };
@@ -175,10 +234,18 @@ function renderNotes() {
     el.ontouchstart = startDrag;
     el.querySelector('.sticky-resize').onmousedown = function(e) { e.stopPropagation(); startResize(e); };
     el.querySelector('.sticky-resize').ontouchstart = function(e) { e.stopPropagation(); startResize(e); };
-    el.onmousedown = function(e) { e.stopPropagation(); startDrag(e); };
-    el.ontouchstart = function(e) { e.stopPropagation(); startDrag(e); };
+    el.onmousedown = function(e) { e.stopPropagation(); bringToFront(el); startDrag(e); };
+    el.ontouchstart = function(e) { e.stopPropagation(); bringToFront(el); startDrag(e); };
     board.appendChild(el);
+    })(note);
   }
+}
+
+var zCounter = 100;
+function bringToFront(el) {
+  var id = parseInt(el.dataset.id);
+  var n = notes.find(function(x) { return x.id === id; });
+  if (n) { n.zIndex = ++zCounter; el.style.zIndex = n.zIndex; saveNotes(); }
 }
 
 var currentNoteId = null;
@@ -283,7 +350,7 @@ function endResize() {
 }
 
 function addNote() {
-  var colors = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
+  var colors = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange', 'white', 'red', 'cyan', 'lime', 'gray', 'rose', 'teal', 'indigo', 'amber'];
   var color = colors[Math.floor(Math.random() * colors.length)];
   notes.push({
     id: Date.now(),
@@ -293,7 +360,9 @@ function addNote() {
     x: 50 + Math.random() * 200,
     y: 50 + Math.random() * 150,
     w: 200,
-    h: 150
+    h: 150,
+    fontSize: 14,
+    zIndex: ++zCounter
   });
   saveNotes();
   renderNotes();
@@ -311,12 +380,7 @@ function showColorPicker(el) {
 
 document.getElementById('colorPicker').onclick = function(e) {
   if (e.target.classList.contains('color-opt')) {
-    var c = e.target.dataset.c;
-    if (currentNoteId) {
-      var n = notes.find(function(x) { return x.id === currentNoteId; });
-      if (n) { n.color = c; saveNotes(); renderNotes(); }
-    }
-    document.getElementById('colorPicker').style.display = 'none';
+    pickColor(e.target.dataset.c);
   }
 };
 
@@ -334,18 +398,7 @@ document.addEventListener('touchend', function(e) {
 document.getElementById('addBtn').onclick = addNote;
 loadNotes();
 
-// Color pickers
-var colorIds = ['c-yellow','c-green','c-blue','c-pink','c-purple','c-orange'];
-for (var i = 0; i < colorIds.length; i++) {
-  (function(id) {
-    var el = document.getElementById(id);
-    el.onclick = function() { pickColor(id); };
-    el.ontouchend = function(e) { e.preventDefault(); pickColor(id); };
-  })(colorIds[i]);
-}
-
-function pickColor(id) {
-  var c = document.getElementById(id).dataset.c;
+function pickColor(c) {
   if (currentNoteId) {
     var n = notes.find(function(x) { return x.id === currentNoteId; });
     if (n) { n.color = c; saveNotes(); renderNotes(); }

@@ -121,7 +121,7 @@
     </div>
 
     <div class="field" id="countryWrap" style="display:none; margin-top:12px;">
-      <label>Country Flag</label>
+      <label>Country Name</label>
       <select id="countrySelect">
         <option value="">— Select a country —</option>
         <option value="../assets/overlays/acontries/burkinafaso.png">🇧🇫 Burkina Faso</option>
@@ -206,7 +206,7 @@
       },
       africa: {
         icon: '🌍', label: 'Africa Mode',
-        desc: '2 lines, left-aligned + country flag',
+        desc: '2 lines, left-aligned + country name',
         overlay: '../assets/overlays/afrique.png',
         showText: true, dir: 'ltr',
         l1: 'Line 1', l2: 'Line 2',
@@ -312,7 +312,7 @@
         } catch(e) { console.warn(e.message); }
       }
 
-      // Draw country flag layer (Africa mode)
+      // Draw country name layer (Africa mode)
       if (cfg.hasCountry && countrySelect.value) {
         const co = await loadCountryOverlay(countrySelect.value);
         if (co) ctx.drawImage(co, 0, 0, W, H);
