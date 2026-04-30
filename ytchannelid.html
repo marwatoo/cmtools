@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Channel ID Finder — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .search-row input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-row input:focus {
+      border-color: var(--accent);
+    }
+    .search-row button {
+      padding: 12px 24px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .search-row button:hover { opacity: 0.9; }
+    .search-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .result-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .result-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 6px;
+    }
+    .result-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text);
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .result-value span { flex: 1; }
+    .result-link {
+      color: var(--accent);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .result-link:hover { opacity: 0.8; }
+
+    .copy-btn {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .copy-btn.copied {
+      background: var(--accent);
+      color: var(--btn-text);
+      border-color: var(--accent);
+    }
+
+    .status-msg {
+      font-size: 0.85rem;
+      color: var(--text3);
+      min-height: 24px;
+      margin-top: 8px;
+    }
+
+    .channel-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .channel-avatar {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border2);
+      flex-shrink: 0;
+    }
+    .channel-info h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .channel-handle {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+    .channel-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.72rem;
+      color: var(--text2);
+    }
+    .channel-meta .meta-dot {
+      color: var(--text3);
+    }
+    .channel-desc {
+      font-size: 0.8rem;
+      color: var(--text2);
+      line-height: 1.5;
+      margin-bottom: 16px;
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .results-wrap { display: none; }
+    .results-wrap.visible { display: block; }
+
+    .tool-header, .controls-card, .results-wrap {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header   { animation-delay: 0.05s; }
+    .controls-card { animation-delay: 0.15s; }
+    .results-wrap  { animation-delay: 0.2s; }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">YouTube Channel ID Finder</span>
+    <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+  </nav>
+
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>YouTube Channel ID Finder</h1>
+      <p>Enter a YouTube @handle to get the channel ID and RSS feed link.</p>
+    </div>
+
+    <div class="controls-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:24px;">
+      <div class="search-row">
+        <input type="text" id="handleInput" placeholder="@username or channel URL" />
+        <button id="searchBtn">Find</button>
+      </div>
+      <div id="status" class="status-msg"></div>
+    </div>
+
+    <div class="results-wrap" id="resultsWrap">
+      <div class="result-card">
+        <div class="channel-header">
+          <img class="channel-avatar" id="avatarImg" alt="" />
+          <div>
+            <h3 id="channelTitle"></h3>
+            <div class="channel-handle" id="channelHandle"></div>
+            <div class="channel-meta">
+              <span id="subCount"></span>
+              <span class="meta-dot">•</span>
+              <span id="videoCount"></span>
+            </div>
+          </div>
+        </div>
+        <div class="channel-desc" id="channelDesc"></div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Channel ID</div>
+        <div class="result-value">
+          <span id="channelIdResult"></span>
+          <button class="copy-btn" id="copyId">Copy</button>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">RSS Feed</div>
+        <div class="result-value">
+          <a class="result-link" id="rssResult" target="_blank" rel="noopener"></a>
+          <button class="copy-btn" id="copyRss">Copy</button>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Channel URL</div>
+        <div class="result-value">
+          <a class="result-link" id="channelUrlResult" target="_blank" rel="noopener"></a>
+          <button class="copy-btn" id="copyUrl">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+
+    const handleInput = document.getElementById('handleInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const status = document.getElementById('status');
+    const resultsWrap = document.getElementById('resultsWrap');
+    const channelIdResult = document.getElementById('channelIdResult');
+    const rssResult = document.getElementById('rssResult');
+    const channelUrlResult = document.getElementById('channelUrlResult');
+
+    handleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+    searchBtn.addEventListener('click', doSearch);
+
+    async function doSearch() {
+      const raw = handleInput.value.trim();
+      if (!raw) return;
+
+      searchBtn.disabled = true;
+      status.textContent = 'Looking up channel…';
+      resultsWrap.classList.remove('visible');
+
+      let handle = raw;
+      if (handle.startsWith('@')) handle = handle.slice(1);
+      if (handle.includes('youtube.com')) {
+        const m = handle.match(/@([^/?&#]+)/);
+        if (m) handle = m[1];
+      }
+
+      const url = 'https://www.youtube.com/@' + handle;
+
+      try {
+        const html = await fetch(PROXY(url), { mode: 'cors' }).then(r => {
+          if (!r.ok) throw new Error('Channel not found');
+          return r.text();
+        });
+
+        const idMatch = html.match(/channel_id=([^"&]+)/) || html.match(/"channelId":"([^"]+)"/);
+        if (!idMatch) throw new Error('Could not find channel ID');
+
+        const channelId = idMatch[1];
+        const rssFeed = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId;
+        const channelUrl = 'https://www.youtube.com/channel/' + channelId;
+
+        // Extract avatar - get the largest thumbnail available
+        let avatarUrl = '';
+        const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
+        if (avatarBlock) {
+          const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
+          if (thumbs && thumbs.length) {
+            avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+          }
+        }
+        avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+
+        // Extract channel title
+        const titleMatch = html.match(/"title":"([^"]{1,100}?)"/);
+        const channelTitle = titleMatch ? titleMatch[1] : '';
+
+        // Extract subscriber count
+        const subMatch = html.match(/"subscriberCountText":\{"accessibility":\{"accessibilityData":\{"label":"([^"]+)"/);
+        const subCount = subMatch ? subMatch[1] : '';
+
+        // Extract video count
+        const vidMatch = html.match(/"videosText":\{"simpleText":"([^"]+)"/) || html.match(/"videoCountText":\{"simpleText":"([^"]+)"/);
+        const videoCount = vidMatch ? vidMatch[1] : '';
+
+        // Extract description
+        const descMatch = html.match(/"description":\{"simpleText":"((?:[^"\\]|\\.)*)"/);
+        const desc = descMatch ? descMatch[1].replace(/\\n/g, '\n').replace(/\\u0026/g, '&') : '';
+
+        // Set avatar
+        const avatarImg = document.getElementById('avatarImg');
+        if (avatarUrl) {
+          avatarImg.src = avatarUrl;
+          avatarImg.style.display = 'block';
+        } else {
+          avatarImg.style.display = 'none';
+        }
+
+        // Set channel info
+        document.getElementById('channelTitle').textContent = channelTitle || handle;
+        document.getElementById('channelHandle').textContent = '@' + handle;
+        document.getElementById('subCount').textContent = subCount || '';
+        document.getElementById('videoCount').textContent = videoCount || '';
+        const descEl = document.getElementById('channelDesc');
+        if (desc) {
+          descEl.textContent = desc;
+          descEl.style.display = 'block';
+        } else {
+          descEl.style.display = 'none';
+        }
+
+        // Set results
+        channelIdResult.textContent = channelId;
+        rssResult.href = rssFeed;
+        rssResult.textContent = rssFeed;
+        channelUrlResult.href = channelUrl;
+        channelUrlResult.textContent = channelUrl;
+
+        resultsWrap.classList.add('visible');
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = '⚠ ' + (e.message || 'Failed to find channel. Try a different handle.');
+      } finally {
+        searchBtn.disabled = false;
+      }
+    }
+
+    async function copyText(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch {
+        alert('Copy manually: ' + text);
+      }
+    }
+
+    document.getElementById('copyId').addEventListener('click', function() {
+      copyText(channelIdResult.textContent, this);
+    });
+    document.getElementById('copyRss').addEventListener('click', function() {
+      copyText(rssResult.textContent, this);
+    });
+    document.getElementById('copyUrl').addEventListener('click', function() {
+      copyText(channelUrlResult.href, this);
+    });
+  </script>
+</body>
+</html>
