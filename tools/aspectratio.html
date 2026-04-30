@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aspect Ratio Calculator — MediaTools Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/global.css" />
+<style>
+  .calc-wrap {
+    max-width: 900px; margin: 0 auto; padding: 32px 24px;
+  }
+  .calc-grid {
+    display: grid; grid-template-columns: 1fr 300px; gap: 24px;
+  }
+  .calc-section {
+    margin-bottom: 24px;
+  }
+  .calc-section h3 {
+    font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.9rem; color: var(--text2);
+    margin-bottom: 12px; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ratio-pills {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .ratio-pill {
+    padding: 8px 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 20px; color: var(--text2);
+    font-size: 0.78rem; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .ratio-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .ratio-pill.active { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
+  .dim-row {
+    display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px;
+  }
+  .dim-group { flex: 1; }
+  .dim-group label {
+    display: block; font-size: 0.72rem; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+  }
+  .dim-group input {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius-xs); color: var(--text);
+    font-size: 1.1rem; font-family: 'Syne', sans-serif; font-weight: 600;
+  }
+  .dim-group input:focus { outline: none; border-color: var(--accent); }
+  .dim-sep {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 1.2rem; color: var(--text3); padding-bottom: 10px;
+  }
+  .preview-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .preview-box:hover { border-color: var(--accent); }
+  .preview-click-hint {
+    font-size: 0.6rem; color: var(--text3); margin-top: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .preview-frame {
+    position: relative; display: flex; align-items: center;
+    justify-content: center; width: 100%; aspect-ratio: 16/9;
+    max-height: 200px;
+  }
+  .preview-shape {
+    position: relative; background: var(--accent); opacity: 0.25;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s, height 0.3s;
+  }
+  .safe-zone-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .safe-zone-box {
+    position: absolute;
+    border: 1.5px dashed rgba(255,255,255,0.4);
+    border-radius: 2px;
+    box-sizing: border-box;
+    transition: background 0.15s;
+  }
+  .safe-zone-box:hover {
+    background: rgba(255,255,255,0.08) !important;
+  }
+  .safe-zone-label {
+    position: absolute; font-size: 0.5rem; font-weight: 600;
+    color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5);
+    padding: 2px 6px; border-radius: 3px; white-space: nowrap;
+    top: -18px; left: 50%; transform: translateX(-50%);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .safe-zone-dim {
+    position: absolute; font-size: 0.45rem; color: rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 2px;
+    white-space: nowrap; bottom: -14px; left: 50%; transform: translateX(-50%);
+  }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px); z-index: 1000;
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .modal-backdrop.visible { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); width: 100%; max-width: 720px;
+    max-height: 85vh; overflow-y: auto;
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 1.1rem; color: var(--text); margin: 0;
+  }
+  .modal-close {
+    width: 32px; height: 32px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-xs); color: var(--text2);
+    font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-body { padding: 24px; }
+  .modal-preview {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; position: relative;
+    min-height: 200px;
+  }
+  .modal-shape {
+    position: relative; background: var(--accent); opacity: 0.25;
+    border: 2px solid var(--accent); border-radius: 4px;
+  }
+  .modal-dims {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .modal-dim-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-xs); padding: 14px 16px;
+  }
+  .modal-dim-card.full { grid-column: 1 / -1; }
+  .modal-dim-label {
+    font-size: 0.65rem; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .modal-dim-value {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 1.2rem; color: var(--text);
+  }
+  .modal-dim-sub {
+    font-size: 0.65rem; color: var(--text3); margin-top: 2px;
+  }
+  .sz-section-title {
+    font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 0.8rem; color: var(--text2);
+    margin-bottom: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .sz-cards {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 20px;
+  }
+  .sz-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-xs); padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .sz-card.danger {
+    border-color: rgba(255,100,100,0.3);
+    background: rgba(255,100,100,0.05);
+  }
+  .sz-card-info { flex: 1; }
+  .sz-card-name {
+    font-size: 0.78rem; font-weight: 600; color: var(--text);
+    margin-bottom: 2px;
+  }
+  .sz-card-desc {
+    font-size: 0.65rem; color: var(--text3);
+  }
+  .sz-card-pixels {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem; color: var(--accent);
+    font-weight: 600; white-space: nowrap;
+    margin-left: 12px;
+  }
+  .export-section {
+    margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .export-btn {
+    padding: 12px 28px;
+    background: var(--accent); color: var(--btn-text);
+    border: none; border-radius: var(--radius-sm);
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .export-btn:hover { opacity: 0.9; }
+
+  .preview-dims {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 1.1rem; color: var(--text); margin-top: 12px;
+  }
+  .preview-label {
+    font-size: 0.72rem; color: var(--text3); margin-top: 4px;
+  }
+  .presets-list {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .preset-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: var(--radius-xs);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .preset-item:hover { border-color: var(--accent); }
+  .preset-item.active { border-color: var(--accent); background: var(--bg3); }
+  .preset-label {
+    font-size: 0.78rem; font-weight: 500; color: var(--text);
+  }
+  .preset-desc {
+    font-size: 0.65rem; color: var(--text3);
+  }
+  .preset-dim {
+    font-size: 0.72rem; color: var(--text2);
+    font-family: 'DM Mono', monospace;
+  }
+  .safe-zone-info {
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--bg3); border-radius: var(--radius-xs);
+    font-size: 0.72rem; color: var(--text3); line-height: 1.5;
+  }
+  .safe-zone-info code {
+    color: var(--accent); background: var(--bg2);
+    padding: 2px 4px; border-radius: 3px; font-size: 0.68rem;
+  }
+  .copy-btn {
+    padding: 8px 16px;
+    background: var(--accent); color: var(--btn-text);
+    border: none; border-radius: var(--radius-xs);
+    font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s; margin-top: 8px;
+  }
+  .copy-btn:hover { opacity: 0.9; }
+
+  @media (max-width: 700px) {
+    .calc-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Aspect Ratio Calculator</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span></button>
+</nav>
+
+<div class="calc-wrap">
+  <div class="calc-grid">
+    <div>
+      <div class="calc-section">
+        <h3>Aspect Ratio</h3>
+        <div class="ratio-pills" id="ratioPills">
+          <button class="ratio-pill active" data-r="16" data-b="9">16:9</button>
+          <button class="ratio-pill" data-r="9" data-b="16">9:16</button>
+          <button class="ratio-pill" data-r="1" data-b="1">1:1</button>
+          <button class="ratio-pill" data-r="4" data-b="5">4:5</button>
+          <button class="ratio-pill" data-r="4" data-b="3">4:3</button>
+          <button class="ratio-pill" data-r="3" data-b="2">3:2</button>
+          <button class="ratio-pill" data-r="21" data-b="9">21:9</button>
+          <button class="ratio-pill" data-r="32" data-b="9">32:9</button>
+          <button class="ratio-pill" data-r="2" data-b="3">2:3</button>
+          <button class="ratio-pill" data-r="5" data-b="4">5:4</button>
+        </div>
+      </div>
+
+      <div class="calc-section">
+        <h3>Dimensions</h3>
+        <div class="dim-row">
+          <div class="dim-group">
+            <label>Width (px)</label>
+            <input type="number" id="width" value="1920" min="1">
+          </div>
+          <span class="dim-sep">:</span>
+          <div class="dim-group">
+            <label>Height (px)</label>
+            <input type="number" id="height" value="1080" min="1">
+          </div>
+        </div>
+        <button class="copy-btn" id="copyBtn">Copy 1920×1080</button>
+      </div>
+
+      <div class="calc-section">
+        <h3>Common Presets</h3>
+        <div class="presets-list" id="presetsList"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="calc-section">
+        <h3>Preview</h3>
+        <div class="preview-box" id="previewBox">
+          <div class="preview-frame" id="previewFrame">
+            <div class="preview-shape" id="previewShape">
+              <div class="safe-zone-overlay" id="safeZoneOverlay"></div>
+            </div>
+          </div>
+          <div class="preview-dims" id="previewDims">1920 × 1080</div>
+          <div class="preview-label" id="previewLabel">16:9</div>
+          <div class="preview-click-hint">Click for details & export →</div>
+        </div>
+      </div>
+
+      <div class="calc-section">
+        <h3>Safe Zones</h3>
+        <div class="safe-zone-info" id="safeZoneInfo">
+          <strong>YouTube Thumbnail</strong><br>
+          Keep critical elements within <code>90%</code> center area to avoid cropping on different devices.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">1920 × 1080 — 16:9</h2>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-preview" id="modalPreview">
+        <div class="modal-shape" id="modalShape"></div>
+      </div>
+      <div class="modal-dims" id="modalDims"></div>
+      <div id="safeZonesSection"></div>
+      <div class="export-section">
+        <div class="sz-section-title">Export Preview</div>
+        <canvas id="exportCanvas" style="display:none;"></canvas>
+        <button class="export-btn" id="exportBtn">Download PNG — ${w}×${h}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/theme.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const presets = [
+  { w: 1920, h: 1080, label: 'YouTube Video', desc: 'Standard HD' },
+  { w: 1280, h: 720, label: 'YouTube 720p', desc: 'HD' },
+  { w: 3840, h: 2160, label: 'YouTube 4K', desc: 'Ultra HD' },
+  { w: 2560, h: 1440, label: 'YouTube Banner', desc: 'Channel Art' },
+  { w: 1080, h: 1920, label: 'Instagram Story', desc: 'Reels / TikTok' },
+  { w: 1080, h: 1080, label: 'Instagram Post', desc: 'Square' },
+  { w: 1080, h: 1350, label: 'Instagram Portrait', desc: '4:5 Post' },
+  { w: 1200, h: 675, label: 'X / Twitter Post', desc: 'Landscape' },
+  { w: 1200, h: 1500, label: 'X / Twitter Portrait', desc: '4:5' },
+  { w: 1584, h: 396, label: 'X / Twitter Banner', desc: 'Header' },
+  { w: 1200, h: 630, label: 'Facebook Post', desc: 'OG / Share' },
+  { w: 820, h: 312, label: 'Facebook Cover', desc: 'Desktop' },
+  { w: 1280, h: 720, label: 'LinkedIn Post', desc: 'Shared Image' },
+  { w: 1584, h: 396, label: 'LinkedIn Banner', desc: 'Profile Cover' },
+  { w: 2560, h: 1440, label: 'Twitch Banner', desc: 'Offline Screen' },
+  { w: 1920, h: 1080, label: 'Twitch Stream', desc: 'Overlay' },
+  { w: 1000, h: 1000, label: 'Spotify Playlist', desc: 'Cover Art' },
+  { w: 3000, h: 3000, label: 'iTunes Podcast', desc: 'Cover Art' },
+];
+
+const safeZones = {
+  '16:9': {
+    info: '<strong>YouTube Thumbnail</strong><br>Critical content within <code>90%</code> center. Avoid edges where timestamp overlay appears (<code>bottom-right</code>).',
+    zones: [{
+      label: 'Safe Area (90%)', top: 5, left: 5, width: 90, height: 90
+    }]
+  },
+  '9:16': {
+    info: '<strong>Stories / Reels / TikTok</strong><br>Keep text within <code>14%</code> top and <code>20%</code> bottom to avoid UI overlap. Leave <code>center-safe</code> zone clear.',
+    zones: [{
+      label: 'Safe Area', top: 14, left: 8, width: 84, height: 66
+    }, {
+      label: 'Top UI', top: 0, left: 0, width: 100, height: 14, dashed: true
+    }, {
+      label: 'Bottom UI', top: 80, left: 0, width: 100, height: 20, dashed: true
+    }]
+  },
+  '1:1': {
+    info: '<strong>Instagram Post</strong><br>No cropping on feed. Safe for <code>avatars</code> — keep key elements in center <code>60%</code> for profile circle.',
+    zones: [{
+      label: 'Profile Circle (60%)', top: 20, left: 20, width: 60, height: 60, circle: true
+    }]
+  },
+  '4:5': {
+    info: '<strong>Instagram Portrait</strong><br>Takes maximum feed space. Avoid bottom <code>10%</code> where caption starts.',
+    zones: [{
+      label: 'Safe Area', top: 5, left: 5, width: 90, height: 85
+    }]
+  },
+  '4:3': {
+    info: '<strong>Classic / Presentations</strong><br>Standard slide ratio. Safe for <code>projectors</code> with <code>5%</code> edge margin.',
+    zones: [{
+      label: 'Safe Area (90%)', top: 5, left: 5, width: 90, height: 90
+    }]
+  },
+  '3:2': {
+    info: '<strong>Photography</strong><br>DSLR standard. No special safe zones — full frame visible.',
+    zones: []
+  },
+  '21:9': {
+    info: '<strong>Ultrawide</strong><br>Cinematic ratio. May be letterboxed on <code>16:9</code> displays. Keep action in center <code>76%</code>.',
+    zones: [{
+      label: '16:9 Safe', top: 0, left: 12, width: 76, height: 100
+    }]
+  },
+  '32:9': {
+    info: '<strong>Super Ultrawide</strong><br>Dual-monitor ratio. Split content into <code>two 16:9</code> zones for compatibility.',
+    zones: [{
+      label: 'Left 16:9', top: 0, left: 0, width: 50, height: 100
+    }, {
+      label: 'Right 16:9', top: 0, left: 50, width: 50, height: 100
+    }]
+  },
+  '2:3': {
+    info: '<strong>Pinterest Pin</strong><br>Vertical pin format. Keep text in <code>upper 70%</code> — bottom may be cropped in feeds.',
+    zones: [{
+      label: 'Upper 70%', top: 5, left: 5, width: 90, height: 65
+    }]
+  },
+  '5:4': {
+    info: '<strong>Classic Monitor</strong><br>Older displays. Safe for <code>retro content</code> and print.',
+    zones: []
+  },
+};
+
+let currentRatio = { r: 16, b: 9 };
+let currentW = 1920;
+let currentH = 1080;
+
+function openModal() {
+  const backdrop = $('modalBackdrop');
+  backdrop.classList.add('visible');
+  document.body.style.overflow = 'hidden';
+  buildModalContent();
+}
+
+function closeModal() {
+  const backdrop = $('modalBackdrop');
+  backdrop.classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
+$('previewBox').addEventListener('click', openModal);
+$('modalClose').addEventListener('click', closeModal);
+$('modalBackdrop').addEventListener('click', (e) => {
+  if (e.target === $('modalBackdrop')) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+function buildModalContent() {
+  const w = currentW, h = currentH;
+  const ratio = simplifyRatio(w, h);
+  $('modalTitle').textContent = `${w} × ${h} — ${ratio}`;
+
+  const preview = $('modalPreview');
+  const pW = preview.clientWidth;
+  const pH = preview.clientHeight;
+  const shape = $('modalShape');
+  const shapeW = pW * 0.75;
+  const shapeH = shapeW * (h / w);
+  if (shapeH <= pH * 0.85) {
+    shape.style.width = shapeW + 'px';
+    shape.style.height = shapeH + 'px';
+  } else {
+    shape.style.height = pH * 0.85 + 'px';
+    shape.style.width = (pH * 0.85) * (w / h) + 'px';
+  }
+
+  shape.innerHTML = '';
+  const szData = safeZones[ratio];
+  const actualW = Math.round(shape.clientWidth);
+  const actualH = Math.round(shape.clientHeight);
+
+  if (szData && szData.zones && szData.zones.length > 0) {
+    const overlay = document.createElement('div');
+    overlay.className = 'safe-zone-overlay';
+    szData.zones.forEach(z => {
+      const box = document.createElement('div');
+      box.className = 'safe-zone-box';
+      box.style.top = z.top + '%';
+      box.style.left = z.left + '%';
+      box.style.width = z.width + '%';
+      box.style.height = z.height + '%';
+      if (z.dashed) {
+        box.style.borderColor = 'rgba(255,100,100,0.4)';
+        box.style.background = 'rgba(255,100,100,0.05)';
+      }
+      if (z.circle) {
+        box.style.borderRadius = '50%';
+      }
+      const zW = Math.round(actualW * z.width / 100);
+      const zH = Math.round(actualH * z.height / 100);
+      if (z.label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'safe-zone-label';
+        lbl.textContent = z.label;
+        box.appendChild(lbl);
+        const dim = document.createElement('div');
+        dim.className = 'safe-zone-dim';
+        dim.textContent = `${zW}×${zH}`;
+        box.appendChild(dim);
+      }
+      overlay.appendChild(box);
+    });
+    shape.appendChild(overlay);
+  }
+
+  const aspectRatio = w / h;
+  const megapixels = ((w * h) / 1000000).toFixed(1);
+
+  $('modalDims').innerHTML = `
+    <div class="modal-dim-card">
+      <div class="modal-dim-label">Width</div>
+      <div class="modal-dim-value">${w}px</div>
+    </div>
+    <div class="modal-dim-card">
+      <div class="modal-dim-label">Height</div>
+      <div class="modal-dim-value">${h}px</div>
+    </div>
+    <div class="modal-dim-card">
+      <div class="modal-dim-label">Aspect Ratio</div>
+      <div class="modal-dim-value">${ratio}</div>
+      <div class="modal-dim-sub">${aspectRatio.toFixed(3)}</div>
+    </div>
+    <div class="modal-dim-card">
+      <div class="modal-dim-label">Megapixels</div>
+      <div class="modal-dim-value">${megapixels} MP</div>
+    </div>
+  `;
+
+  const szSection = $('safeZonesSection');
+  if (szData && szData.zones && szData.zones.length > 0) {
+    let szHTML = '<div class="sz-section-title">Safe Zones</div><div class="sz-cards">';
+    szData.zones.forEach(z => {
+      const zW = Math.round(w * z.width / 100);
+      const zH = Math.round(h * z.height / 100);
+      const cls = z.dashed ? 'danger' : '';
+      szHTML += `
+        <div class="sz-card ${cls}">
+          <div class="sz-card-info">
+            <div class="sz-card-name">${z.label}</div>
+            <div class="sz-card-desc">${z.width}% × ${z.height}% of canvas</div>
+          </div>
+          <div class="sz-card-pixels">${zW} × ${zH}</div>
+        </div>
+      `;
+    });
+    szHTML += '</div>';
+    szSection.innerHTML = szHTML;
+  } else {
+    szSection.innerHTML = '';
+  }
+
+  const exportBtn = $('exportBtn');
+  exportBtn.textContent = `Download PNG — ${w}×${h}`;
+  exportBtn.onclick = () => exportPNG(w, h, ratio);
+}
+
+function exportPNG(w, h, ratio) {
+  const canvas = $('exportCanvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = 'rgba(15, 15, 25, 0.95)';
+  ctx.fillRect(0, 0, w, h);
+
+  const unit = Math.max(1, Math.min(w, h) * 0.001);
+
+  ctx.strokeStyle = 'rgba(100, 180, 255, 0.6)';
+  ctx.lineWidth = Math.max(2, unit * 2);
+  ctx.strokeRect(0, 0, w, h);
+
+  const cornerLen = Math.min(w, h) * 0.03;
+  ctx.strokeStyle = 'rgba(100, 180, 255, 0.9)';
+  ctx.lineWidth = Math.max(3, unit * 3);
+  [[0,0,1,1],[w,0,-1,1],[0,h,1,-1],[w,h,-1,-1]].forEach(([cx,cy,dx,dy]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + cornerLen * dx, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + cornerLen * dy);
+    ctx.stroke();
+  });
+
+  const dimLabel = (text, x, y, align, color, size) => {
+    const s = Math.max(Math.min(w, h) * 0.015, size || 14);
+    ctx.font = `600 ${s}px DM Sans, monospace`;
+    ctx.fillStyle = color || 'rgba(255,255,255,0.7)';
+    ctx.textAlign = align || 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  };
+
+  dimLabel(`${w}px`, w / 2, h * 0.015, 'center', 'rgba(100,180,255,0.8)', 0);
+  dimLabel(`${h}px`, w * 0.012, h / 2, 'center', 'rgba(100,180,255,0.8)', 0);
+
+  dimLabel(`${ratio}`, w * 0.5, h * 0.96, 'center', 'rgba(255,255,255,0.5)', 0);
+
+  const szData = safeZones[ratio];
+  if (szData && szData.zones && szData.zones.length > 0) {
+    szData.zones.forEach(z => {
+      const zx = Math.round(w * z.left / 100);
+      const zy = Math.round(h * z.top / 100);
+      const zw = Math.round(w * z.width / 100);
+      const zh = Math.round(h * z.height / 100);
+
+      const dashLen = Math.max(4, unit * 5);
+      ctx.setLineDash([dashLen, dashLen]);
+
+      if (z.dashed) {
+        ctx.strokeStyle = 'rgba(255, 70, 70, 0.75)';
+        ctx.lineWidth = Math.max(2, unit * 2);
+      } else if (z.circle) {
+        ctx.strokeStyle = 'rgba(255, 200, 60, 0.75)';
+        ctx.lineWidth = Math.max(2, unit * 2);
+      } else {
+        ctx.strokeStyle = 'rgba(80, 255, 130, 0.65)';
+        ctx.lineWidth = Math.max(2, unit * 2);
+      }
+
+      if (z.circle) {
+        ctx.beginPath();
+        ctx.ellipse(zx + zw / 2, zy + zh / 2, zw / 2, zh / 2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(zx, zy, zw, zh);
+      }
+
+      ctx.setLineDash([]);
+
+      const tickLen = Math.min(zw, zh) * 0.04;
+      ctx.strokeStyle = z.dashed ? 'rgba(255,70,70,0.5)' : 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = Math.max(1, unit);
+      ctx.beginPath();
+      ctx.moveTo(zx, zy); ctx.lineTo(zx + tickLen, zy);
+      ctx.moveTo(zx + zw, zy); ctx.lineTo(zx + zw - tickLen, zy);
+      ctx.moveTo(zx, zy + zh); ctx.lineTo(zx + tickLen, zy + zh);
+      ctx.moveTo(zx + zw, zy + zh); ctx.lineTo(zx + zw - tickLen, zy + zh);
+      ctx.stroke();
+
+      if (z.label) {
+        const fontSize = Math.max(Math.min(w, h) * 0.012, 12);
+        const labelText = `${z.label}  (${zw}×${zh}px)`;
+        ctx.font = `600 ${fontSize}px DM Sans, monospace`;
+        const metrics = ctx.measureText(labelText);
+        const lw = metrics.width + fontSize * 1.2;
+        const lh = fontSize * 1.6;
+
+        const lx = zx + zw / 2 - lw / 2;
+        let ly = zy - lh - 4;
+        let textColor = z.dashed ? 'rgba(255,140,140,0.9)' : z.circle ? 'rgba(255,220,100,0.9)' : 'rgba(120,255,170,0.9)';
+        if (ly < h * 0.02) ly = zy + zh + 4;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.beginPath();
+        ctx.roundRect(lx, ly, lw, lh, 4);
+        ctx.fill();
+        ctx.strokeStyle = z.dashed ? 'rgba(255,70,70,0.3)' : 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, zx + zw / 2, ly + lh / 2);
+      }
+
+      ctx.strokeStyle = z.dashed ? 'rgba(255,70,70,0.4)' : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = Math.max(1, unit);
+      ctx.setLineDash([]);
+
+      const arrowY = zy - Math.max(8, h * 0.01);
+      const arrowX = zx + zw / 2;
+      if (arrowY > h * 0.06) {
+        ctx.beginPath();
+        ctx.moveTo(zx, arrowY); ctx.lineTo(zx + zw, arrowY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(zx, arrowY - 3); ctx.lineTo(zx, arrowY + 3);
+        ctx.moveTo(zx + zw, arrowY - 3); ctx.lineTo(zx + zw, arrowY + 3);
+        ctx.stroke();
+        const dimText = `${zw}px`;
+        ctx.font = `500 ${Math.max(10, unit * 10)}px DM Sans, monospace`;
+        ctx.fillStyle = z.dashed ? 'rgba(255,100,100,0.6)' : 'rgba(255,255,255,0.4)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(dimText, arrowX, arrowY - 2);
+      }
+
+      if (zh > h * 0.15) {
+        const midX = zx + zw + Math.max(6, w * 0.008);
+        const midY = zy + zh / 2;
+        ctx.beginPath();
+        ctx.moveTo(midX, zy); ctx.lineTo(midX, zy + zh);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(midX - 3, zy); ctx.lineTo(midX + 3, zy);
+        ctx.moveTo(midX - 3, zy + zh); ctx.lineTo(midX + 3, zy + zh);
+        ctx.stroke();
+        const hDimText = `${zh}px`;
+        ctx.font = `500 ${Math.max(10, unit * 10)}px DM Sans, monospace`;
+        ctx.fillStyle = z.dashed ? 'rgba(255,100,100,0.6)' : 'rgba(255,255,255,0.4)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.save();
+        ctx.translate(midX + 2, midY);
+        ctx.fillText(hDimText, 0, 0);
+        ctx.restore();
+      }
+    });
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
+  ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const link = document.createElement('a');
+  link.download = `ref-${w}x${h}-${ratio.replace(':', 'x')}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function simplifyRatio(w, h) {
+  const d = gcd(w, h);
+  return `${w / d}:${h / d}`;
+}
+
+function updateFromWidth() {
+  const w = parseInt($('width').value);
+  if (!w || w <= 0) return;
+  currentW = w;
+  const h = Math.round(w * currentRatio.b / currentRatio.r);
+  currentH = h;
+  $('height').value = h;
+  updatePreview();
+}
+
+function updateFromHeight() {
+  const h = parseInt($('height').value);
+  if (!h || h <= 0) return;
+  currentH = h;
+  const w = Math.round(h * currentRatio.r / currentRatio.b);
+  currentW = w;
+  $('width').value = w;
+  updatePreview();
+}
+
+function updatePreview() {
+  const w = currentW;
+  const h = currentH;
+  if (!w || !h) return;
+
+  $('previewDims').textContent = `${w} × ${h}`;
+  const ratio = simplifyRatio(w, h);
+  $('previewLabel').textContent = ratio;
+  $('copyBtn').textContent = `Copy ${w}×${h}`;
+
+  const frame = $('previewFrame');
+  const frameW = frame.clientWidth;
+  const frameH = frame.clientHeight;
+  const shape = $('previewShape');
+
+  const shapeW = frameW * 0.8;
+  const shapeH = shapeW * (h / w);
+
+  if (shapeH <= frameH * 0.9) {
+    shape.style.width = shapeW + 'px';
+    shape.style.height = shapeH + 'px';
+  } else {
+    shape.style.height = frameH * 0.9 + 'px';
+    shape.style.width = (frameH * 0.9) * (w / h) + 'px';
+  }
+
+  const szData = safeZones[ratio];
+  const overlay = $('safeZoneOverlay');
+  overlay.innerHTML = '';
+  if (szData && szData.zones && szData.zones.length > 0) {
+    szData.zones.forEach(z => {
+      const box = document.createElement('div');
+      box.className = 'safe-zone-box';
+      box.style.top = z.top + '%';
+      box.style.left = z.left + '%';
+      box.style.width = z.width + '%';
+      box.style.height = z.height + '%';
+      if (z.dashed) {
+        box.style.borderColor = 'rgba(255,100,100,0.4)';
+        box.style.background = 'rgba(255,100,100,0.05)';
+      }
+      if (z.circle) {
+        box.style.borderRadius = '50%';
+      }
+      if (z.label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'safe-zone-label';
+        lbl.textContent = z.label;
+        box.appendChild(lbl);
+      }
+      overlay.appendChild(box);
+    });
+  }
+
+  $('safeZoneInfo').innerHTML = szData ? szData.info : `<strong>Ratio ${ratio}</strong><br>Standard dimensions. No specific safe zones.`;
+
+  document.querySelectorAll('.ratio-pill').forEach(p => {
+    p.classList.toggle('active', parseInt(p.dataset.r) === currentRatio.r && parseInt(p.dataset.b) === currentRatio.b);
+  });
+
+  document.querySelectorAll('.preset-item').forEach(item => {
+    const pw = parseInt(item.dataset.w);
+    const ph = parseInt(item.dataset.h);
+    item.classList.toggle('active', pw === w && ph === h);
+  });
+}
+
+$('width').addEventListener('input', updateFromWidth);
+$('height').addEventListener('input', updateFromHeight);
+
+document.querySelectorAll('.ratio-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    currentRatio = { r: parseInt(pill.dataset.r), b: parseInt(pill.dataset.b) };
+    currentW = parseInt($('width').value);
+    updateFromWidth();
+  });
+});
+
+const presetsList = $('presetsList');
+presets.forEach(p => {
+  const el = document.createElement('div');
+  el.className = 'preset-item';
+  el.dataset.w = p.w;
+  el.dataset.h = p.h;
+  el.innerHTML = `
+    <div>
+      <div class="preset-label">${p.label}</div>
+      <div class="preset-desc">${p.desc}</div>
+    </div>
+    <div class="preset-dim">${p.w}×${p.h}</div>
+  `;
+  el.addEventListener('click', () => {
+    currentW = p.w;
+    currentH = p.h;
+    $('width').value = p.w;
+    $('height').value = p.h;
+    currentRatio = { r: p.w, b: p.h };
+    const d = gcd(p.w, p.h);
+    const r = p.w / d, b = p.h / d;
+    document.querySelectorAll('.ratio-pill').forEach(pill => {
+      const pr = parseInt(pill.dataset.r), pb = parseInt(pill.dataset.b);
+      pill.classList.toggle('active', pr === r && pb === b);
+    });
+    updatePreview();
+  });
+  presetsList.appendChild(el);
+});
+
+$('copyBtn').addEventListener('click', () => {
+  const text = `${currentW}×${currentH}`;
+  navigator.clipboard.writeText(text).then(() => {
+    $('copyBtn').textContent = 'Copied!';
+    setTimeout(() => { $('copyBtn').textContent = text; }, 1200);
+  });
+});
+
+updatePreview();
+</script>
+</body>
+</html>
