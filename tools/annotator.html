@@ -72,9 +72,17 @@
     .editor-section { margin-bottom: 20px; }
     .tool-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 6px;
       margin-bottom: 12px;
+    }
+    .tool-btn.active-select { border-color: #28c840; background: rgba(40, 200, 64, 0.1); color: #28c840; }
+    .annotation-highlight {
+      position: absolute;
+      border: 2px solid #e8ff47;
+      pointer-events: none;
+      z-index: 5;
+      border-radius: 4px;
     }
     .tool-btn {
       padding: 12px 6px;
@@ -161,7 +169,6 @@
 <body>
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
-  
   <span class="nav-title">Screenshot Annotator</span>
   <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
@@ -202,10 +209,16 @@
           <button class="tool-btn" data-tool="blur">
             <span class="tool-icon">▒</span>Blur
           </button>
-          <button class="tool-btn" data-tool="label">
-            <span class="tool-icon">①</span>Label
-          </button>
-        </div>
+            <button class="tool-btn" data-tool="label">
+              <span class="tool-icon">①</span>Label
+            </button>
+            <button class="tool-btn" data-tool="text">
+              <span class="tool-icon">Aa</span>Text
+            </button>
+            <button class="tool-btn" data-tool="select">
+              <span class="tool-icon">⊹</span>Select
+            </button>
+          </div>
       </div>
 
       <div class="tool-group">
@@ -258,6 +271,9 @@ var strokeColor = '#e8ff47';
 var isDrawing = false;
 var startX = 0, startY = 0;
 var labelCounter = 1;
+var selectedIdx = -1;
+var isDragging = false;
+var dragOffsetX = 0, dragOffsetY = 0;
 
 var strokeColors = [
   '#e8ff47', '#ff4444', '#3a2fff', '#ffffff',
@@ -281,9 +297,14 @@ function initColors() {
 
 document.querySelectorAll('.tool-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.tool-btn').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
+    document.querySelectorAll('.tool-btn').forEach(function(b) { b.classList.remove('active'); b.classList.remove('active-select'); });
+    if (btn.dataset.tool === 'select') {
+      btn.classList.add('active-select');
+    } else {
+      btn.classList.add('active');
+    }
     currentTool = btn.dataset.tool;
+    if (currentTool !== 'select') { selectedIdx = -1; redraw(); }
   });
 });
 
@@ -360,9 +381,41 @@ function redraw() {
       applyBlur(a);
     } else if (a.type === 'label') {
       drawLabel(a);
+    } else if (a.type === 'text') {
+      drawText(a);
     }
     ctx.restore();
   });
+
+  if (selectedIdx >= 0 && currentTool === 'select') {
+    var s = annotations[selectedIdx];
+    var pad = 8;
+    var sx, sy, sw, sh;
+    if (s.type === 'label') {
+      var hitR = s.labelText ? s.labelText.length * 10 + 30 : 30;
+      sx = s.x - hitR; sy = s.y - hitR; sw = hitR * 2; sh = hitR * 2;
+    } else if (s.type === 'text') {
+      var fontSize = 18 + (s.lineWidth || 4) * 3;
+      var tw = s.text.length * fontSize * 0.55;
+      sx = s.x - pad; sy = s.y - pad; sw = tw + pad * 2; sh = fontSize + pad * 2;
+    } else if (s.type === 'arrow' || s.type === 'line') {
+      sx = Math.min(s.x, s.x + s.w) - pad;
+      sy = Math.min(s.y, s.y + s.h) - pad;
+      sw = Math.abs(s.w) + pad * 2;
+      sh = Math.abs(s.h) + pad * 2;
+    } else {
+      sx = Math.min(s.x, s.x + s.w) - pad;
+      sy = Math.min(s.y, s.y + s.h) - pad;
+      sw = Math.abs(s.w) + pad * 2;
+      sh = Math.abs(s.h) + pad * 2;
+    }
+    ctx.save();
+    ctx.strokeStyle = '#e8ff47';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(sx, sy, sw, sh);
+    ctx.restore();
+  }
 }
 
 function drawArrow(a) {
@@ -402,6 +455,15 @@ function drawLabel(a) {
     ctx.textBaseline = 'middle';
     ctx.fillText(a.labelText, a.x + r + 8, a.y);
   }
+}
+
+function drawText(a) {
+  var fontSize = 18 + (a.lineWidth || 4) * 3;
+  ctx.fillStyle = a.color;
+  ctx.font = '600 ' + fontSize + 'px DM Sans';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(a.text, a.x, a.y);
 }
 
 function applyBlur(a) {
@@ -474,12 +536,74 @@ function getCanvasCoords(e) {
   };
 }
 
+function hitTestAnnotation(mx, my) {
+  for (var i = annotations.length - 1; i >= 0; i--) {
+    var a = annotations[i];
+    var pad = 15;
+    if (a.type === 'arrow' || a.type === 'line') {
+      var x1 = a.x, y1 = a.y, x2 = a.x + a.w, y2 = a.y + a.h;
+      if (distToSegment(mx, my, x1, y1, x2, y2) < pad) return i;
+    } else if (a.type === 'rect') {
+      var rx = Math.min(a.x, a.x + a.w) - pad;
+      var ry = Math.min(a.y, a.y + a.h) - pad;
+      var rw = Math.abs(a.w) + pad * 2;
+      var rh = Math.abs(a.h) + pad * 2;
+      if (mx >= rx && mx <= rx + rw && my >= ry && my <= ry + rh) return i;
+    } else if (a.type === 'circle') {
+      var cx = a.x + a.w / 2, cy = a.y + a.h / 2;
+      var dist = Math.sqrt((mx - cx) * (mx - cx) + (my - cy) * (my - cy));
+      var r = Math.max(Math.abs(a.w), Math.abs(a.h)) / 2 + pad;
+      if (dist < r) return i;
+    } else if (a.type === 'blur') {
+      var bx = Math.min(a.x, a.x + a.w) - pad;
+      var by = Math.min(a.y, a.y + a.h) - pad;
+      var bw = Math.abs(a.w) + pad * 2;
+      var bh = Math.abs(a.h) + pad * 2;
+      if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) return i;
+    } else if (a.type === 'label') {
+      var dist = Math.sqrt((mx - a.x) * (mx - a.x) + (my - a.y) * (my - a.y));
+      var hitR = a.labelText ? a.labelText.length * 10 + 30 : 30;
+      if (dist < hitR) return i;
+    } else if (a.type === 'text') {
+      var fontSize = 18 + (a.lineWidth || 4) * 3;
+      var tw = a.text.length * fontSize * 0.55;
+      var th = fontSize + pad;
+      if (mx >= a.x - pad && mx <= a.x + tw && my >= a.y - pad && my <= a.y + th) return i;
+    }
+  }
+  return -1;
+}
+
+function distToSegment(px, py, x1, y1, x2, y2) {
+  var dx = x2 - x1, dy = y2 - y1;
+  var lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+  var t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  var nx = x1 + t * dx, ny = y1 + t * dy;
+  return Math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny));
+}
+
 canvas.addEventListener('mousedown', startDraw);
 canvas.addEventListener('touchstart', function(e) { e.preventDefault(); startDraw(e); });
 
 function startDraw(e) {
   if (!sourceImage) return;
   var coords = getCanvasCoords(e);
+
+  if (currentTool === 'select') {
+    var idx = hitTestAnnotation(coords.x, coords.y);
+    if (idx >= 0) {
+      selectedIdx = idx;
+      isDragging = true;
+      dragOffsetX = coords.x - annotations[idx].x;
+      dragOffsetY = coords.y - annotations[idx].y;
+    } else {
+      selectedIdx = -1;
+    }
+    redraw();
+    return;
+  }
 
   if (currentTool === 'label') {
     var text = prompt(currentTool === 'label' ? 'Enter label text (leave empty for number only):' : '');
@@ -499,6 +623,22 @@ function startDraw(e) {
     return;
   }
 
+  if (currentTool === 'text') {
+    var text = prompt('Enter text:');
+    if (text === null || !text.trim()) return;
+    annotations.push({
+      type: 'text',
+      x: coords.x,
+      y: coords.y,
+      color: strokeColor,
+      lineWidth: parseInt(document.getElementById('lineWidth').value),
+      opacity: parseFloat(document.getElementById('lineOpacity').value),
+      text: text.trim()
+    });
+    redraw();
+    return;
+  }
+
   isDrawing = true;
   startX = coords.x;
   startY = coords.y;
@@ -508,6 +648,14 @@ canvas.addEventListener('mousemove', moveDraw);
 canvas.addEventListener('touchmove', function(e) { e.preventDefault(); moveDraw(e); });
 
 function moveDraw(e) {
+  if (isDragging && selectedIdx >= 0) {
+    var coords = getCanvasCoords(e);
+    var a = annotations[selectedIdx];
+    a.x = coords.x - dragOffsetX;
+    a.y = coords.y - dragOffsetY;
+    redraw();
+    return;
+  }
   if (!isDrawing || !sourceImage) return;
   var coords = getCanvasCoords(e);
 
@@ -575,6 +723,11 @@ canvas.addEventListener('mouseup', endDraw);
 canvas.addEventListener('touchend', endDraw);
 
 function endDraw(e) {
+  if (isDragging) {
+    isDragging = false;
+    redraw();
+    return;
+  }
   if (!isDrawing || !sourceImage) return;
   isDrawing = false;
 
@@ -619,7 +772,17 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 document.getElementById('clearBtn').addEventListener('click', function() {
   annotations = [];
   labelCounter = 1;
+  selectedIdx = -1;
   redraw();
+});
+
+document.addEventListener('keydown', function(e) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIdx >= 0) {
+    e.preventDefault();
+    annotations.splice(selectedIdx, 1);
+    selectedIdx = -1;
+    redraw();
+  }
 });
 
 document.getElementById('downloadPngBtn').addEventListener('click', function() {
