@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Annotator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .annotator-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 16px;
+    }
+    .canvas-area {
+      position: relative;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #annotatorCanvas { max-width: 100%; display: block; cursor: crosshair; }
+    .canvas-area.empty { cursor: default; min-height: 60vh; }
+    .canvas-area.empty #annotatorCanvas { display: none; }
+    .tools-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      padding: 16px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .tools-bar .tool-group { display: flex; flex-direction: column; gap: 8px; }
+    .tools-bar .tool-group-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+    }
+    @media (max-width: 850px) {
+      .tools-bar { flex-direction: column; align-items: stretch; }
+    }
+    .editor-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+    .editor-section { margin-bottom: 20px; }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .tool-btn {
+      padding: 12px 6px;
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .tool-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tool-btn.active { border-color: var(--accent); background: var(--card-hover); color: var(--accent); }
+    .tool-btn .tool-icon { display: block; font-size: 1.3rem; margin-bottom: 3px; }
+    .color-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .color-swatch {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .color-swatch:hover { transform: scale(1.1); }
+    .color-swatch.active { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+    .field-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .field-row .field { flex: 1; margin-bottom: 0; }
+    .field input, .field select {
+      width: 100%; padding: 10px 12px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field select { cursor: pointer; }
+    .drop-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; padding: 40px; text-align: center;
+    }
+    .drop-overlay .dz-icon { font-size: 2.5rem; color: var(--accent); opacity: 0.6; }
+    .drop-overlay .dz-text { font-size: 0.95rem; color: var(--text2); }
+    .drop-overlay .dz-sub { font-size: 0.8rem; color: var(--text3); }
+    .drop-overlay input { display: none; }
+    .tools-bar .action-btns { display: flex; flex-direction: column; gap: 6px; }
+    .action-btns { display: flex; flex-direction: column; gap: 8px; }
+    .undo-btn {
+      width: 100%; padding: 10px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text2);
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+      font-size: 0.8rem; cursor: pointer; transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    .undo-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .text-input-overlay {
+      position: absolute;
+      background: var(--bg2);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-xs);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      padding: 6px 10px;
+      outline: none;
+      z-index: 10;
+      min-width: 120px;
+    }
+    .number-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  
+  <span class="nav-title">Screenshot Annotator</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Screenshot Annotator</h1>
+    <p>Draw arrows, rectangles, circles, blur areas, and add numbered labels on screenshots. Export as PNG.</p>
+  </div>
+
+  <div class="annotator-layout">
+    <div class="canvas-area empty" id="canvasArea">
+      <canvas id="annotatorCanvas"></canvas>
+      <div class="drop-overlay" id="dropOverlay">
+        <div class="dz-icon">⧉</div>
+        <div class="dz-text">Drop a screenshot here or click to upload</div>
+        <div class="dz-sub">JPG, PNG, WebP</div>
+        <input type="file" id="imageInput" accept="image/*" />
+      </div>
+    </div>
+
+    <div class="tools-bar">
+      <div class="tool-group">
+        <span class="tool-group-label">Drawing Tools</span>
+        <div class="tool-grid" id="toolGrid">
+          <button class="tool-btn active" data-tool="arrow">
+            <span class="tool-icon">➤</span>Arrow
+          </button>
+          <button class="tool-btn" data-tool="rect">
+            <span class="tool-icon">▭</span>Rect
+          </button>
+          <button class="tool-btn" data-tool="circle">
+            <span class="tool-icon">◯</span>Circle
+          </button>
+          <button class="tool-btn" data-tool="line">
+            <span class="tool-icon">╱</span>Line
+          </button>
+          <button class="tool-btn" data-tool="blur">
+            <span class="tool-icon">▒</span>Blur
+          </button>
+          <button class="tool-btn" data-tool="label">
+            <span class="tool-icon">①</span>Label
+          </button>
+        </div>
+      </div>
+
+      <div class="tool-group">
+        <span class="tool-group-label">Stroke Color</span>
+        <div class="color-row" id="strokeColors"></div>
+      </div>
+
+      <div class="tool-group">
+        <span class="tool-group-label">Options</span>
+        <div class="field-row">
+          <div class="field">
+            <label>Line Width</label>
+            <select id="lineWidth">
+              <option value="2">Thin</option>
+              <option value="4" selected>Medium</option>
+              <option value="8">Thick</option>
+              <option value="12">Extra Thick</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Opacity</label>
+            <select id="lineOpacity">
+              <option value="0.5">50%</option>
+              <option value="0.75">75%</option>
+              <option value="1" selected>100%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="tool-group">
+        <span class="tool-group-label">Actions</span>
+        <button class="undo-btn" id="undoBtn">↩ Undo Last</button>
+        <button class="undo-btn" id="clearBtn">✕ Clear All</button>
+        <div class="action-btns">
+          <button class="btn btn-primary" id="downloadPngBtn">⬇ PNG</button>
+          <button class="btn btn-secondary" id="downloadJpgBtn">⬇ JPG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var sourceImage = null;
+var sourceImageData = null;
+var annotations = [];
+var currentTool = 'arrow';
+var strokeColor = '#e8ff47';
+var isDrawing = false;
+var startX = 0, startY = 0;
+var labelCounter = 1;
+
+var strokeColors = [
+  '#e8ff47', '#ff4444', '#3a2fff', '#ffffff',
+  '#000000', '#00cc88', '#ff6b6b', '#7c6bff'
+];
+
+function initColors() {
+  var html = '';
+  strokeColors.forEach(function(c) {
+    html += '<div class="color-swatch' + (c === strokeColor ? ' active' : '') + '" style="background:' + c + '" data-color="' + c + '"></div>';
+  });
+  document.getElementById('strokeColors').innerHTML = html;
+  document.querySelectorAll('#strokeColors .color-swatch').forEach(function(sw) {
+    sw.addEventListener('click', function() {
+      strokeColor = sw.dataset.color;
+      document.querySelectorAll('#strokeColors .color-swatch').forEach(function(s) { s.classList.remove('active'); });
+      sw.classList.add('active');
+    });
+  });
+}
+
+document.querySelectorAll('.tool-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tool-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+  });
+});
+
+var canvas = document.getElementById('annotatorCanvas');
+var ctx = canvas.getContext('2d');
+var canvasArea = document.getElementById('canvasArea');
+var dropOverlay = document.getElementById('dropOverlay');
+var imageInput = document.getElementById('imageInput');
+
+dropOverlay.addEventListener('click', function() { imageInput.click(); });
+canvasArea.addEventListener('dragover', function(e) { e.preventDefault(); canvasArea.style.borderColor = 'var(--accent)'; });
+canvasArea.addEventListener('dragleave', function() { canvasArea.style.borderColor = ''; });
+canvasArea.addEventListener('drop', function(e) {
+  e.preventDefault();
+  canvasArea.style.borderColor = '';
+  if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+});
+imageInput.addEventListener('change', function() { if (imageInput.files.length) loadImage(imageInput.files[0]); });
+
+function loadImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      sourceImage = img;
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      sourceImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvasArea.classList.remove('empty');
+      dropOverlay.style.display = 'none';
+      annotations = [];
+      labelCounter = 1;
+      redraw();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function redraw() {
+  if (!sourceImage) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(sourceImage, 0, 0);
+
+  annotations.forEach(function(a) {
+    ctx.save();
+    ctx.globalAlpha = a.opacity || 1;
+    ctx.strokeStyle = a.color;
+    ctx.fillStyle = a.color;
+    ctx.lineWidth = a.lineWidth || 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (a.type === 'arrow') {
+      drawArrow(a);
+    } else if (a.type === 'rect') {
+      ctx.strokeRect(a.x, a.y, a.w, a.h);
+    } else if (a.type === 'circle') {
+      var rx = Math.abs(a.w) / 2;
+      var ry = Math.abs(a.h) / 2;
+      var cx = a.x + a.w / 2;
+      var cy = a.y + a.h / 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (a.type === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(a.x + a.w, a.y + a.h);
+      ctx.stroke();
+    } else if (a.type === 'blur') {
+      applyBlur(a);
+    } else if (a.type === 'label') {
+      drawLabel(a);
+    }
+    ctx.restore();
+  });
+}
+
+function drawArrow(a) {
+  var x1 = a.x, y1 = a.y, x2 = a.x + a.w, y2 = a.y + a.h;
+  var headLen = 16 + a.lineWidth * 2;
+  var angle = Math.atan2(y2 - y1, x2 - x1);
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawLabel(a) {
+  var r = 18;
+  ctx.beginPath();
+  ctx.arc(a.x, a.y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#000';
+  ctx.font = '700 16px DM Sans';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(a.text, a.x, a.y + 1);
+
+  if (a.labelText) {
+    ctx.fillStyle = a.color;
+    ctx.font = '600 20px DM Sans';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(a.labelText, a.x + r + 8, a.y);
+  }
+}
+
+function applyBlur(a) {
+  if (!sourceImageData) return;
+  var x = Math.min(a.x, a.x + a.w);
+  var y = Math.min(a.y, a.y + a.h);
+  var w = Math.abs(a.w);
+  var h = Math.abs(a.h);
+  if (w < 5 || h < 5) return;
+
+  var srcX = Math.round(x);
+  var srcY = Math.round(y);
+  var srcW = Math.round(w);
+  var srcH = Math.round(h);
+
+  var srcData = sourceImageData.data;
+  var blockData = new Uint8ClampedArray(srcW * srcH * 4);
+  var srcRowLen = sourceImageData.width * 4;
+
+  for (var py = 0; py < srcH; py++) {
+    for (var px = 0; px < srcW; px++) {
+      var globalX = srcX + px;
+      var globalY = srcY + py;
+      var srcIdx = (globalY * sourceImageData.width + globalX) * 4;
+      var dstIdx = (py * srcW + px) * 4;
+      blockData[dstIdx] = srcData[srcIdx];
+      blockData[dstIdx + 1] = srcData[srcIdx + 1];
+      blockData[dstIdx + 2] = srcData[srcIdx + 2];
+      blockData[dstIdx + 3] = srcData[srcIdx + 3];
+    }
+  }
+
+  var blockSize = 12;
+  for (var by = 0; by < srcH; by += blockSize) {
+    for (var bx = 0; bx < srcW; bx += blockSize) {
+      var r = 0, g = 0, b = 0, a = 0, count = 0;
+      for (var dy = 0; dy < blockSize && by + dy < srcH; dy++) {
+        for (var dx = 0; dx < blockSize && bx + dx < srcW; dx++) {
+          var i = ((by + dy) * srcW + (bx + dx)) * 4;
+          r += blockData[i]; g += blockData[i + 1]; b += blockData[i + 2]; a += blockData[i + 3];
+          count++;
+        }
+      }
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      a = Math.round(a / count);
+      for (var dy = 0; dy < blockSize && by + dy < srcH; dy++) {
+        for (var dx = 0; dx < blockSize && bx + dx < srcW; dx++) {
+          var i = ((by + dy) * srcW + (bx + dx)) * 4;
+          blockData[i] = r; blockData[i + 1] = g; blockData[i + 2] = b; blockData[i + 3] = a;
+        }
+      }
+    }
+  }
+
+  var blurred = new ImageData(blockData, srcW, srcH);
+  ctx.putImageData(blurred, srcX, srcY);
+}
+
+function getCanvasCoords(e) {
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('touchstart', function(e) { e.preventDefault(); startDraw(e); });
+
+function startDraw(e) {
+  if (!sourceImage) return;
+  var coords = getCanvasCoords(e);
+
+  if (currentTool === 'label') {
+    var text = prompt(currentTool === 'label' ? 'Enter label text (leave empty for number only):' : '');
+    if (text === null) return;
+    annotations.push({
+      type: 'label',
+      x: coords.x,
+      y: coords.y,
+      color: strokeColor,
+      lineWidth: 2,
+      opacity: parseFloat(document.getElementById('lineOpacity').value),
+      text: String(labelCounter),
+      labelText: text || ''
+    });
+    labelCounter++;
+    redraw();
+    return;
+  }
+
+  isDrawing = true;
+  startX = coords.x;
+  startY = coords.y;
+}
+
+canvas.addEventListener('mousemove', moveDraw);
+canvas.addEventListener('touchmove', function(e) { e.preventDefault(); moveDraw(e); });
+
+function moveDraw(e) {
+  if (!isDrawing || !sourceImage) return;
+  var coords = getCanvasCoords(e);
+
+  redraw();
+
+  ctx.save();
+  ctx.globalAlpha = parseFloat(document.getElementById('lineOpacity').value);
+  ctx.strokeStyle = strokeColor;
+  ctx.fillStyle = strokeColor;
+  ctx.lineWidth = parseInt(document.getElementById('lineWidth').value);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([6, 4]);
+
+  var w = coords.x - startX;
+  var h = coords.y - startY;
+
+  if (currentTool === 'arrow') {
+    drawArrowPreview(startX, startY, w, h);
+  } else if (currentTool === 'rect') {
+    ctx.strokeRect(startX, startY, w, h);
+  } else if (currentTool === 'circle') {
+    var rx = Math.abs(w) / 2;
+    var ry = Math.abs(h) / 2;
+    ctx.beginPath();
+    ctx.ellipse(startX + w / 2, startY + h / 2, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (currentTool === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX + w, startY + h);
+    ctx.stroke();
+  } else if (currentTool === 'blur') {
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(startX, startY, w, h);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(startX, startY, w, h);
+  }
+
+  ctx.restore();
+}
+
+function drawArrowPreview(x1, y1, w, h) {
+  var x2 = x1 + w, y2 = y1 + h;
+  var headLen = 16 + parseInt(document.getElementById('lineWidth').value) * 2;
+  var angle = Math.atan2(y2 - y1, x2 - x1);
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('touchend', endDraw);
+
+function endDraw(e) {
+  if (!isDrawing || !sourceImage) return;
+  isDrawing = false;
+
+  var coords;
+  if (e.changedTouches) {
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    coords = {
+      x: (e.changedTouches[0].clientX - rect.left) * scaleX,
+      y: (e.changedTouches[0].clientY - rect.top) * scaleY
+    };
+  } else {
+    coords = getCanvasCoords(e);
+  }
+
+  var w = coords.x - startX;
+  var h = coords.y - startY;
+
+  if (Math.abs(w) < 5 && Math.abs(h) < 5) return;
+
+  annotations.push({
+    type: currentTool,
+    x: startX, y: startY, w: w, h: h,
+    color: strokeColor,
+    lineWidth: parseInt(document.getElementById('lineWidth').value),
+    opacity: parseFloat(document.getElementById('lineOpacity').value)
+  });
+
+  redraw();
+}
+
+document.getElementById('undoBtn').addEventListener('click', function() {
+  if (annotations.length > 0) {
+    var last = annotations[annotations.length - 1];
+    if (last.type === 'label') labelCounter = Math.max(1, labelCounter - 1);
+    annotations.pop();
+    redraw();
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', function() {
+  annotations = [];
+  labelCounter = 1;
+  redraw();
+});
+
+document.getElementById('downloadPngBtn').addEventListener('click', function() {
+  if (!sourceImage) return;
+  canvas.toBlob(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'annotated.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('downloadJpgBtn').addEventListener('click', function() {
+  if (!sourceImage) return;
+  canvas.toBlob(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'annotated.jpg';
+    a.click();
+  }, 'image/jpeg', 0.95);
+});
+
+initColors();
+</script>
+</body>
+</html>

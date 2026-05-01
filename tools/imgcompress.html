@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Compressor — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .compressor-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      margin-top: 16px;
+    }
+    @media (max-width: 850px) {
+      .compressor-layout { grid-template-columns: 1fr; }
+    }
+    .editor-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+    .editor-section { margin-bottom: 20px; }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg2);
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--accent); background: var(--card-hover); }
+    .upload-area.has-file { border-style: solid; border-color: var(--accent); }
+    .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 2.5rem; color: var(--accent); margin-bottom: 8px; }
+    .upload-text { font-size: 0.95rem; color: var(--text2); margin-bottom: 4px; }
+    .upload-sub { font-size: 0.8rem; color: var(--text3); }
+    .preview-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: sticky;
+      top: 80px;
+    }
+    .preview-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem; margin-bottom: 16px; }
+    .canvas-wrap {
+      background: repeating-conic-gradient(#33333366 0% 25%, transparent 0% 50%) 0 0/16px 16px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+    }
+    #compressCanvas { max-width: 100%; display: block; }
+    .stats-card {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 0.8rem; color: var(--text2); }
+    .stat-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .stat-value.saved { color: #28c840; }
+    .stat-value.warning { color: #ff6b6b; }
+    .quality-control { margin-bottom: 16px; }
+    .quality-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .quality-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border2);
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px; height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .format-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .format-btn {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .format-btn:hover { border-color: var(--accent); }
+    .format-btn.active { border-color: var(--accent); background: var(--card-hover); color: var(--accent); }
+    .preset-btns {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .preset-btn {
+      padding: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--text); }
+    .preset-btn .preset-size {
+      font-family: 'DM Mono', monospace;
+      display: block;
+      font-size: 0.65rem;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+    .export-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .export-btns .btn { margin-bottom: 0; }
+    .batch-section {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+    }
+    .batch-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 0.75rem;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+    }
+    .batch-item:last-child { border-bottom: none; }
+    .batch-item .orig { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text3); margin-left: auto; }
+    .batch-item .new { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #28c840; }
+    .comparison-label {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 3px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Image Compressor</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Image Compressor</h1>
+    <p>Reduce image file size with quality control. Preview comparison, batch support, and PNG/WebP/JPG export.</p>
+  </div>
+
+  <div class="compressor-layout">
+    <div class="compressor-main">
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="imageInput" accept="image/*" multiple />
+        <div class="upload-icon">⧉</div>
+        <div class="upload-text" id="uploadText">Drop images or click to upload</div>
+        <div class="upload-sub">JPG, PNG, WebP — Multiple files supported</div>
+      </div>
+
+      <div id="batchSection" style="display:none;">
+        <p class="editor-label">Batch Files</p>
+        <div class="batch-section" id="batchList"></div>
+      </div>
+    </div>
+
+    <div class="compressor-tools">
+      <div class="preview-card">
+        <div class="preview-title">Preview & Export</div>
+
+        <div class="editor-section">
+          <p class="editor-label">Output Format</p>
+          <div class="format-toggle" id="formatToggle">
+            <button class="format-btn active" data-fmt="jpeg">JPG</button>
+            <button class="format-btn" data-fmt="png">PNG</button>
+            <button class="format-btn" data-fmt="webp">WebP</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <p class="editor-label">Quality Presets</p>
+          <div class="preset-btns">
+            <button class="preset-btn" data-quality="0.95">High<span class="preset-size">~80%</span></button>
+            <button class="preset-btn" data-quality="0.8">Medium<span class="preset-size">~50%</span></button>
+            <button class="preset-btn" data-quality="0.6">Low<span class="preset-size">~30%</span></button>
+            <button class="preset-btn" data-quality="0.4">Min<span class="preset-size">~15%</span></button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="quality-control">
+            <div class="quality-header">
+              <span class="editor-label" style="margin-bottom:0;">Quality</span>
+              <span class="quality-value" id="qualityValue">80%</span>
+            </div>
+            <input type="range" id="qualitySlider" min="1" max="100" value="80" />
+          </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="compressCanvas"></canvas>
+        </div>
+
+        <div class="stats-card" id="statsCard" style="display:none;">
+          <div class="stat-row">
+            <span class="stat-label">Original</span>
+            <span class="stat-value" id="origSize">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Compressed</span>
+            <span class="stat-value" id="compSize">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saved</span>
+            <span class="stat-value saved" id="savedPct">—</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Dimensions</span>
+            <span class="stat-value" id="dimensions">—</span>
+          </div>
+        </div>
+
+        <div class="export-btns" id="exportBtns" style="display:none;">
+          <button class="btn btn-primary" id="downloadBtn">⬇ Download Compressed</button>
+          <button class="btn btn-secondary" id="downloadAllBtn" style="display:none;">⬇ Download All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var images = [];
+var currentIdx = 0;
+var quality = 0.8;
+var outputFormat = 'jpeg';
+var compressedBlob = null;
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+var uploadArea = document.getElementById('uploadArea');
+var imageInput = document.getElementById('imageInput');
+var canvas = document.getElementById('compressCanvas');
+var ctx = canvas.getContext('2d');
+
+uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', function() { uploadArea.classList.remove('drag-over'); });
+uploadArea.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+imageInput.addEventListener('change', function() { if (imageInput.files.length) handleFiles(imageInput.files); });
+
+function handleFiles(files) {
+  images = [];
+  var processed = 0;
+
+  Array.from(files).forEach(function(file) {
+    if (!file.type.startsWith('image/')) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        images.push({ img: img, file: file, name: file.name, origSize: file.size });
+        processed++;
+        if (processed === files.length || processed === Array.from(files).filter(function(f) { return f.type.startsWith('image/'); }).length) {
+          currentIdx = 0;
+          if (images.length > 1) {
+            uploadArea.classList.add('has-file');
+            document.getElementById('uploadText').textContent = images.length + ' images loaded';
+            document.getElementById('batchSection').style.display = 'block';
+            renderBatchList();
+          } else {
+            uploadArea.classList.add('has-file');
+            document.getElementById('uploadText').textContent = images[0].name;
+            document.getElementById('batchSection').style.display = 'none';
+          }
+          loadImage(0);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(idx) {
+  if (idx < 0 || idx >= images.length) return;
+  currentIdx = idx;
+  var item = images[idx];
+  canvas.width = item.img.width;
+  canvas.height = item.img.height;
+  ctx.drawImage(item.img, 0, 0);
+  document.getElementById('dimensions').textContent = item.img.width + '×' + item.img.height;
+  document.getElementById('origSize').textContent = formatBytes(item.origSize);
+  document.getElementById('statsCard').style.display = 'block';
+  document.getElementById('exportBtns').style.display = 'flex';
+  if (images.length > 1) {
+    document.getElementById('downloadAllBtn').style.display = 'block';
+    renderBatchList();
+  }
+  compress();
+}
+
+function compress() {
+  if (images.length === 0) return;
+  var item = images[currentIdx];
+  canvas.width = item.img.width;
+  canvas.height = item.img.height;
+  ctx.drawImage(item.img, 0, 0);
+
+  var mimeType = 'image/' + outputFormat;
+  if (outputFormat === 'jpeg') mimeType = 'image/jpeg';
+
+  canvas.toBlob(function(blob) {
+    compressedBlob = blob;
+    document.getElementById('compSize').textContent = formatBytes(blob.size);
+    var saved = ((1 - blob.size / item.origSize) * 100);
+    var savedEl = document.getElementById('savedPct');
+    if (saved > 0) {
+      savedEl.textContent = saved.toFixed(1) + '%';
+      savedEl.className = 'stat-value saved';
+    } else {
+      savedEl.textContent = '+' + Math.abs(saved).toFixed(1) + '% larger';
+      savedEl.className = 'stat-value warning';
+    }
+  }, mimeType, quality);
+}
+
+function renderBatchList() {
+  var html = '';
+  images.forEach(function(item, i) {
+    var active = i === currentIdx ? 'border-color: var(--accent);' : '';
+    html += '<div class="batch-item" style="' + active + '" data-idx="' + i + '">' +
+      '<span style="cursor:pointer;flex:1;" data-idx="' + i + '">' + item.name + '</span>' +
+      '<span class="orig">' + formatBytes(item.origSize) + '</span>' +
+      '</div>';
+  });
+  document.getElementById('batchList').innerHTML = html;
+  document.querySelectorAll('.batch-item span[data-idx]').forEach(function(el) {
+    el.addEventListener('click', function() { loadImage(parseInt(el.dataset.idx)); });
+  });
+}
+
+document.getElementById('qualitySlider').addEventListener('input', function(e) {
+  quality = parseInt(e.target.value) / 100;
+  document.getElementById('qualityValue').textContent = e.target.value + '%';
+  compress();
+});
+
+document.querySelectorAll('.preset-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var q = parseFloat(btn.dataset.quality);
+    quality = q;
+    document.getElementById('qualitySlider').value = Math.round(q * 100);
+    document.getElementById('qualityValue').textContent = Math.round(q * 100) + '%';
+    compress();
+  });
+});
+
+document.querySelectorAll('.format-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.format-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    outputFormat = btn.dataset.fmt;
+    compress();
+  });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+  if (!compressedBlob) return;
+  var ext = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+  var name = images[currentIdx].name.replace(/\.[^.]+$/, '') + '_compressed.' + ext;
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(compressedBlob);
+  a.download = name;
+  a.click();
+});
+
+document.getElementById('downloadAllBtn').addEventListener('click', function() {
+  images.forEach(function(item, i) {
+    var tempCanvas = document.createElement('canvas');
+    tempCanvas.width = item.img.width;
+    tempCanvas.height = item.img.height;
+    var tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(item.img, 0, 0);
+    var mimeType = outputFormat === 'jpeg' ? 'image/jpeg' : 'image/' + outputFormat;
+    tempCanvas.toBlob(function(blob) {
+      var ext = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+      var name = item.name.replace(/\.[^.]+$/, '') + '_compressed.' + ext;
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      setTimeout(function() { a.click(); }, i * 300);
+    }, mimeType, quality);
+  });
+});
+</script>
+</body>
+</html>
