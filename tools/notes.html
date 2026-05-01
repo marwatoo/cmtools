@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes Editor — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .notes-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      height: calc(100vh - 160px);
+      min-height: 500px;
+    }
+    @media (max-width: 700px) {
+      .notes-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: auto;
+      }
+      .notes-sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    .notes-sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-header h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .new-note-btn {
+      padding: 6px 14px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .new-note-btn:hover { opacity: 0.8; }
+    .notes-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .note-item {
+      padding: 12px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .note-item:hover { background: var(--bg3); }
+    .note-item.active { background: var(--card-hover); border-left: 3px solid var(--accent); }
+    .note-item-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--text);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .note-item-preview {
+      font-size: 0.7rem;
+      color: var(--text3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .note-item-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+    .note-item-delete {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      color: var(--text3);
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 4px;
+      opacity: 0;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .note-item:hover .note-item-delete { opacity: 1; }
+    .note-item-delete:hover { background: #ff444433; color: #ff4444; }
+    .notes-editor {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+    .editor-toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .editor-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    .note-name-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    .note-name-input:focus { border-color: var(--accent); }
+    .rtl-toggle {
+      padding: 6px 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .rtl-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .rtl-toggle.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .save-indicator {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text3);
+    }
+    .save-indicator.saved { color: #28c840; }
+    .editor-body {
+      flex: 1;
+      position: relative;
+    }
+    .note-textarea {
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .note-textarea[dir="rtl"] {
+      font-family: 'DM Sans', sans-serif;
+      text-align: right;
+    }
+    .note-textarea::placeholder { color: var(--text3); }
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text3);
+      gap: 8px;
+    }
+    .empty-icon { font-size: 2.5rem; opacity: 0.4; }
+    .empty-text { font-size: 0.9rem; }
+    .empty-sub { font-size: 0.75rem; }
+    .notes-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text3);
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-num">42</span>
+  <span class="nav-title">Notes Editor</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Notes Editor</h1>
+    <p>Write and save notes with full Arabic RTL support. Auto-saves to localStorage.</p>
+  </div>
+
+  <div class="notes-layout">
+    <div class="notes-sidebar">
+      <div class="sidebar-header">
+        <h3>Notes</h3>
+        <button class="new-note-btn" id="newNoteBtn">+ New</button>
+      </div>
+      <div class="notes-list" id="notesList"></div>
+      <div class="notes-count" id="notesCount"></div>
+    </div>
+
+    <div class="notes-editor" id="editorPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📝</div>
+        <div class="empty-text">No note selected</div>
+        <div class="empty-sub">Create a new note or select one to edit</div>
+      </div>
+
+      <div class="editor-toolbar" id="editorToolbar" style="display:none;">
+        <div class="editor-toolbar-left">
+          <input type="text" class="note-name-input" id="noteNameInput" placeholder="Note name..." />
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="save-indicator" id="saveIndicator"></span>
+          <button class="rtl-toggle" id="rtlToggle" dir="rtl">عربي</button>
+        </div>
+      </div>
+
+      <div class="editor-body" id="editorBody" style="display:none;">
+        <textarea class="note-textarea" id="noteTextarea" placeholder="Start writing..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY = 'mts-notes';
+var notes = [];
+var activeNoteId = null;
+var saveTimeout = null;
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function loadNotes() {
+  try {
+    var data = localStorage.getItem(STORAGE_KEY);
+    notes = data ? JSON.parse(data) : [];
+  } catch(e) {
+    notes = [];
+  }
+}
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+}
+
+function formatDate(ts) {
+  var d = new Date(ts);
+  var day = String(d.getDate()).padStart(2, '0');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var month = months[d.getMonth()];
+  var hours = String(d.getHours()).padStart(2, '0');
+  var mins = String(d.getMinutes()).padStart(2, '0');
+  return day + ' ' + month + ' ' + hours + ':' + mins;
+}
+
+function renderNotesList() {
+  var html = '';
+  notes.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
+  notes.forEach(function(note) {
+    var isActive = note.id === activeNoteId;
+    var preview = note.text ? note.text.substring(0, 80).replace(/\n/g, ' ') : 'Empty note';
+    html += '<div class="note-item' + (isActive ? ' active' : '') + '" data-id="' + note.id + '">' +
+      '<div class="note-item-name">' + (note.name || 'Untitled') + '</div>' +
+      '<div class="note-item-preview">' + escapeHtml(preview) + '</div>' +
+      '<div class="note-item-date">' + formatDate(note.updatedAt) + '</div>' +
+      '<button class="note-item-delete" data-id="' + note.id + '" title="Delete">×</button>' +
+      '</div>';
+  });
+  document.getElementById('notesList').innerHTML = html;
+  document.getElementById('notesCount').textContent = notes.length + ' note' + (notes.length !== 1 ? 's' : '');
+
+  document.querySelectorAll('.note-item[data-id]').forEach(function(el) {
+    el.addEventListener('click', function() { openNote(el.dataset.id); });
+  });
+  document.querySelectorAll('.note-item-delete[data-id]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteNote(btn.dataset.id);
+    });
+  });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function openNote(id) {
+  var note = notes.find(function(n) { return n.id === id; });
+  if (!note) return;
+  activeNoteId = id;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('editorToolbar').style.display = 'flex';
+  document.getElementById('editorBody').style.display = 'block';
+  document.getElementById('noteNameInput').value = note.name;
+  document.getElementById('noteTextarea').value = note.text;
+  var rtlToggle = document.getElementById('rtlToggle');
+  if (note.rtl) {
+    document.getElementById('noteTextarea').setAttribute('dir', 'rtl');
+    document.getElementById('noteTextarea').style.textAlign = 'right';
+    rtlToggle.classList.add('active');
+  } else {
+    document.getElementById('noteTextarea').setAttribute('dir', 'ltr');
+    document.getElementById('noteTextarea').style.textAlign = 'left';
+    rtlToggle.classList.remove('active');
+  }
+  renderNotesList();
+}
+
+function newNote() {
+    var note = {
+    id: generateId(),
+    name: 'Untitled',
+    text: '',
+    rtl: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  notes.push(note);
+  saveNotes();
+  openNote(note.id);
+}
+
+function deleteNote(id) {
+  notes = notes.filter(function(n) { return n.id !== id; });
+  saveNotes();
+  if (activeNoteId === id) {
+    activeNoteId = null;
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('editorToolbar').style.display = 'none';
+    document.getElementById('editorBody').style.display = 'none';
+  }
+  renderNotesList();
+}
+
+function scheduleSave() {
+  var indicator = document.getElementById('saveIndicator');
+  indicator.textContent = 'saving...';
+  indicator.classList.remove('saved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(function() {
+    var note = notes.find(function(n) { return n.id === activeNoteId; });
+    if (!note) return;
+    note.name = document.getElementById('noteNameInput').value || 'Untitled';
+    note.text = document.getElementById('noteTextarea').value;
+    note.updatedAt = Date.now();
+    saveNotes();
+    indicator.textContent = 'saved';
+    indicator.classList.add('saved');
+    setTimeout(function() { indicator.textContent = ''; }, 1500);
+    renderNotesList();
+  }, 400);
+}
+
+document.getElementById('newNoteBtn').addEventListener('click', newNote);
+
+document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
+document.getElementById('noteTextarea').addEventListener('input', scheduleSave);
+
+document.getElementById('rtlToggle').addEventListener('click', function() {
+  var note = notes.find(function(n) { return n.id === activeNoteId; });
+  if (!note) return;
+  note.rtl = !note.rtl;
+  if (note.rtl) {
+    document.getElementById('noteTextarea').setAttribute('dir', 'rtl');
+    document.getElementById('noteTextarea').style.textAlign = 'right';
+    document.getElementById('rtlToggle').classList.add('active');
+  } else {
+    document.getElementById('noteTextarea').setAttribute('dir', 'ltr');
+    document.getElementById('noteTextarea').style.textAlign = 'left';
+    document.getElementById('rtlToggle').classList.remove('active');
+  }
+  scheduleSave();
+});
+
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    clearTimeout(saveTimeout);
+    var note = notes.find(function(n) { return n.id === activeNoteId; });
+    if (!note) return;
+    note.name = document.getElementById('noteNameInput').value || 'Untitled';
+    note.text = document.getElementById('noteTextarea').value;
+    note.updatedAt = Date.now();
+    saveNotes();
+    var indicator = document.getElementById('saveIndicator');
+    indicator.textContent = 'saved';
+    indicator.classList.add('saved');
+    setTimeout(function() { indicator.textContent = ''; }, 1500);
+    renderNotesList();
+  }
+});
+
+loadNotes();
+renderNotesList();
+if (notes.length > 0) openNote(notes[0].id);
+</script>
+</body>
+</html>
