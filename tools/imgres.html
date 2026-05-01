@@ -78,9 +78,22 @@
     /* Quality */
     .srow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
     .srow label{font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;width:72px;flex-shrink:0}
-    .sval{width:40px;flex-shrink:0;text-align:right;font-size:.78rem;color:var(--text3);font-family:'DM Mono',monospace}
-    input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:100px;background:var(--border2);outline:none;cursor:pointer}
+    .sval{width:40px;flex-shrink:0;text-align:right;font-size:.78rem;color:var(--text3);font-family:'DM Mono',monospace;align-self:center}
+    input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:3px;border-radius:100px;background:var(--border2);outline:none;cursor:pointer;margin:0}
     input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+
+    /* Position sliders for cover mode */
+    .pos-sliders{display:none;margin-bottom:12px;padding:10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs)}
+    .pos-sliders.visible{display:block}
+    .pos-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .pos-row:last-child{margin-bottom:0}
+    .pos-row label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;width:20px;flex-shrink:0}
+    .pos-row input[type=range]{flex:1}
+    .pos-val{width:50px;flex-shrink:0;text-align:right;font-size:.72rem;color:var(--text3);font-family:'DM Mono',monospace;align-self:center}
+
+    /* Logo overlay for IG Portrait */
+    .logo-row{display:none;margin-bottom:10px;padding:10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs)}
+    .logo-row.visible{display:block}
 
     /* Checkbox */
     .check-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);cursor:pointer;margin-bottom:10px;user-select:none}
@@ -182,6 +195,32 @@
           </div>
           <p style="font-size:.72rem;color:var(--text3);margin-bottom:12px;" id="fitDesc">Stretches/squishes to exactly fit the dimensions.</p>
 
+          <div class="pos-sliders" id="posSliders">
+            <div class="pos-row">
+              <label>X</label>
+              <input type="range" id="posXSlider" min="0" max="100" value="50" />
+              <span class="pos-val" id="posXVal">50%</span>
+            </div>
+            <div class="pos-row">
+              <label>Y</label>
+              <input type="range" id="posYSlider" min="0" max="100" value="50" />
+              <span class="pos-val" id="posYVal">50%</span>
+            </div>
+          </div>
+
+          <div class="logo-row" id="logoRow">
+            <label class="check-row" id="logoCheckRow">
+              <input type="checkbox" id="addLogo" />
+              <span class="chk-box">✓</span>
+              <span class="chk-label">Add logo overlay</span>
+            </label>
+            <label class="check-row" id="invertLogoRow" style="margin-top:6px">
+              <input type="checkbox" id="invertLogo" />
+              <span class="chk-box">✓</span>
+              <span class="chk-label">Invert logo</span>
+            </label>
+          </div>
+
           <p class="section-head">Output Format</p>
           <div class="format-grid">
             <button class="fmt-btn active" data-fmt="image/jpeg" data-ext="jpg">JPG</button>
@@ -225,7 +264,16 @@
   (function(){const K='mts-theme',g=()=>localStorage.getItem(K)||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'),a=t=>{document.documentElement.setAttribute('data-theme',t);localStorage.setItem(K,t);const i=document.querySelector('.theme-icon');if(i)i.textContent=t==='dark'?'○':'☽'};a(g());document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('themeToggle');if(b)b.addEventListener('click',()=>a(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'))})})();
 
   let srcImage = null, origW = 0, origH = 0, fitMode = 'fill', targetFmt = 'image/jpeg', targetExt = 'jpg';
+  let posX = 50, posY = 50, addLogo = false, invertLogo = false, isIGPortrait = false;
+  let logoImg = null;
   const FIT_DESC = { fill:'Stretches/squishes to exactly fit the dimensions.', contain:'Fits inside the box, adds letterbox padding.', cover:'Crops to fill the box, no padding.' };
+
+  // Load logo image
+  (function loadLogo() {
+    const img = new Image();
+    img.onload = () => { logoImg = img; };
+    img.src = '../assets/diapo/logo.png';
+  })();
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -263,7 +311,7 @@
     if (!srcImage) return;
     const w = parseInt(document.getElementById('widthInput').value) || origW;
     const h = parseInt(document.getElementById('heightInput').value) || origH;
-    drawToCanvas(canvas, srcImage, w, h, fitMode);
+    drawToCanvas(canvas, srcImage, w, h, fitMode, posX, posY, addLogo, invertLogo);
     document.getElementById('previewPlaceholder').style.display = 'none';
     canvas.style.display = 'block';
     document.getElementById('previewDim').textContent = `${w} × ${h}`;
@@ -273,7 +321,7 @@
     canvas.toBlob(blob => { if (blob) document.getElementById('outSize').textContent = fmtBytes(blob.size); }, targetFmt, parseInt(document.getElementById('qualitySlider').value)/100);
   }
 
-  function drawToCanvas(c, img, w, h, fit) {
+  function drawToCanvas(c, img, w, h, fit, posX, posY, drawLogo, invertLogo) {
     c.width = w; c.height = h;
     const cctx = c.getContext('2d');
     cctx.clearRect(0,0,w,h);
@@ -288,8 +336,19 @@
     } else if (fit === 'cover') {
       const scale = Math.max(w/img.naturalWidth, h/img.naturalHeight);
       const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-      const dx = (w - dw)/2, dy = (h - dh)/2;
+      const dx = (w - dw) * (posX / 100), dy = (h - dh) * (posY / 100);
       cctx.drawImage(img, dx, dy, dw, dh);
+    }
+    // Draw logo if enabled and loaded
+    if (drawLogo && logoImg) {
+      if (invertLogo) {
+        cctx.save();
+        cctx.filter = 'invert(1)';
+        cctx.drawImage(logoImg, 0, 0, logoImg.naturalWidth, logoImg.naturalHeight);
+        cctx.restore();
+      } else {
+        cctx.drawImage(logoImg, 0, 0, logoImg.naturalWidth, logoImg.naturalHeight);
+      }
     }
   }
 
@@ -299,6 +358,7 @@
       document.querySelectorAll('.fit-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active'); fitMode = btn.dataset.fit;
       document.getElementById('fitDesc').textContent = FIT_DESC[fitMode];
+      document.getElementById('posSliders').classList.toggle('visible', fitMode === 'cover');
       renderPreview();
     });
   });
@@ -317,6 +377,8 @@
     btn.addEventListener('click', () => {
       document.getElementById('widthInput').value = btn.dataset.w;
       document.getElementById('heightInput').value = btn.dataset.h;
+      isIGPortrait = (btn.dataset.w === '1080' && btn.dataset.h === '1350');
+      document.getElementById('logoRow').classList.toggle('visible', isIGPortrait);
       renderPreview();
     });
   });
@@ -342,13 +404,35 @@
     renderPreview();
   });
 
+  /* Position sliders */
+  document.getElementById('posXSlider').addEventListener('input', () => {
+    posX = parseInt(document.getElementById('posXSlider').value);
+    document.getElementById('posXVal').textContent = posX + '%';
+    renderPreview();
+  });
+  document.getElementById('posYSlider').addEventListener('input', () => {
+    posY = parseInt(document.getElementById('posYSlider').value);
+    document.getElementById('posYVal').textContent = posY + '%';
+    renderPreview();
+  });
+
+  /* Logo controls */
+  document.getElementById('addLogo').addEventListener('change', () => {
+    addLogo = document.getElementById('addLogo').checked;
+    renderPreview();
+  });
+  document.getElementById('invertLogo').addEventListener('change', () => {
+    invertLogo = document.getElementById('invertLogo').checked;
+    renderPreview();
+  });
+
   /* Download */
   document.getElementById('downloadBtn').addEventListener('click', () => {
     if (!srcImage) return;
     const w = parseInt(document.getElementById('widthInput').value)||origW;
     const h = parseInt(document.getElementById('heightInput').value)||origH;
     const dlCanvas = document.createElement('canvas');
-    drawToCanvas(dlCanvas, srcImage, w, h, fitMode);
+    drawToCanvas(dlCanvas, srcImage, w, h, fitMode, posX, posY, addLogo, invertLogo);
     const quality = parseInt(document.getElementById('qualitySlider').value)/100;
     dlCanvas.toBlob(blob => {
       const a = document.createElement('a');
