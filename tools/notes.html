@@ -6,22 +6,22 @@
   <title>Notes Editor — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
+  <script>
+    (function() {
+      var t = localStorage.getItem('mts-theme') ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <style>
+    /* ════════════════════════════════════════
+       LAYOUT
+    ════════════════════════════════════════ */
     .notes-layout {
       display: grid;
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 288px 1fr;
       gap: 0;
       margin-top: 16px;
       border: 1px solid var(--border);
@@ -29,15 +29,12 @@
       overflow: hidden;
       height: calc(100vh - 160px);
       min-height: 500px;
+      position: relative;
     }
-    @media (max-width: 700px) {
-      .notes-layout {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: auto;
-      }
-      .notes-sidebar { border-right: none; border-bottom: 1px solid var(--border); }
-    }
+
+    /* ════════════════════════════════════════
+       SIDEBAR
+    ════════════════════════════════════════ */
     .notes-sidebar {
       background: var(--bg2);
       border-right: 1px solid var(--border);
@@ -45,12 +42,16 @@
       flex-direction: column;
       overflow: hidden;
     }
+
     .sidebar-header {
-      padding: 16px;
+      padding: 12px 14px 8px;
       border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 8px;
     }
     .sidebar-header h3 {
       font-family: 'Syne', sans-serif;
@@ -59,46 +60,230 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
+    .sidebar-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── Buttons ── */
     .new-note-btn {
-      padding: 6px 14px;
+      padding: 5px 11px;
       background: var(--accent);
       color: var(--bg);
       border: none;
       border-radius: var(--radius-xs);
       font-family: 'Syne', sans-serif;
       font-weight: 700;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       cursor: pointer;
       transition: opacity 0.2s;
+      white-space: nowrap;
     }
     .new-note-btn:hover { opacity: 0.8; }
+
+    .icon-btn {
+      width: 27px;
+      height: 27px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .select-mode-btn {
+      padding: 5px 9px;
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .select-mode-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+    .select-mode-btn.active { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
+
+    /* ── Sort row ── */
+    .sidebar-sort {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sort-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.59rem;
+      color: var(--text3);
+      white-space: nowrap;
+      margin-right: 2px;
+    }
+    .sort-btn {
+      padding: 3px 7px;
+      border-radius: 100px;
+      font-size: 0.62rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text3);
+      transition: all 0.15s;
+    }
+    .sort-btn:hover { color: var(--text2); }
+    .sort-btn.active { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+
+    /* ── Search ── */
+    .sidebar-search {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-search-input {
+      width: 100%;
+      padding: 7px 10px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .sidebar-search-input::placeholder { color: var(--text3); }
+    .sidebar-search-input:focus { border-color: var(--accent); }
+
+    /* ── Selection bar (animated) ── */
+    .selection-bar {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.25s cubic-bezier(0.4,0,0.2,1), padding 0.25s, opacity 0.2s;
+      padding: 0 12px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .selection-bar.visible { max-height: 60px; padding: 8px 12px; opacity: 1; }
+
+    .sel-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text2);
+      flex: 1;
+    }
+    .sel-btn {
+      padding: 4px 9px;
+      border-radius: var(--radius-xs);
+      font-size: 0.65rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+    }
+    .sel-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .sel-btn.danger { border-color: transparent; color: #ff5555; }
+    .sel-btn.danger:hover { background: #ff444422; border-color: #ff5555; }
+    .sel-btn.copy-sel { border-color: transparent; color: var(--accent2); }
+    .sel-btn.copy-sel:hover { background: rgba(124,107,255,0.12); border-color: var(--accent2); }
+
+    /* ── Notes list ── */
     .notes-list {
       flex: 1;
       overflow-y: auto;
       padding: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
     }
+    .notes-list-empty {
+      padding: 28px 12px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text3);
+      line-height: 1.7;
+    }
+
     .note-item {
-      padding: 12px;
+      padding: 10px 12px;
       border-radius: var(--radius-xs);
       cursor: pointer;
-      transition: all 0.15s;
-      margin-bottom: 4px;
+      transition: background 0.12s;
+      margin-bottom: 3px;
       position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      border-left: 3px solid transparent;
     }
     .note-item:hover { background: var(--bg3); }
-    .note-item.active { background: var(--card-hover); border-left: 3px solid var(--accent); }
+    .note-item.active { background: var(--card-hover); border-left-color: var(--accent); }
+    .note-item.selected { background: rgba(124,107,255,0.10); border-left-color: var(--accent2); }
+
+    .note-color-dot {
+      width: 7px;
+      height: 7px;
+      min-width: 7px;
+      border-radius: 50%;
+      margin-top: 5px;
+      background: var(--dot-color, transparent);
+      border: 1.5px solid var(--dot-color, var(--border2));
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+    .note-item:hover .note-color-dot { transform: scale(1.3); }
+
+    .note-checkbox {
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      border: 1.5px solid var(--border2);
+      border-radius: 4px;
+      margin-top: 2px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .select-mode .note-checkbox { display: flex; }
+    .note-item.selected .note-checkbox {
+      background: var(--accent2);
+      border-color: var(--accent2);
+      color: white;
+      font-size: 0.58rem;
+    }
+
+    .note-item-body { flex: 1; min-width: 0; }
     .note-item-name {
       font-family: 'Syne', sans-serif;
       font-weight: 700;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text);
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .note-item-preview {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--text3);
       white-space: nowrap;
       overflow: hidden;
@@ -106,20 +291,18 @@
     }
     .note-item-date {
       font-family: 'DM Mono', monospace;
-      font-size: 0.6rem;
+      font-size: 0.58rem;
       color: var(--text3);
       margin-top: 4px;
     }
     .note-item-delete {
       position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 22px;
-      height: 22px;
+      top: 8px; right: 8px;
+      width: 20px; height: 20px;
       border: none;
       background: transparent;
       color: var(--text3);
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       cursor: pointer;
       border-radius: 4px;
       opacity: 0;
@@ -130,69 +313,158 @@
     }
     .note-item:hover .note-item-delete { opacity: 1; }
     .note-item-delete:hover { background: #ff444433; color: #ff4444; }
+    .select-mode .note-item-delete { display: none !important; }
+
+    /* count bar */
+    .notes-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text3);
+      padding: 7px 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .storage-bar-wrap {
+      flex: 1;
+      max-width: 72px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .storage-bar-fill {
+      height: 100%;
+      background: var(--accent2);
+      border-radius: 2px;
+      transition: width 0.4s;
+    }
+    .storage-bar-fill.warn   { background: #ff8800; }
+    .storage-bar-fill.danger { background: #ff4444; }
+
+    /* ════════════════════════════════════════
+       EDITOR
+    ════════════════════════════════════════ */
     .notes-editor {
       display: flex;
       flex-direction: column;
       background: var(--bg);
+      overflow: hidden;
     }
+
     .editor-toolbar {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .editor-toolbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       flex: 1;
       min-width: 0;
     }
+
+    /* color picker */
+    .color-picker-wrap { position: relative; flex-shrink: 0; }
+    .color-swatch-btn {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border2);
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-swatch-btn:hover { transform: scale(1.2); border-color: var(--text2); }
+    .color-palette {
+      display: none;
+      position: absolute;
+      top: 30px; left: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      gap: 6px;
+      flex-wrap: wrap;
+      width: 116px;
+      z-index: 50;
+      box-shadow: var(--shadow2);
+    }
+    .color-palette.open { display: flex; }
+    .color-dot-opt {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .color-dot-opt:hover { transform: scale(1.25); }
+    .color-dot-opt.active { border-color: var(--text); }
+    .color-dot-opt.none { background: transparent !important; border: 2px dashed var(--border2); }
+    .color-dot-opt.none:hover { border-color: var(--text2); }
+
     .note-name-input {
       flex: 1;
-      padding: 8px 12px;
+      padding: 7px 10px;
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: var(--radius-xs);
       color: var(--text);
       font-family: 'Syne', sans-serif;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       outline: none;
       transition: border-color 0.2s;
       min-width: 0;
     }
     .note-name-input:focus { border-color: var(--accent); }
-    .rtl-toggle {
-      padding: 6px 12px;
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .toolbar-btn {
+      padding: 6px 10px;
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: var(--radius-xs);
       color: var(--text2);
-      font-size: 0.7rem;
+      font-size: 0.67rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s;
       white-space: nowrap;
+      font-family: 'Syne', sans-serif;
     }
-    .rtl-toggle:hover { border-color: var(--accent); color: var(--accent); }
-    .rtl-toggle.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .toolbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .toolbar-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .toolbar-btn.flash  { background: var(--accent2); color: white; border-color: var(--accent2); }
+
     .save-indicator {
       font-family: 'DM Mono', monospace;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text3);
+      min-width: 44px;
+      text-align: right;
     }
     .save-indicator.saved { color: #28c840; }
+
+    /* editor body */
     .editor-body {
       flex: 1;
-      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     .note-textarea {
+      flex: 1;
       width: 100%;
-      height: 100%;
       padding: 20px;
       background: transparent;
       border: none;
@@ -204,255 +476,900 @@
       outline: none;
       box-sizing: border-box;
     }
-    .note-textarea[dir="rtl"] {
-      font-family: 'DM Sans', sans-serif;
-      text-align: right;
-    }
+    .note-textarea[dir="rtl"] { text-align: right; }
     .note-textarea::placeholder { color: var(--text3); }
+
+    /* stats bar */
+    .editor-stats {
+      padding: 6px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .editor-stat {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text3);
+    }
+    .editor-stat span { color: var(--text2); font-weight: 500; }
+
+    /* ── Empty state ── */
     .empty-state {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
       color: var(--text3);
-      gap: 8px;
+      gap: 7px;
+      padding: 40px 20px;
     }
-    .empty-icon { font-size: 2.5rem; opacity: 0.4; }
+    .empty-icon { font-size: 2.4rem; opacity: 0.3; }
     .empty-text { font-size: 0.9rem; }
-    .empty-sub { font-size: 0.75rem; }
-    .notes-count {
+    .empty-sub  { font-size: 0.72rem; }
+    .empty-shortcuts {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: center;
+    }
+    .shortcut-hint {
       font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--text3);
-      padding: 8px 16px;
-      border-top: 1px solid var(--border);
-      text-align: center;
+    }
+    .shortcut-hint kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      font-size: 0.6rem;
+    }
+
+    /* ════════════════════════════════════════
+       MOBILE
+    ════════════════════════════════════════ */
+    .sidebar-backdrop {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      background: rgba(0,0,0,0.48);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s;
+    }
+    .sidebar-backdrop.visible { opacity: 1; pointer-events: all; }
+
+    .mobile-nav-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 700px) {
+      .notes-layout {
+        grid-template-columns: 1fr;
+        height: calc(100vh - 140px);
+      }
+      .notes-sidebar {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        width: 88%;
+        max-width: 300px;
+        border-right: 1px solid var(--border2);
+        border-radius: 0 var(--radius) var(--radius) 0;
+        box-shadow: var(--shadow);
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      }
+      .notes-sidebar.sidebar-open { transform: translateX(0); }
+      .notes-editor { grid-column: 1; }
+      .sidebar-backdrop { display: block; }
+      .mobile-nav-bar { display: flex; }
+    }
+
+    .mobile-sidebar-toggle {
+      padding: 6px 11px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .mobile-sidebar-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    .mobile-note-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    /* ════════════════════════════════════════
+       TOAST
+    ════════════════════════════════════════ */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+      z-index: 999;
+      font-size: 0.82rem;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s, transform 0.22s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .toast.visible {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast-undo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: opacity 0.15s;
+    }
+    .toast-undo:hover { opacity: 0.7; }
+    .toast-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: var(--accent);
+      width: 100%;
+    }
+
+    /* ════════════════════════════════════════
+       MODAL
+    ════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal-box {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 28px 28px 22px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: var(--shadow);
+      transform: scale(0.95) translateY(8px);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal-box { transform: scale(1) translateY(0); }
+    .modal-icon  { font-size: 1.8rem; margin-bottom: 10px; }
+    .modal-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; }
+    .modal-body  { font-size: 0.84rem; color: var(--text2); margin-bottom: 22px; line-height: 1.55; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-xs);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+    }
+    .modal-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-btn.danger { background: #ff4444; border-color: #ff4444; color: white; }
+    .modal-btn.danger:hover { background: #ff2222; border-color: #ff2222; }
+
+    /* ── Search highlights ── */
+    .note-item-name mark, .note-item-preview mark {
+      background: rgba(232,255,71,0.28);
+      color: inherit;
+      border-radius: 2px;
+    }
+    [data-theme="light"] .note-item-name mark,
+    [data-theme="light"] .note-item-preview mark {
+      background: rgba(58,47,255,0.14);
     }
   </style>
 </head>
 <body>
+
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Notes Editor</span>
   <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 
-<div class="tool-page">
-  <div class="tool-header">
-    <h1>Notes Editor</h1>
-    <p>Write and save notes with full Arabic RTL support. Auto-saves to localStorage.</p>
+<div style="max-width:1120px;margin:0 auto;padding:14px 20px 60px;">
+  <div style="margin-bottom:14px;">
+    <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.45rem;margin-bottom:3px;">Notes Editor</h1>
+    <p style="color:var(--text2);font-size:0.83rem;">Write and save notes with full Arabic RTL support. Auto-saves to localStorage.</p>
   </div>
 
-  <div class="notes-layout">
-    <div class="notes-sidebar">
+  <div class="notes-layout" id="notesLayout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <div class="notes-sidebar" id="notesSidebar">
       <div class="sidebar-header">
-        <h3>Notes</h3>
-        <button class="new-note-btn" id="newNoteBtn">+ New</button>
+        <div class="sidebar-header-top">
+          <h3>Notes</h3>
+          <div class="sidebar-header-actions">
+            <button class="icon-btn" id="exportBtn" title="Export as JSON (backup)">↑</button>
+            <button class="icon-btn" id="importBtn" title="Import from JSON">↓</button>
+            <input type="file" id="importFile" accept=".json" style="display:none;">
+            <button class="select-mode-btn" id="selectModeBtn">Select</button>
+            <button class="new-note-btn" id="newNoteBtn">+ New</button>
+          </div>
+        </div>
+        <div class="sidebar-sort">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn active" data-sort="updated">Updated</button>
+          <button class="sort-btn" data-sort="created">Created</button>
+          <button class="sort-btn" data-sort="alpha">A–Z</button>
+        </div>
       </div>
+
+      <div class="sidebar-search">
+        <input type="search" class="sidebar-search-input" id="searchInput"
+               placeholder="🔍  Search names &amp; content…" autocomplete="off"/>
+      </div>
+
+      <div class="selection-bar" id="selectionBar">
+        <span class="sel-count" id="selCount">None selected</span>
+        <button class="sel-btn" id="selAllBtn">All</button>
+        <button class="sel-btn copy-sel" id="selCopyBtn">Copy</button>
+        <button class="sel-btn danger" id="selDeleteBtn">Delete</button>
+      </div>
+
       <div class="notes-list" id="notesList"></div>
-      <div class="notes-count" id="notesCount"></div>
+
+      <div class="notes-count">
+        <span id="notesCountText">0 notes</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="storageText" style="font-size:0.57rem;"></span>
+          <div class="storage-bar-wrap">
+            <div class="storage-bar-fill" id="storageBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- ══════════ EDITOR ══════════ -->
     <div class="notes-editor" id="editorPanel">
+
+      <div class="mobile-nav-bar" id="mobileNavBar">
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle">☰ Notes</button>
+        <span class="mobile-note-label" id="mobileNoteLabel">No note selected</span>
+      </div>
+
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">📝</div>
         <div class="empty-text">No note selected</div>
         <div class="empty-sub">Create a new note or select one to edit</div>
+        <div class="empty-shortcuts">
+          <div class="shortcut-hint"><kbd>Ctrl N</kbd> New note</div>
+          <div class="shortcut-hint"><kbd>Ctrl S</kbd> Save</div>
+        </div>
       </div>
 
       <div class="editor-toolbar" id="editorToolbar" style="display:none;">
         <div class="editor-toolbar-left">
-          <input type="text" class="note-name-input" id="noteNameInput" placeholder="Note name..." />
+          <div class="color-picker-wrap" id="colorPickerWrap">
+            <button class="color-swatch-btn" id="colorSwatchBtn" title="Color label"></button>
+            <div class="color-palette" id="colorPalette"></div>
+          </div>
+          <input type="text" class="note-name-input" id="noteNameInput" placeholder="Note name…"/>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div class="toolbar-right">
           <span class="save-indicator" id="saveIndicator"></span>
-          <button class="rtl-toggle" id="rtlToggle" dir="rtl">عربي</button>
+          <button class="toolbar-btn" id="copyContentBtn">Copy</button>
+          <button class="toolbar-btn" id="rtlToggle" dir="rtl">عربي</button>
         </div>
       </div>
 
       <div class="editor-body" id="editorBody" style="display:none;">
-        <textarea class="note-textarea" id="noteTextarea" placeholder="Start writing..."></textarea>
+        <textarea class="note-textarea" id="noteTextarea" placeholder="Start writing…"></textarea>
+        <div class="editor-stats" id="editorStats">
+          <span class="editor-stat">Words: <span id="statWords">0</span></span>
+          <span class="editor-stat">Chars: <span id="statChars">0</span></span>
+          <span class="editor-stat">Lines: <span id="statLines">0</span></span>
+        </div>
       </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Undo toast -->
+<div class="toast" id="undoToast">
+  <span id="toastMsg">Note deleted</span>
+  <button class="toast-undo" id="toastUndoBtn">Undo</button>
+  <div class="toast-bar" id="toastBar"></div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title" id="modalTitle">Delete notes?</div>
+    <div class="modal-body"  id="modalBody">This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="modalCancel">Cancel</button>
+      <button class="modal-btn danger" id="modalConfirm">Delete</button>
     </div>
   </div>
 </div>
 
 <script>
-var STORAGE_KEY = 'mts-notes';
-var notes = [];
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+var STORAGE_KEY  = 'mts-notes';
+var notes        = [];
 var activeNoteId = null;
-var saveTimeout = null;
+var saveTimeout  = null;
+var selectMode   = false;
+var selectedIds  = new Set();
+var searchQuery  = '';
+var sortMode     = 'updated';
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
+var undoSnapshot  = null;
+var undoTimerId   = null;
+var UNDO_DURATION = 5000;
+var modalCb       = null;
 
+var COLOR_OPTS = [
+  {c:null,     l:'None'},
+  {c:'#e8ff47',l:'Yellow'},
+  {c:'#7c6bff',l:'Purple'},
+  {c:'#ff6b6b',l:'Red'},
+  {c:'#6bffb8',l:'Green'},
+  {c:'#6bb5ff',l:'Blue'},
+  {c:'#ffb86b',l:'Orange'},
+  {c:'#ff6bd6',l:'Pink'},
+];
+
+/* ═══════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════ */
 function loadNotes() {
-  try {
-    var data = localStorage.getItem(STORAGE_KEY);
-    notes = data ? JSON.parse(data) : [];
-  } catch(e) {
-    notes = [];
-  }
+  try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { notes = []; }
 }
-
 function saveNotes() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  updateStorageBar();
+}
+function updateStorageBar() {
+  try {
+    var bytes = new Blob([localStorage.getItem(STORAGE_KEY)||'']).size;
+    var pct   = Math.min(100, bytes / (5*1024*1024) * 100);
+    var bar   = document.getElementById('storageBar');
+    var txt   = document.getElementById('storageText');
+    bar.style.width = pct.toFixed(1)+'%';
+    bar.className   = 'storage-bar-fill'+(pct>85?' danger':pct>60?' warn':'');
+    txt.textContent = (bytes/1024).toFixed(1)+' KB';
+    txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
+  } catch(e){}
 }
 
-function formatDate(ts) {
-  var d = new Date(ts);
-  var day = String(d.getDate()).padStart(2, '0');
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var month = months[d.getMonth()];
-  var hours = String(d.getHours()).padStart(2, '0');
-  var mins = String(d.getMinutes()).padStart(2, '0');
-  return day + ' ' + month + ' ' + hours + ':' + mins;
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function genId() { return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+function fmtDate(ts) {
+  var d=new Date(ts), mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d.getDate()).padStart(2,'0')+' '+mo[d.getMonth()]+' '+
+         String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function hl(text, q) {
+  if (!q) return esc(text);
+  return esc(text).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');
+}
+function uniqueName(base, excludeId) {
+  var taken = notes.filter(function(n){return n.id!==excludeId;}).map(function(n){return n.name;});
+  if (taken.indexOf(base)===-1) return base;
+  var i=2; while(taken.indexOf(base+' ('+i+')')!==-1) i++;
+  return base+' ('+i+')';
 }
 
+/* ═══════════════════════════════════════════
+   SORT + FILTER
+═══════════════════════════════════════════ */
+function filteredNotes() {
+  var list = notes.slice();
+  if (sortMode==='updated')     list.sort(function(a,b){return b.updatedAt-a.updatedAt;});
+  else if (sortMode==='created')list.sort(function(a,b){return b.createdAt-a.createdAt;});
+  else list.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  if (!searchQuery) return list;
+  var q = searchQuery.toLowerCase();
+  return list.filter(function(n){
+    return (n.name||'').toLowerCase().indexOf(q)!==-1 ||
+           (n.text||'').toLowerCase().indexOf(q)!==-1;
+  });
+}
+
+/* ═══════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════ */
 function renderNotesList() {
+  var list = filteredNotes();
   var html = '';
-  notes.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
-  notes.forEach(function(note) {
-    var isActive = note.id === activeNoteId;
-    var preview = note.text ? note.text.substring(0, 80).replace(/\n/g, ' ') : 'Empty note';
-    html += '<div class="note-item' + (isActive ? ' active' : '') + '" data-id="' + note.id + '">' +
-      '<div class="note-item-name">' + (note.name || 'Untitled') + '</div>' +
-      '<div class="note-item-preview">' + escapeHtml(preview) + '</div>' +
-      '<div class="note-item-date">' + formatDate(note.updatedAt) + '</div>' +
-      '<button class="note-item-delete" data-id="' + note.id + '" title="Delete">×</button>' +
-      '</div>';
-  });
-  document.getElementById('notesList').innerHTML = html;
-  document.getElementById('notesCount').textContent = notes.length + ' note' + (notes.length !== 1 ? 's' : '');
 
-  document.querySelectorAll('.note-item[data-id]').forEach(function(el) {
-    el.addEventListener('click', function() { openNote(el.dataset.id); });
+  if (list.length===0) {
+    html = '<div class="notes-list-empty">'+
+      (searchQuery ? '🔍 No notes match<br>"'+esc(searchQuery)+'"' : 'No notes yet.<br>Press <strong>+ New</strong> or <kbd style="font-size:0.65rem;padding:1px 5px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;">Ctrl N</kbd> to start.')+
+      '</div>';
+  } else {
+    list.forEach(function(note) {
+      var isActive   = note.id===activeNoteId;
+      var isSelected = selectedIds.has(note.id);
+      var cls = 'note-item'+(isActive?' active':'')+(isSelected?' selected':'');
+      var dotStyle = note.color ? ' style="--dot-color:'+note.color+'"' : '';
+
+      // Smart preview: show snippet around search match in content
+      var preview;
+      if (searchQuery && (note.text||'').toLowerCase().indexOf(searchQuery.toLowerCase())!==-1 &&
+          (note.name||'').toLowerCase().indexOf(searchQuery.toLowerCase())===-1) {
+        var idx   = note.text.toLowerCase().indexOf(searchQuery.toLowerCase());
+        var start = Math.max(0, idx-18);
+        var snip  = (start>0?'…':'')+note.text.substring(start, idx+55).replace(/\n/g,' ');
+        preview   = hl(snip, searchQuery);
+      } else {
+        preview = esc(note.text ? note.text.substring(0,80).replace(/\n/g,' ') : 'Empty note');
+      }
+
+      html += '<div class="'+cls+'" data-id="'+note.id+'">'+
+        '<div class="note-checkbox">'+(isSelected?'✓':'')+'</div>'+
+        '<div class="note-color-dot"'+dotStyle+'></div>'+
+        '<div class="note-item-body">'+
+          '<div class="note-item-name">'+hl(note.name||'Untitled',searchQuery)+'</div>'+
+          '<div class="note-item-preview">'+preview+'</div>'+
+          '<div class="note-item-date">'+fmtDate(note.updatedAt)+'</div>'+
+        '</div>'+
+        '<button class="note-item-delete" data-id="'+note.id+'" title="Delete">×</button>'+
+        '</div>';
+    });
+  }
+
+  document.getElementById('notesList').innerHTML = html;
+  document.getElementById('notesList').classList.toggle('select-mode', selectMode);
+
+  var total=notes.length, shown=list.length;
+  document.getElementById('notesCountText').textContent =
+    (searchQuery&&shown<total) ? shown+' of '+total+' note'+(total!==1?'s':'') : total+' note'+(total!==1?'s':'');
+
+  updateSelectionBar();
+
+  // Events
+  document.querySelectorAll('.note-item[data-id]').forEach(function(el){
+    el.addEventListener('click', function(){
+      if (selectMode) toggleSelect(el.dataset.id);
+      else { openNote(el.dataset.id); closeSidebarMobile(); }
+    });
   });
-  document.querySelectorAll('.note-item-delete[data-id]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
+  document.querySelectorAll('.note-item-delete[data-id]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
       e.stopPropagation();
-      deleteNote(btn.dataset.id);
+      softDelete(btn.dataset.id);
     });
   });
 }
 
-function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
+/* ═══════════════════════════════════════════
+   OPEN / NEW / DELETE
+═══════════════════════════════════════════ */
 function openNote(id) {
-  var note = notes.find(function(n) { return n.id === id; });
+  var note = notes.find(function(n){return n.id===id;});
   if (!note) return;
   activeNoteId = id;
-  document.getElementById('emptyState').style.display = 'none';
+
+  document.getElementById('emptyState').style.display    = 'none';
   document.getElementById('editorToolbar').style.display = 'flex';
-  document.getElementById('editorBody').style.display = 'block';
+  document.getElementById('editorBody').style.display    = 'flex';
+
   document.getElementById('noteNameInput').value = note.name;
-  document.getElementById('noteTextarea').value = note.text;
-  var rtlToggle = document.getElementById('rtlToggle');
-  if (note.rtl) {
-    document.getElementById('noteTextarea').setAttribute('dir', 'rtl');
-    document.getElementById('noteTextarea').style.textAlign = 'right';
-    rtlToggle.classList.add('active');
-  } else {
-    document.getElementById('noteTextarea').setAttribute('dir', 'ltr');
-    document.getElementById('noteTextarea').style.textAlign = 'left';
-    rtlToggle.classList.remove('active');
-  }
+  var ta = document.getElementById('noteTextarea');
+  ta.value = note.text;
+  ta.setAttribute('dir', note.rtl?'rtl':'ltr');
+  ta.style.textAlign = note.rtl?'right':'left';
+  document.getElementById('rtlToggle').classList.toggle('active',!!note.rtl);
+
+  updateColorSwatch(note.color||null);
+  updateStats();
+  document.getElementById('mobileNoteLabel').textContent = note.name||'Untitled';
   renderNotesList();
 }
 
 function newNote() {
-    var note = {
-    id: generateId(),
-    name: 'Untitled',
-    text: '',
-    rtl: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
+  var note = {
+    id: genId(), name: uniqueName('Untitled',null), text: '',
+    rtl: true, color: null, createdAt: Date.now(), updatedAt: Date.now()
   };
   notes.push(note);
   saveNotes();
   openNote(note.id);
+  setTimeout(function(){ var ni=document.getElementById('noteNameInput'); ni.focus(); ni.select(); },50);
 }
 
-function deleteNote(id) {
-  notes = notes.filter(function(n) { return n.id !== id; });
+function softDelete(id) {
+  undoSnapshot = JSON.parse(JSON.stringify(notes));
+  var note = notes.find(function(n){return n.id===id;});
+  var label = note ? '"'+(note.name||'Untitled')+'"' : 'Note';
+  notes = notes.filter(function(n){return n.id!==id;});
+  selectedIds.delete(id);
   saveNotes();
-  if (activeNoteId === id) {
-    activeNoteId = null;
-    document.getElementById('emptyState').style.display = 'flex';
-    document.getElementById('editorToolbar').style.display = 'none';
-    document.getElementById('editorBody').style.display = 'none';
-  }
+  if (activeNoteId===id) clearEditor();
+  renderNotesList();
+  showToast(label+' deleted');
+}
+
+function hardDelete(ids) {
+  notes = notes.filter(function(n){return ids.indexOf(n.id)===-1;});
+  ids.forEach(function(id){selectedIds.delete(id);});
+  if (ids.indexOf(activeNoteId)!==-1) clearEditor();
+  saveNotes();
   renderNotesList();
 }
 
+function clearEditor() {
+  activeNoteId = null;
+  document.getElementById('emptyState').style.display    = 'flex';
+  document.getElementById('editorToolbar').style.display = 'none';
+  document.getElementById('editorBody').style.display    = 'none';
+  document.getElementById('mobileNoteLabel').textContent = 'No note selected';
+}
+
+/* ═══════════════════════════════════════════
+   AUTOSAVE
+═══════════════════════════════════════════ */
 function scheduleSave() {
-  var indicator = document.getElementById('saveIndicator');
-  indicator.textContent = 'saving...';
-  indicator.classList.remove('saved');
+  var ind = document.getElementById('saveIndicator');
+  ind.textContent = 'saving…'; ind.classList.remove('saved');
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(function() {
-    var note = notes.find(function(n) { return n.id === activeNoteId; });
+  saveTimeout = setTimeout(function(){
+    var note = notes.find(function(n){return n.id===activeNoteId;});
     if (!note) return;
-    note.name = document.getElementById('noteNameInput').value || 'Untitled';
+    var raw = document.getElementById('noteNameInput').value.trim()||'Untitled';
+    if (raw!==note.name) {
+      note.name = uniqueName(raw, note.id);
+      document.getElementById('noteNameInput').value = note.name;
+    }
     note.text = document.getElementById('noteTextarea').value;
     note.updatedAt = Date.now();
     saveNotes();
-    indicator.textContent = 'saved';
-    indicator.classList.add('saved');
-    setTimeout(function() { indicator.textContent = ''; }, 1500);
+    ind.textContent = 'saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent=''; }, 1500);
+    document.getElementById('mobileNoteLabel').textContent = note.name;
     renderNotesList();
   }, 400);
 }
 
-document.getElementById('newNoteBtn').addEventListener('click', newNote);
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+function updateStats() {
+  var t = document.getElementById('noteTextarea').value;
+  document.getElementById('statWords').textContent = t.trim()===''?0:t.trim().split(/\s+/).length;
+  document.getElementById('statChars').textContent = t.length;
+  document.getElementById('statLines').textContent = t===''?0:t.split('\n').length;
+}
 
-document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
-document.getElementById('noteTextarea').addEventListener('input', scheduleSave);
-
-document.getElementById('rtlToggle').addEventListener('click', function() {
-  var note = notes.find(function(n) { return n.id === activeNoteId; });
+/* ═══════════════════════════════════════════
+   COLOR LABELS
+═══════════════════════════════════════════ */
+function buildColorPalette() {
+  var pal = document.getElementById('colorPalette');
+  COLOR_OPTS.forEach(function(opt){
+    var dot = document.createElement('div');
+    dot.className = 'color-dot-opt'+(opt.c?'':' none');
+    if (opt.c) dot.style.background = opt.c;
+    dot.title = opt.l;
+    dot.addEventListener('click', function(e){
+      e.stopPropagation();
+      setNoteColor(opt.c);
+      document.getElementById('colorPalette').classList.remove('open');
+    });
+    pal.appendChild(dot);
+  });
+}
+function setNoteColor(color) {
+  var note = notes.find(function(n){return n.id===activeNoteId;});
   if (!note) return;
-  note.rtl = !note.rtl;
-  if (note.rtl) {
-    document.getElementById('noteTextarea').setAttribute('dir', 'rtl');
-    document.getElementById('noteTextarea').style.textAlign = 'right';
-    document.getElementById('rtlToggle').classList.add('active');
-  } else {
-    document.getElementById('noteTextarea').setAttribute('dir', 'ltr');
-    document.getElementById('noteTextarea').style.textAlign = 'left';
-    document.getElementById('rtlToggle').classList.remove('active');
-  }
+  note.color = color||null;
+  saveNotes();
+  updateColorSwatch(color);
+  renderNotesList();
+}
+function updateColorSwatch(color) {
+  var btn = document.getElementById('colorSwatchBtn');
+  btn.style.background  = color||'var(--bg3)';
+  btn.style.borderColor = color||'var(--border2)';
+  document.querySelectorAll('.color-dot-opt').forEach(function(d,i){
+    d.classList.toggle('active', COLOR_OPTS[i].c===color);
+  });
+}
+document.getElementById('colorSwatchBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  document.getElementById('colorPalette').classList.toggle('open');
+});
+document.addEventListener('click', function(){
+  document.getElementById('colorPalette').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   UNDO TOAST
+═══════════════════════════════════════════ */
+function showToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast = document.getElementById('undoToast');
+  var bar   = document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent = msg;
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  toast.classList.add('visible');
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      bar.style.transition = 'width '+UNDO_DURATION+'ms linear';
+      bar.style.width = '0%';
+    });
+  });
+  undoTimerId = setTimeout(function(){ hideToast(); undoSnapshot=null; }, UNDO_DURATION);
+}
+function hideToast() {
+  document.getElementById('undoToast').classList.remove('visible');
+  clearTimeout(undoTimerId);
+}
+document.getElementById('toastUndoBtn').addEventListener('click', function(){
+  if (!undoSnapshot) return;
+  notes = undoSnapshot; undoSnapshot = null;
+  saveNotes(); renderNotesList(); hideToast();
+  if (activeNoteId && notes.find(function(n){return n.id===activeNoteId;})) openNote(activeNoteId);
+});
+
+/* ═══════════════════════════════════════════
+   CONFIRM MODAL
+═══════════════════════════════════════════ */
+function showModal(title, body, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent  = body;
+  modalCb = cb;
+  document.getElementById('confirmModal').classList.add('open');
+}
+document.getElementById('modalCancel').addEventListener('click', function(){
+  document.getElementById('confirmModal').classList.remove('open'); modalCb=null;
+});
+document.getElementById('modalConfirm').addEventListener('click', function(){
+  document.getElementById('confirmModal').classList.remove('open');
+  if (modalCb) { modalCb(); modalCb=null; }
+});
+document.getElementById('confirmModal').addEventListener('click', function(e){
+  if (e.target===this){ this.classList.remove('open'); modalCb=null; }
+});
+
+/* ═══════════════════════════════════════════
+   SELECTION
+═══════════════════════════════════════════ */
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  var btn = document.getElementById('selectModeBtn');
+  btn.classList.toggle('active', selectMode);
+  btn.textContent = selectMode ? 'Done' : 'Select';
+  document.getElementById('selectionBar').classList.toggle('visible', selectMode);
+  renderNotesList();
+}
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderNotesList();
+}
+function updateSelectionBar() {
+  var count   = selectedIds.size;
+  var visible = filteredNotes();
+  var allSel  = visible.length>0 && visible.every(function(n){return selectedIds.has(n.id);});
+  document.getElementById('selCount').textContent = count===0?'None selected':count+' selected';
+  document.getElementById('selAllBtn').textContent = allSel?'None':'All';
+  var cp = document.getElementById('selCopyBtn');
+  var dl = document.getElementById('selDeleteBtn');
+  cp.style.opacity = dl.style.opacity = count===0?'0.4':'1';
+  cp.disabled = dl.disabled = count===0;
+}
+document.getElementById('selAllBtn').addEventListener('click', function(){
+  var vis = filteredNotes();
+  var allSel = vis.length>0 && vis.every(function(n){return selectedIds.has(n.id);});
+  if (allSel) vis.forEach(function(n){selectedIds.delete(n.id);}); else vis.forEach(function(n){selectedIds.add(n.id);});
+  renderNotesList();
+});
+document.getElementById('selDeleteBtn').addEventListener('click', function(){
+  if (selectedIds.size===0) return;
+  var ids=Array.from(selectedIds), c=ids.length;
+  showModal('Delete '+c+' note'+(c!==1?'s':'')+'?',
+    'Permanently removes '+(c===1?'this note':'these '+c+' notes')+'. This cannot be undone.',
+    function(){ hardDelete(ids); });
+});
+document.getElementById('selCopyBtn').addEventListener('click', function(){
+  if (selectedIds.size===0) return;
+  var text = Array.from(selectedIds).map(function(id){
+    var n=notes.find(function(x){return x.id===id;});
+    return n?'── '+(n.name||'Untitled')+' ──\n'+n.text:'';
+  }).filter(Boolean).join('\n\n');
+  copyToClipboard(text, document.getElementById('selCopyBtn'), 'Copy');
+});
+
+/* ═══════════════════════════════════════════
+   COPY
+═══════════════════════════════════════════ */
+function copyToClipboard(text, btn, lbl) {
+  function flash(){ if(!btn)return; var o=lbl||btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('flash'); setTimeout(function(){btn.textContent=o;btn.classList.remove('flash');},1500); }
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash).catch(function(){fbCopy(text);flash();});
+  else { fbCopy(text); flash(); }
+}
+function fbCopy(t){ var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0;'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+
+/* ═══════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════ */
+document.getElementById('exportBtn').addEventListener('click', function(){
+  var blob = new Blob([JSON.stringify(notes,null,2)],{type:'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='mts-notes-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', function(){
+  document.getElementById('importFile').value=''; document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', function(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try {
+      var imp=JSON.parse(ev.target.result);
+      if (!Array.isArray(imp)) throw new Error();
+      var c=imp.length;
+      showModal('Import '+c+' note'+(c!==1?'s':'')+'?',
+        'Merges with your '+notes.length+' existing note'+(notes.length!==1?'s.':'.')+' Duplicate names will be renamed automatically.',
+        function(){
+          imp.forEach(function(n){
+            if (!n.id||notes.find(function(x){return x.id===n.id;})) n.id=genId();
+            n.name=uniqueName(n.name||'Untitled',null);
+            n.createdAt=n.createdAt||Date.now(); n.updatedAt=n.updatedAt||Date.now();
+            notes.push(n);
+          });
+          saveNotes(); renderNotesList();
+        });
+    } catch(err) { alert('Could not parse file. Make sure it is a valid MTS notes JSON export.'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ═══════════════════════════════════════════
+   SORT
+═══════════════════════════════════════════ */
+document.querySelectorAll('.sort-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.sort-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active'); sortMode=btn.dataset.sort; renderNotesList();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   EDITOR WIRING
+═══════════════════════════════════════════ */
+document.getElementById('rtlToggle').addEventListener('click', function(){
+  var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+  note.rtl=!note.rtl;
+  var ta=document.getElementById('noteTextarea');
+  ta.setAttribute('dir',note.rtl?'rtl':'ltr'); ta.style.textAlign=note.rtl?'right':'left';
+  document.getElementById('rtlToggle').classList.toggle('active',note.rtl);
   scheduleSave();
 });
 
-document.addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+document.getElementById('copyContentBtn').addEventListener('click', function(){
+  var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+  copyToClipboard(note.text, document.getElementById('copyContentBtn'), 'Copy');
+});
+
+document.getElementById('newNoteBtn').addEventListener('click', newNote);
+document.getElementById('selectModeBtn').addEventListener('click', toggleSelectMode);
+document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
+document.getElementById('noteTextarea').addEventListener('input', function(){ scheduleSave(); updateStats(); });
+document.getElementById('searchInput').addEventListener('input', function(){ searchQuery=this.value.trim(); renderNotesList(); });
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', function(e){
+  var mod = e.ctrlKey||e.metaKey;
+  if (mod && e.key==='n') { e.preventDefault(); newNote(); }
+  if (mod && e.key==='s') {
     e.preventDefault();
     clearTimeout(saveTimeout);
-    var note = notes.find(function(n) { return n.id === activeNoteId; });
-    if (!note) return;
-    note.name = document.getElementById('noteNameInput').value || 'Untitled';
-    note.text = document.getElementById('noteTextarea').value;
-    note.updatedAt = Date.now();
-    saveNotes();
-    var indicator = document.getElementById('saveIndicator');
-    indicator.textContent = 'saved';
-    indicator.classList.add('saved');
-    setTimeout(function() { indicator.textContent = ''; }, 1500);
-    renderNotesList();
+    var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+    var raw=document.getElementById('noteNameInput').value.trim()||'Untitled';
+    if (raw!==note.name){ note.name=uniqueName(raw,note.id); document.getElementById('noteNameInput').value=note.name; }
+    note.text=document.getElementById('noteTextarea').value; note.updatedAt=Date.now(); saveNotes();
+    var ind=document.getElementById('saveIndicator'); ind.textContent='saved'; ind.classList.add('saved');
+    setTimeout(function(){ind.textContent='';},1500); renderNotesList();
+  }
+  if (e.key==='Escape') {
+    document.getElementById('colorPalette').classList.remove('open');
+    document.getElementById('confirmModal').classList.remove('open'); modalCb=null;
+    closeSidebarMobile();
   }
 });
 
+/* ═══════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════ */
+function openSidebarMobile() {
+  document.getElementById('notesSidebar').classList.add('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.add('visible');
+}
+function closeSidebarMobile() {
+  document.getElementById('notesSidebar').classList.remove('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.remove('visible');
+}
+document.getElementById('mobileSidebarToggle').addEventListener('click', openSidebarMobile);
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebarMobile);
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+buildColorPalette();
 loadNotes();
+updateStorageBar();
 renderNotesList();
-if (notes.length > 0) openNote(notes[0].id);
+if (notes.length>0) openNote(notes[0].id);
 </script>
 </body>
 </html>
