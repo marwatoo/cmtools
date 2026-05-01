@@ -771,26 +771,22 @@ function saveStatsDates() {
 
 function getDefaultWeek() {
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  const mostRecentSunday = new Date(now);
-  mostRecentSunday.setDate(now.getDate() - dayOfWeek);
-  mostRecentSunday.setHours(23, 59, 59, 999);
-  const start = new Date(mostRecentSunday);
-  start.setDate(mostRecentSunday.getDate() - 4);
+  const end = new Date(now);
+  end.setDate(now.getDate() - 2);
+  end.setHours(23, 59, 59, 999);
+  const start = new Date(now);
+  start.setDate(now.getDate() - 6);
   start.setHours(0, 0, 0, 0);
-  return { start, end: mostRecentSunday };
+  return { start, end };
 }
 
 async function openStatsModal() {
-  loadStatsDates();
   const overlay = document.getElementById('modalOverlay');
   const body = document.getElementById('modalBody');
 
-  if (!statsStartDate || !statsEndDate) {
-    const week = getDefaultWeek();
-    statsStartDate = week.start;
-    statsEndDate = week.end;
-  }
+  const week = getDefaultWeek();
+  statsStartDate = week.start;
+  statsEndDate = week.end;
 
   const startDateStr = statsStartDate.toISOString().split('T')[0];
   const endDateStr = statsEndDate.toISOString().split('T')[0];
