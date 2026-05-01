@@ -83,6 +83,29 @@
     }
     #dlWrap.visible { max-height: 60px; opacity: 1; }
     #dlWrap .btn { width: 100%; margin-bottom: 0; justify-content: center; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:var(--accent); border-radius:50%; cursor:pointer; border:2px solid var(--bg); box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+    input[type="range"]::-moz-range-thumb { width:18px; height:18px; background:var(--accent); border-radius:50%; cursor:pointer; border:2px solid var(--bg); box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+    .canvas-wrap { position: relative; user-select: none; -webkit-user-select: none; }
+    .canvas-wrap canvas { touch-action: none; }
+    .drag-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text3);
+      background: var(--bg2);
+      padding: 4px 12px;
+      border-radius: var(--radius-xs);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .canvas-wrap:hover .drag-hint { opacity: 1; }
   </style>
 </head>
 <body>
@@ -154,6 +177,32 @@
 
     <div class="canvas-wrap" style="aspect-ratio:16/9; margin-top:16px;">
       <canvas id="canvas" width="1920" height="1080" style="width:100%;height:auto;display:block;"></canvas>
+      <div class="drag-hint" id="dragHint">Scroll/pinch to zoom · Drag to reposition</div>
+    </div>
+
+    <div class="field" style="margin-top:12px;">
+      <label>Zoom</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" id="zoomSlider" min="1" max="300" value="100" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+        <span id="zoomValue" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent);min-width:40px;text-align:right;">100%</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+      <div class="field">
+        <label>Position X</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="posXSlider" min="-100" max="100" value="0" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+          <span id="posXValue" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);min-width:30px;text-align:right;">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Position Y</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="posYSlider" min="-100" max="100" value="0" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+          <span id="posYValue" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);min-width:30px;text-align:right;">0</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -179,6 +228,16 @@
     const W = 1920, H = 1080;
     let currentFile = null;
     let currentMode = 'fr';
+    let loadedImg = null;
+    let imgW = 0, imgH = 0;
+    let imgOffsetX = 0, imgOffsetY = 0;
+    let imgZoom = 1;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetStartX = 0, dragOffsetStartY = 0;
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
 
     const MODES = {
       fr: {
@@ -294,8 +353,15 @@
 
     function enableFile(file) {
       currentFile = file;
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
+      loadedImg = null;
       dropzone.classList.add('has-file');
       uploadText.textContent = '✓ ' + file.name;
+      document.getElementById('posXSlider').value = 0;
+      document.getElementById('posXValue').textContent = '0';
+      document.getElementById('posYSlider').value = 0;
+      document.getElementById('posYValue').textContent = '0';
       previewDraw();
     }
 
@@ -305,15 +371,31 @@
     }
 
     async function drawAll(img) {
+      if (!img) {
+        renderFrame(null);
+        return;
+      }
+      loadedImg = img;
+      imgW = img.width;
+      imgH = img.height;
+      renderFrame(img);
+    }
+
+    async function renderFrame(img) {
       const cfg = MODES[currentMode];
 
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      const scale = Math.max(W / img.width, H / img.height);
-      const iw = img.width * scale, ih = img.height * scale;
-      ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      if (img) {
+        const baseW = imgW * imgZoom;
+        const baseH = imgH * imgZoom;
+        const cx = W / 2, cy = H / 2;
+        const dx = cx - baseW / 2 + imgOffsetX;
+        const dy = cy - baseH / 2 + imgOffsetY;
+        ctx.drawImage(img, dx, dy, baseW, baseH);
+      }
 
       if (cfg.overlay) {
         try {
@@ -322,7 +404,6 @@
         } catch(e) { console.warn(e.message); }
       }
 
-      // Draw country name layer (Africa mode)
       if (cfg.hasCountry && countrySelect.value) {
         const co = await loadCountryOverlay(countrySelect.value);
         if (co) ctx.drawImage(co, 0, 0, W, H);
@@ -423,7 +504,16 @@
       }
 
       dlWrap.classList.remove('visible');
-      previewDraw();
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
+      document.getElementById('zoomSlider').value = 100;
+      document.getElementById('zoomValue').textContent = '100%';
+      document.getElementById('posXSlider').value = 0;
+      document.getElementById('posXValue').textContent = '0';
+      document.getElementById('posYSlider').value = 0;
+      document.getElementById('posYValue').textContent = '0';
+      if (loadedImg) renderFrame(loadedImg);
+      else { ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
     }
 
     modeTabs.addEventListener('click', e => {
@@ -439,11 +529,171 @@
       dropzone.classList.remove('dragover');
       if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
     });
+    dropzone.addEventListener('touchend', function(e) {
+      if (currentFile) return;
+      upload.click();
+    });
     upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
 
-    txt1El.addEventListener('input', previewDraw);
-    txt2El.addEventListener('input', previewDraw);
-    countrySelect.addEventListener('change', previewDraw);
+    txt1El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    txt2El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    countrySelect.addEventListener('change', () => { if (loadedImg) renderFrame(loadedImg); });
+
+    canvas.addEventListener('mousedown', onDragStart);
+    canvas.addEventListener('mousemove', onDragMove);
+    canvas.addEventListener('mouseup', onDragEnd);
+    canvas.addEventListener('mouseleave', onDragEnd);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onDragEnd);
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+    }
+
+    function onDragStart(e) {
+      if (!loadedImg) return;
+      isDragging = true;
+      const coords = getCanvasCoords(e);
+      dragStartX = coords.x;
+      dragStartY = coords.y;
+      dragOffsetStartX = imgOffsetX;
+      dragOffsetStartY = imgOffsetY;
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !loadedImg) return;
+      const coords = getCanvasCoords(e);
+      imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+      imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+      renderFrame(loadedImg);
+      syncSliders();
+    }
+
+    function onTouchStart(e) {
+      if (!loadedImg) return;
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinching = true;
+        isDragging = false;
+        pinchStartDist = getTouchDist(e);
+        pinchStartZoom = imgZoom;
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        isDragging = true;
+        dragStartX = coords.x;
+        dragStartY = coords.y;
+        dragOffsetStartX = imgOffsetX;
+        dragOffsetStartY = imgOffsetY;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!loadedImg) return;
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        var dist = getTouchDist(e);
+        var ratio = dist / pinchStartDist;
+        imgZoom = Math.max(1, Math.min(30, pinchStartZoom * ratio));
+        document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
+        document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
+        renderFrame(loadedImg);
+        return;
+      }
+      if (isDragging && e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+        imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+        renderFrame(loadedImg);
+        syncSliders();
+      }
+    }
+
+    function onDragEnd() {
+      isDragging = false;
+      isPinching = false;
+      syncSliders();
+    }
+
+    function syncSliders() {
+      if (!loadedImg) return;
+      var baseW = imgW * imgZoom, baseH = imgH * imgZoom;
+      var maxOffX = baseW / 2, maxOffY = baseH / 2;
+      var xPct = Math.round((imgOffsetX / maxOffX) * 100);
+      var yPct = Math.round((imgOffsetY / maxOffY) * 100);
+      xPct = Math.max(-100, Math.min(100, xPct));
+      yPct = Math.max(-100, Math.min(100, yPct));
+      document.getElementById('posXSlider').value = xPct;
+      document.getElementById('posXValue').textContent = xPct;
+      document.getElementById('posYSlider').value = yPct;
+      document.getElementById('posYValue').textContent = yPct;
+    }
+
+    document.getElementById('posXSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      var pct = parseInt(this.value);
+      var baseW = imgW * imgZoom;
+      imgOffsetX = (pct / 100) * (baseW / 2);
+      document.getElementById('posXValue').textContent = pct;
+      renderFrame(loadedImg);
+    });
+
+    document.getElementById('posYSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      var pct = parseInt(this.value);
+      var baseH = imgH * imgZoom;
+      imgOffsetY = (pct / 100) * (baseH / 2);
+      document.getElementById('posYValue').textContent = pct;
+      renderFrame(loadedImg);
+    });
+
+    document.getElementById('zoomSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      var newZoom = parseInt(this.value) / 100;
+      var cx = W / 2, cy = H / 2;
+      var oldW = imgW * imgZoom, oldH = imgH * imgZoom;
+      var newW = imgW * newZoom, newH = imgH * newZoom;
+      imgOffsetX = imgOffsetX * (newZoom / imgZoom) + (cx - newW / 2) - (cx - oldW / 2) * (newZoom / imgZoom);
+      imgOffsetY = imgOffsetY * (newZoom / imgZoom) + (cy - newH / 2) - (cy - oldH / 2) * (newZoom / imgZoom);
+      imgZoom = newZoom;
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      renderFrame(loadedImg);
+      syncSliders();
+    });
+
+    canvas.addEventListener('wheel', function(e) {
+      if (!loadedImg) return;
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? -0.05 : 0.05;
+      var newZoom = Math.max(1, Math.min(30, imgZoom + delta));
+      var coords = getCanvasCoords(e);
+      var imgCX = coords.x - imgOffsetX;
+      var imgCY = coords.y - imgOffsetY;
+      var scaleRatio = newZoom / imgZoom;
+      imgOffsetX = coords.x - imgCX * scaleRatio;
+      imgOffsetY = coords.y - imgCY * scaleRatio;
+      imgZoom = newZoom;
+      document.getElementById('zoomSlider').value = Math.round(newZoom * 100);
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      renderFrame(loadedImg);
+      syncSliders();
+    }, { passive: false });
+
+    function getTouchDist(e) {
+      if (e.touches.length < 2) return 0;
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
 
     setMode('fr');
   </script>
