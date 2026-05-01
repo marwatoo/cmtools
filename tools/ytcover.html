@@ -504,14 +504,6 @@
       }
 
       dlWrap.classList.remove('visible');
-      imgOffsetX = 0; imgOffsetY = 0;
-      imgZoom = 1;
-      document.getElementById('zoomSlider').value = 100;
-      document.getElementById('zoomValue').textContent = '100%';
-      document.getElementById('posXSlider').value = 0;
-      document.getElementById('posXValue').textContent = '0';
-      document.getElementById('posYSlider').value = 0;
-      document.getElementById('posYValue').textContent = '0';
       if (loadedImg) renderFrame(loadedImg);
       else { ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
     }
