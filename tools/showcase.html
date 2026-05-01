@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Screenshot Showcase — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <script src="../assets/theme.js"></script>
+  <style>
+    .showcase-layout {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .showcase-editor, .showcase-preview {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .showcase-editor { animation-delay: 0.1s; }
+    .showcase-preview { animation-delay: 0.15s; }
+
+    @media (max-width: 850px) {
+      .showcase-layout { grid-template-columns: 1fr; }
+    }
+
+    .editor-section {
+      margin-bottom: 20px;
+    }
+
+    .editor-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .layout-btn {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 8px;
+    }
+
+    .layout-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .layout-btn.active {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .layout-preview {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+    }
+
+    .layout-preview .rect {
+      background: var(--text3);
+      border-radius: 2px;
+      transition: background 0.15s;
+    }
+
+    .layout-btn.active .layout-preview .rect {
+      background: var(--accent);
+    }
+
+    .layout-btn .label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text3);
+      transition: color 0.15s;
+    }
+
+    .layout-btn.active .label {
+      color: var(--accent);
+    }
+
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .format-btn {
+      padding: 10px 6px;
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.65rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .format-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .format-btn.active {
+      border-color: var(--accent);
+      background: var(--card-hover);
+      color: var(--accent);
+    }
+
+    .format-btn .dim {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text3);
+      font-weight: 400;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .format-btn.active .dim {
+      color: var(--accent2);
+    }
+
+    .color-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border2);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .color-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .color-btn.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    }
+
+    .gradient-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .gradient-btn {
+      aspect-ratio: 1.5;
+      border: 2px solid var(--border2);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .gradient-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .gradient-btn.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .range-label {
+      font-size: 0.75rem;
+      color: var(--text2);
+      width: 70px;
+      flex-shrink: 0;
+    }
+
+    .range-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text3);
+      width: 40px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border2);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border: 2px solid var(--bg);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border: 2px solid var(--bg);
+    }
+
+    .preview-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: sticky;
+      top: 80px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .preview-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .canvas-wrap {
+      background: repeating-conic-gradient(#33333366 0% 25%, transparent 0% 50%) 0 0/16px 16px;
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      cursor: default;
+    }
+
+    #showcaseCanvas {
+      max-width: 100%;
+      display: block;
+    }
+
+    .export-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg2);
+      position: relative;
+    }
+
+    .dropzone:hover,
+    .dropzone.drag-over {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .dropzone.has-file {
+      border-style: solid;
+      border-color: var(--accent);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dz-icon {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      opacity: 0.5;
+    }
+
+    .dz-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin-bottom: 2px;
+    }
+
+    .dz-sub {
+      font-size: 0.65rem;
+      color: var(--text3);
+    }
+
+    .thumb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .thumb-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .thumb-item:hover { border-color: var(--accent); }
+
+    .thumb-item.selected {
+      border-color: var(--accent);
+      background: var(--card-hover);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .thumb-item img {
+      width: 40px;
+      height: 28px;
+      object-fit: cover;
+      border-radius: 3px;
+    }
+
+    .thumb-item .name {
+      flex: 1;
+      font-size: 0.75rem;
+      color: var(--text2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .thumb-item .remove {
+      font-size: 0.75rem;
+      color: var(--text3);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .thumb-item .remove:hover {
+      color: var(--accent3);
+      background: var(--bg3);
+    }
+
+    .bg-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .bg-toggle-btn {
+      flex: 1;
+      padding: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.7rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .bg-toggle-btn.active {
+      border-color: var(--accent);
+      background: var(--card-hover);
+      color: var(--accent);
+    }
+
+    .status-msg {
+      font-size: 0.7rem;
+      color: var(--text3);
+      margin-top: 8px;
+      text-align: center;
+      font-style: italic;
+    }
+
+    .drag-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      margin-top: 12px;
+      font-size: 0.7rem;
+      color: var(--text2);
+    }
+
+    .drag-hint .icon {
+      font-size: 0.9rem;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+
+    .check-row:hover {
+      border-color: var(--accent);
+    }
+
+    .check-row input {
+      display: none;
+    }
+
+    .chk-box {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: transparent;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .check-row input:checked ~ .chk-box {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--btn-text);
+    }
+
+    .chk-label {
+      font-size: 0.8rem;
+      color: var(--text2);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">Screenshot Showcase</span>
+  <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>Screenshot Showcase</h1>
+    <p>Arrange screenshots in beautiful layouts. Select & drag images on canvas. Social media formats.</p>
+  </div>
+
+  <div class="showcase-layout">
+    <div class="showcase-editor">
+      <div class="editor-section">
+        <p class="editor-label">Screenshots (1-4)</p>
+        <div class="dropzone" id="screenshotDropzone">
+          <input type="file" id="screenshotInput" accept="image/*" multiple />
+          <div class="dz-icon">⧉</div>
+          <div class="dz-text" id="screenshotText">Drop screenshots or click</div>
+          <div class="dz-sub">JPG, PNG, WebP</div>
+        </div>
+        <div class="thumb-list" id="thumbList"></div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Format</p>
+        <div class="format-grid" id="formatGrid">
+          <button class="format-btn active" data-w="1920" data-h="1080">Landscape<span class="dim">1920×1080</span></button>
+          <button class="format-btn" data-w="1080" data-h="1080">IG Post<span class="dim">1080×1080</span></button>
+          <button class="format-btn" data-w="1080" data-h="1350">IG Portrait<span class="dim">1080×1350</span></button>
+          <button class="format-btn" data-w="1080" data-h="1920">IG Story<span class="dim">1080×1920</span></button>
+          <button class="format-btn" data-w="1500" data-h="500">Twitter Banner<span class="dim">1500×500</span></button>
+          <button class="format-btn" data-w="1200" data-h="630">OG Card<span class="dim">1200×630</span></button>
+          <button class="format-btn" data-w="1280" data-h="720">YT Thumb<span class="dim">1280×720</span></button>
+          <button class="format-btn" data-w="2560" data-h="1440">YT Banner<span class="dim">2560×1440</span></button>
+          <button class="format-btn" data-w="1920" data-h="960">LinkedIn<span class="dim">1920×960</span></button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Layout</p>
+        <div class="layout-grid">
+          <button class="layout-btn active" data-layout="single">
+            <div class="layout-preview"><div class="rect" style="width:28px;height:28px;"></div></div>
+            <span class="label">Single</span>
+          </button>
+          <button class="layout-btn" data-layout="overlap">
+            <div class="layout-preview">
+              <div class="rect" style="width:18px;height:22px;opacity:0.6;"></div>
+              <div class="rect" style="width:18px;height:22px;margin-left:-8px;"></div>
+            </div>
+            <span class="label">Overlap</span>
+          </button>
+          <button class="layout-btn" data-layout="stacked">
+            <div class="layout-preview">
+              <div class="rect" style="width:22px;height:12px;"></div>
+              <div class="rect" style="width:22px;height:12px;margin-top:-3px;"></div>
+            </div>
+            <span class="label">Stacked</span>
+          </button>
+          <button class="layout-btn" data-layout="grid">
+            <div class="layout-preview">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <div style="display:flex;gap:2px;">
+                  <div class="rect" style="width:10px;height:10px;"></div>
+                  <div class="rect" style="width:10px;height:10px;"></div>
+                </div>
+                <div style="display:flex;gap:2px;">
+                  <div class="rect" style="width:10px;height:10px;"></div>
+                  <div class="rect" style="width:10px;height:10px;"></div>
+                </div>
+              </div>
+            </div>
+            <span class="label">Grid</span>
+          </button>
+          <button class="layout-btn" data-layout="side">
+            <div class="layout-preview">
+              <div class="rect" style="width:10px;height:22px;"></div>
+              <div class="rect" style="width:10px;height:22px;"></div>
+            </div>
+            <span class="label">Side</span>
+          </button>
+          <button class="layout-btn" data-layout="floating">
+            <div class="layout-preview">
+              <div class="rect" style="width:20px;height:20px;"></div>
+              <div class="rect" style="width:14px;height:14px;margin-left:-4px;margin-top:-6px;opacity:0.6;"></div>
+            </div>
+            <span class="label">Floating</span>
+          </button>
+          <button class="layout-btn" data-layout="panorama">
+            <div class="layout-preview">
+              <div class="rect" style="width:30px;height:12px;"></div>
+            </div>
+            <span class="label">Panorama</span>
+          </button>
+          <button class="layout-btn" data-layout="mosaic">
+            <div class="layout-preview">
+              <div style="display:flex;gap:2px;align-items:flex-end;">
+                <div class="rect" style="width:10px;height:20px;"></div>
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                  <div class="rect" style="width:14px;height:8px;"></div>
+                  <div class="rect" style="width:14px;height:10px;"></div>
+                </div>
+              </div>
+            </div>
+            <span class="label">Mosaic</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <p class="editor-label">Background</p>
+        <div class="bg-toggle">
+          <button class="bg-toggle-btn active" data-bgtype="solid">Solid</button>
+          <button class="bg-toggle-btn" data-bgtype="gradient">Gradient</button>
+        </div>
+        <div id="solidColors">
+          <div class="color-grid" id="bgColors">
+            <button class="color-btn active" style="background:#ffffff" data-bg="#ffffff"></button>
+            <button class="color-btn" style="background:#f8f9fa" data-bg="#f8f9fa"></button>
+            <button class="color-btn" style="background:#f1f3f5" data-bg="#f1f3f5"></button>
+            <button class="color-btn" style="background:#e9ecef" data-bg="#e9ecef"></button>
+            <button class="color-btn" style="background:#0a0a0f" data-bg="#0a0a0f"></button>
+            <button class="color-btn" style="background:#141418" data-bg="#141418"></button>
+            <button class="color-btn" style="background:#1a1a2e" data-bg="#1a1a2e"></button>
+            <button class="color-btn" style="background:#16213e" data-bg="#16213e"></button>
+          </div>
+        </div>
+        <div id="gradientColors" style="display:none;">
+          <div class="gradient-grid" id="gradColors">
+            <button class="gradient-btn active" style="background:linear-gradient(135deg,#667eea,#764ba2)" data-grad="667eea,764ba2"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#f093fb,#f5576c)" data-grad="f093fb,f5576c"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#4facfe,#00f2fe)" data-grad="4facfe,00f2fe"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#43e97b,#38f9d7)" data-grad="43e97b,38f9d7"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#fa709a,#fee140)" data-grad="fa709a,fee140"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#a18cd1,#fbc2eb)" data-grad="a18cd1,fbc2eb"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#fccb90,#d57eeb)" data-grad="fccb90,d57eeb"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#e0c3fc,#8ec5fc)" data-grad="e0c3fc,8ec5fc"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#f5576c,#ff6f91)" data-grad="f5576c,ff6f91"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#0c0c0c,#2d2d3f)" data-grad="0c0c0c,2d2d3f"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364)" data-grad="0f2027,203a43,2c5364"></button>
+            <button class="gradient-btn" style="background:linear-gradient(135deg,#e8ff47,#3a2fff)" data-grad="e8ff47,3a2fff"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-section">
+        <div class="range-row">
+          <span class="range-label">Padding</span>
+          <input type="range" id="padding" min="20" max="200" value="70" />
+          <span class="range-value" id="paddingVal">70</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">Shadow</span>
+          <input type="range" id="shadow" min="0" max="80" value="40" />
+          <span class="range-value" id="shadowVal">40</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">Radius</span>
+          <input type="range" id="radius" min="0" max="40" value="12" />
+          <span class="range-value" id="radiusVal">12</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">Gap</span>
+          <input type="range" id="gap" min="0" max="80" value="20" />
+          <span class="range-value" id="gapVal">20</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="showcase-preview">
+      <div class="preview-card">
+        <div class="preview-header">
+          <span class="preview-title" id="formatLabel">Landscape — 1920×1080</span>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="showcaseCanvas"></canvas>
+        </div>
+        <div class="drag-hint">
+          <span class="icon">✦</span>
+          <span>Click a thumbnail to select, then drag on the canvas to reposition.</span>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-primary" id="downloadPngBtn">⬇ Download PNG</button>
+          <button class="btn btn-secondary" id="downloadJpgBtn">⬇ Download JPG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var layout = 'single';
+var bgType = 'solid';
+var bgColor = '#ffffff';
+var gradient = '667eea,764ba2';
+var screenshots = [];
+var canvasW = 1920;
+var canvasH = 1080;
+
+var imgPositions = [];
+var selectedIdx = -1;
+var isDragging = false;
+var dragOffsetX = 0;
+var dragOffsetY = 0;
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawBg(ctx) {
+  if (bgType === 'solid') {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+  } else {
+    var colors = gradient.split(',');
+    var grad = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+    for (var i = 0; i < colors.length; i++) {
+      grad.addColorStop(i / (colors.length - 1), '#' + colors[i]);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+  }
+}
+
+function drawImg(ctx, img, x, y, w, h, r, shadow, alpha, isSelected) {
+  if (shadow > 0) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = shadow * 1.5;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = shadow * 0.55;
+    roundRectPath(ctx, x, y, w, h, r);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  if (alpha !== undefined) ctx.globalAlpha = alpha;
+  roundRectPath(ctx, x, y, w, h, r);
+  ctx.clip();
+  var iA = img.width / img.height;
+  var cA = w / h;
+  var dx, dy, dw, dh;
+  if (iA > cA) {
+    dh = h; dw = h * iA; dx = x + (w - dw) / 2; dy = y;
+  } else {
+    dw = w; dh = w / iA; dx = x; dy = y + (h - dh) / 2;
+  }
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
+
+  if (isSelected) {
+    roundRectPath(ctx, x, y, w, h, r);
+    ctx.strokeStyle = '#e8ff47';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.save();
+    ctx.strokeStyle = '#e8ff47';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    roundRectPath(ctx, x - 6, y - 6, w + 12, h + 12, r + 4);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function getScaleFactor() {
+  var wrap = document.getElementById('canvasWrap');
+  var wrapW = wrap.clientWidth - 4;
+  var wrapH = wrap.clientHeight - 4;
+  var scaleX = wrapW / canvasW;
+  var scaleY = wrapH / canvasH;
+  return Math.min(scaleX, scaleY, 1);
+}
+
+function renderCanvas() {
+  var canvas = document.getElementById('showcaseCanvas');
+  var ctx = canvas.getContext('2d');
+  var pad = parseInt(document.getElementById('padding').value);
+  var sh = parseInt(document.getElementById('shadow').value);
+  var rad = parseInt(document.getElementById('radius').value);
+  var g = parseInt(document.getElementById('gap').value);
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  drawBg(ctx);
+
+  if (screenshots.length === 0) {
+    ctx.fillStyle = '#888';
+    ctx.font = '600 18px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Upload screenshots to preview', canvasW / 2, canvasH / 2);
+    imgPositions = [];
+    return;
+  }
+
+  var availW = canvasW - pad * 2;
+  var availH = canvasH - pad * 2;
+  var imgs = [];
+  for (var s = 0; s < screenshots.length; s++) imgs.push(screenshots[s].img);
+  var count = imgs.length;
+
+  function fit(img, maxW, maxH) {
+    var a = img.width / img.height;
+    var w, h;
+    if (a > maxW / maxH) { w = maxW; h = maxW / a; }
+    else { h = maxH; w = maxH * a; }
+    return { w: w, h: h };
+  }
+
+  var positions = [];
+
+  function addPos(x, y, w, h) { positions.push({ x: x, y: y, w: w, h: h }); }
+
+  if (layout === 'single') {
+    var f = fit(imgs[0], availW, availH);
+    var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : (canvasW - f.w) / 2;
+    var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : (canvasH - f.h) / 2;
+    addPos(px, py, f.w, f.h);
+    drawImg(ctx, imgs[0], px, py, f.w, f.h, rad, sh, 1, 0 === selectedIdx);
+
+  } else if (layout === 'overlap') {
+    var off = availW * 0.18;
+    var mW = availW - off * (count - 1);
+    var mH = availH;
+    for (var i = 0; i < count; i++) {
+      var f = fit(imgs[i], mW, mH);
+      var defX = (canvasW - mW) / 2 + i * off;
+      var defY = (canvasH - f.h) / 2;
+      var px = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : defX;
+      var py = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : defY;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[i], px, py, f.w, f.h, rad, sh - i * 4, 1 - i * 0.12, i === selectedIdx);
+    }
+
+  } else if (layout === 'stacked') {
+    var sOff = g * 0.35;
+    var cellH = (availH - sOff * (count - 1)) / count;
+    var totalH = cellH * count + sOff * (count - 1);
+    for (var i = 0; i < count; i++) {
+      var f = fit(imgs[i], availW, cellH);
+      var defX = (canvasW - f.w) / 2;
+      var defY = (canvasH - totalH) / 2 + i * (cellH + sOff);
+      var px = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : defX;
+      var py = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : defY;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[i], px, py, f.w, f.h, rad, sh, 1, i === selectedIdx);
+    }
+
+  } else if (layout === 'grid') {
+    var cols = 2;
+    var rows = Math.ceil(count / cols);
+    var cellW = (availW - g * (cols - 1)) / cols;
+    var cellH = (availH - g * (rows - 1)) / rows;
+    for (var i = 0; i < count; i++) {
+      var col = i % cols;
+      var row = Math.floor(i / cols);
+      var f = fit(imgs[i], cellW, cellH);
+      var defX = (canvasW - availW) / 2 + col * (cellW + g) + (cellW - f.w) / 2;
+      var defY = (canvasH - availH) / 2 + row * (cellH + g) + (cellH - f.h) / 2;
+      var px = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : defX;
+      var py = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : defY;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[i], px, py, f.w, f.h, rad, sh, 1, i === selectedIdx);
+    }
+
+  } else if (layout === 'side') {
+    var cellW = (availW - g * (count - 1)) / count;
+    for (var i = 0; i < count; i++) {
+      var f = fit(imgs[i], cellW, availH);
+      var defX = (canvasW - availW) / 2 + i * (cellW + g) + (cellW - f.w) / 2;
+      var defY = (canvasH - f.h) / 2;
+      var px = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : defX;
+      var py = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : defY;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[i], px, py, f.w, f.h, rad, sh, 1, i === selectedIdx);
+    }
+
+  } else if (layout === 'floating') {
+    var mainF = fit(imgs[0], availW * 0.72, availH * 0.85);
+    var defMx = (canvasW - mainF.w) / 2 - g * 0.25;
+    var defMy = (canvasH - mainF.h) / 2 + g * 0.25;
+    var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : defMx;
+    var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : defMy;
+    addPos(px, py, mainF.w, mainF.h);
+    drawImg(ctx, imgs[0], px, py, mainF.w, mainF.h, rad, sh, 1, 0 === selectedIdx);
+
+    var fltSize = Math.min(mainF.w * 0.38, mainF.h * 0.35);
+    var fltR = Math.min(rad * 0.8, fltSize * 0.12);
+    var fltPos = [
+      { x: defMx - fltSize * 0.45, y: defMy - fltSize * 0.25 },
+      { x: defMx + mainF.w * 0.65, y: defMy + mainF.h * 0.55 },
+      { x: defMx + mainF.w * 0.55, y: defMy - fltSize * 0.2 }
+    ];
+    for (var i = 1; i < count; i++) {
+      var f = fit(imgs[i], fltSize, fltSize);
+      var fp = fltPos[(i - 1) % fltPos.length];
+      var ppx = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : fp.x;
+      var ppy = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : fp.y;
+      addPos(ppx, ppy, f.w, f.h);
+      drawImg(ctx, imgs[i], ppx, ppy, f.w, f.h, fltR, sh + 12, 1, i === selectedIdx);
+    }
+
+  } else if (layout === 'panorama') {
+    if (count === 1) {
+      var f = fit(imgs[0], availW, availH * 0.65);
+      var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : (canvasW - f.w) / 2;
+      var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : (canvasH - f.h) / 2;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[0], px, py, f.w, f.h, rad, sh, 1, 0 === selectedIdx);
+    } else {
+      var cH = availH * 0.6;
+      var cW = (availW - g * (count - 1)) / count;
+      for (var i = 0; i < count; i++) {
+        var f = fit(imgs[i], cW, cH);
+        var defX = (canvasW - availW) / 2 + i * (cW + g) + (cW - f.w) / 2;
+        var defY = (canvasH - cH) / 2 + (cH - f.h) / 2;
+        var px = (imgPositions[i] && imgPositions[i].x !== undefined) ? imgPositions[i].x : defX;
+        var py = (imgPositions[i] && imgPositions[i].y !== undefined) ? imgPositions[i].y : defY;
+        addPos(px, py, f.w, f.h);
+        drawImg(ctx, imgs[i], px, py, f.w, f.h, rad, sh, 1, i === selectedIdx);
+      }
+    }
+
+  } else if (layout === 'mosaic') {
+    if (count === 1) {
+      var f = fit(imgs[0], availW, availH);
+      var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : (canvasW - f.w) / 2;
+      var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : (canvasH - f.h) / 2;
+      addPos(px, py, f.w, f.h);
+      drawImg(ctx, imgs[0], px, py, f.w, f.h, rad, sh, 1, 0 === selectedIdx);
+    } else if (count === 2) {
+      var lW = availW * 0.55;
+      var rW = availW * 0.45 - g;
+      var lf = fit(imgs[0], lW, availH);
+      var defLX = (canvasW - availW) / 2;
+      var defLY = (canvasH - lf.h) / 2;
+      var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : defLX;
+      var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : defLY;
+      addPos(px, py, lf.w, lf.h);
+      drawImg(ctx, imgs[0], px, py, lf.w, lf.h, rad, sh, 1, 0 === selectedIdx);
+
+      var rf = fit(imgs[1], rW, availH);
+      var defRX = defLX + lf.w + g;
+      var defRY = (canvasH - rf.h) / 2;
+      var ppx = (imgPositions[1] && imgPositions[1].x !== undefined) ? imgPositions[1].x : defRX;
+      var ppy = (imgPositions[1] && imgPositions[1].y !== undefined) ? imgPositions[1].y : defRY;
+      addPos(ppx, ppy, rf.w, rf.h);
+      drawImg(ctx, imgs[1], ppx, ppy, rf.w, rf.h, rad, sh, 1, 1 === selectedIdx);
+    } else {
+      var lW = availW * 0.55;
+      var rColW = availW * 0.45 - g;
+      var halfH = (availH - g) / 2;
+      var lf = fit(imgs[0], lW, availH);
+      var defLX = (canvasW - availW) / 2;
+      var defLY = (canvasH - lf.h) / 2;
+      var px = (imgPositions[0] && imgPositions[0].x !== undefined) ? imgPositions[0].x : defLX;
+      var py = (imgPositions[0] && imgPositions[0].y !== undefined) ? imgPositions[0].y : defLY;
+      addPos(px, py, lf.w, lf.h);
+      drawImg(ctx, imgs[0], px, py, lf.w, lf.h, rad, sh, 1, 0 === selectedIdx);
+
+      var tf = fit(imgs[1], rColW, halfH);
+      var defRX = defLX + lf.w + g;
+      var defTY = (canvasH - availH) / 2 + (halfH - tf.h) / 2;
+      var ppx = (imgPositions[1] && imgPositions[1].x !== undefined) ? imgPositions[1].x : defRX;
+      var ppy = (imgPositions[1] && imgPositions[1].y !== undefined) ? imgPositions[1].y : defTY;
+      addPos(ppx, ppy, tf.w, tf.h);
+      drawImg(ctx, imgs[1], ppx, ppy, tf.w, tf.h, rad, sh, 1, 1 === selectedIdx);
+
+      var bf = fit(imgs[2], rColW, halfH);
+      var defBY = defTY + halfH + g + (halfH - bf.h) / 2;
+      var bpx = (imgPositions[2] && imgPositions[2].x !== undefined) ? imgPositions[2].x : defRX;
+      var bpy = (imgPositions[2] && imgPositions[2].y !== undefined) ? imgPositions[2].y : defBY;
+      addPos(bpx, bpy, bf.w, bf.h);
+      drawImg(ctx, imgs[2], bpx, bpy, bf.w, bf.h, rad, sh, 1, 2 === selectedIdx);
+    }
+  }
+
+  imgPositions = positions;
+}
+
+function resetPositions() {
+  imgPositions = [];
+  selectedIdx = -1;
+  renderThumbList();
+  renderCanvas();
+}
+
+document.querySelectorAll('.layout-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.layout-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    layout = btn.dataset.layout;
+    resetPositions();
+  });
+});
+
+document.querySelectorAll('.format-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.format-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    canvasW = parseInt(btn.dataset.w);
+    canvasH = parseInt(btn.dataset.h);
+    var label = btn.textContent.replace(/\s/g, ' ').trim();
+    var dim = btn.querySelector('.dim').textContent;
+    document.getElementById('formatLabel').textContent = label + ' — ' + dim;
+    resetPositions();
+  });
+});
+
+document.querySelectorAll('.bg-toggle-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.bg-toggle-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    bgType = btn.dataset.bgtype;
+    document.getElementById('solidColors').style.display = bgType === 'solid' ? 'block' : 'none';
+    document.getElementById('gradientColors').style.display = bgType === 'gradient' ? 'block' : 'none';
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', function(e) {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(function(b) { b.classList.remove('active'); });
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('gradColors').addEventListener('click', function(e) {
+  if (e.target.classList.contains('gradient-btn')) {
+    document.querySelectorAll('#gradColors .gradient-btn').forEach(function(b) { b.classList.remove('active'); });
+    e.target.classList.add('active');
+    gradient = e.target.dataset.grad;
+    renderCanvas();
+  }
+});
+
+document.getElementById('padding').addEventListener('input', function(e) {
+  document.getElementById('paddingVal').textContent = e.target.value;
+  resetPositions();
+});
+
+document.getElementById('shadow').addEventListener('input', function(e) {
+  document.getElementById('shadowVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('radius').addEventListener('input', function(e) {
+  document.getElementById('radiusVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('gap').addEventListener('input', function(e) {
+  document.getElementById('gapVal').textContent = e.target.value;
+  resetPositions();
+});
+
+document.getElementById('downloadPngBtn').addEventListener('click', function() {
+  var canvas = document.getElementById('showcaseCanvas');
+  canvas.toBlob(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'showcase.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('downloadJpgBtn').addEventListener('click', function() {
+  var canvas = document.getElementById('showcaseCanvas');
+  canvas.toBlob(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'showcase.jpg';
+    a.click();
+  }, 'image/jpeg', 0.92);
+});
+
+function addScreenshot(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (screenshots.length >= 4) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      screenshots.push({ img: img, file: file, url: e.target.result });
+      renderThumbList();
+      renderCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderThumbList() {
+  var list = document.getElementById('thumbList');
+  list.innerHTML = '';
+  screenshots.forEach(function(s, i) {
+    var item = document.createElement('div');
+    item.className = 'thumb-item' + (i === selectedIdx ? ' selected' : '');
+    item.innerHTML = '<img src="' + s.url + '" /><span class="name">' + s.file.name + '</span><span class="remove">\u2715</span>';
+    item.addEventListener('click', function() {
+      selectedIdx = i;
+      renderThumbList();
+      renderCanvas();
+    });
+    item.querySelector('.remove').addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      screenshots.splice(i, 1);
+      imgPositions.splice(i, 1);
+      if (selectedIdx >= screenshots.length) selectedIdx = screenshots.length - 1;
+      renderThumbList();
+      renderCanvas();
+    });
+    list.appendChild(item);
+  });
+}
+
+var canvas = document.getElementById('showcaseCanvas');
+var canvasWrap = document.getElementById('canvasWrap');
+
+canvas.addEventListener('mousedown', function(e) {
+  if (screenshots.length === 0) return;
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var mx = (e.clientX - rect.left) * scaleX;
+  var my = (e.clientY - rect.top) * scaleY;
+
+  for (var i = screenshots.length - 1; i >= 0; i--) {
+    if (i >= imgPositions.length) continue;
+    var p = imgPositions[i];
+    if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
+      selectedIdx = i;
+      isDragging = true;
+      dragOffsetX = mx - p.x;
+      dragOffsetY = my - p.y;
+      renderThumbList();
+      renderCanvas();
+      return;
+    }
+  }
+  selectedIdx = -1;
+  renderThumbList();
+  renderCanvas();
+});
+
+canvas.addEventListener('mousemove', function(e) {
+  if (!isDragging || selectedIdx < 0 || selectedIdx >= imgPositions.length) return;
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var mx = (e.clientX - rect.left) * scaleX;
+  var my = (e.clientY - rect.top) * scaleY;
+
+  var p = imgPositions[selectedIdx];
+  p.x = mx - dragOffsetX;
+  p.y = my - dragOffsetY;
+  renderCanvas();
+});
+
+canvas.addEventListener('mouseup', function() {
+  if (!isDragging || selectedIdx < 0 || selectedIdx >= imgPositions.length) {
+    isDragging = false;
+    return;
+  }
+  var p = imgPositions[selectedIdx];
+  var cx = p.x + p.w / 2;
+  var cy = p.y + p.h / 2;
+  for (var i = 0; i < imgPositions.length; i++) {
+    if (i === selectedIdx) continue;
+    var other = imgPositions[i];
+    if (cx >= other.x && cx <= other.x + other.w && cy >= other.y && cy <= other.y + other.h) {
+      var tmpImg = screenshots[selectedIdx];
+      var tmpPos = imgPositions[selectedIdx];
+      screenshots[selectedIdx] = screenshots[i];
+      screenshots[i] = tmpImg;
+      imgPositions[selectedIdx] = imgPositions[i];
+      imgPositions[i] = tmpPos;
+      selectedIdx = i;
+      renderThumbList();
+      break;
+    }
+  }
+  isDragging = false;
+  renderCanvas();
+});
+
+canvas.addEventListener('mouseleave', function() {
+  isDragging = false;
+});
+
+canvas.addEventListener('touchstart', function(e) {
+  if (screenshots.length === 0) return;
+  e.preventDefault();
+  var touch = e.touches[0];
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var mx = (touch.clientX - rect.left) * scaleX;
+  var my = (touch.clientY - rect.top) * scaleY;
+
+  for (var i = screenshots.length - 1; i >= 0; i--) {
+    if (i >= imgPositions.length) continue;
+    var p = imgPositions[i];
+    if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
+      selectedIdx = i;
+      isDragging = true;
+      dragOffsetX = mx - p.x;
+      dragOffsetY = my - p.y;
+      renderThumbList();
+      renderCanvas();
+      return;
+    }
+  }
+  selectedIdx = -1;
+  renderThumbList();
+  renderCanvas();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function(e) {
+  if (!isDragging || selectedIdx < 0 || selectedIdx >= imgPositions.length) return;
+  e.preventDefault();
+  var touch = e.touches[0];
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var mx = (touch.clientX - rect.left) * scaleX;
+  var my = (touch.clientY - rect.top) * scaleY;
+
+  var p = imgPositions[selectedIdx];
+  p.x = mx - dragOffsetX;
+  p.y = my - dragOffsetY;
+  renderCanvas();
+}, { passive: false });
+
+canvas.addEventListener('touchend', function() {
+  if (!isDragging || selectedIdx < 0 || selectedIdx >= imgPositions.length) {
+    isDragging = false;
+    return;
+  }
+  var p = imgPositions[selectedIdx];
+  var cx = p.x + p.w / 2;
+  var cy = p.y + p.h / 2;
+  for (var i = 0; i < imgPositions.length; i++) {
+    if (i === selectedIdx) continue;
+    var other = imgPositions[i];
+    if (cx >= other.x && cx <= other.x + other.w && cy >= other.y && cy <= other.y + other.h) {
+      var tmpImg = screenshots[selectedIdx];
+      var tmpPos = imgPositions[selectedIdx];
+      screenshots[selectedIdx] = screenshots[i];
+      screenshots[i] = tmpImg;
+      imgPositions[selectedIdx] = imgPositions[i];
+      imgPositions[i] = tmpPos;
+      selectedIdx = i;
+      renderThumbList();
+      break;
+    }
+  }
+  isDragging = false;
+  renderCanvas();
+});
+
+var dropzone = document.getElementById('screenshotDropzone');
+var input = document.getElementById('screenshotInput');
+
+dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('drag-over'); });
+dropzone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  dropzone.classList.add('has-file');
+  [...e.dataTransfer.files].filter(function(f) { return f.type.startsWith('image/'); }).forEach(addScreenshot);
+});
+input.addEventListener('change', function() {
+  var files = [...input.files].filter(function(f) { return f.type.startsWith('image/'); });
+  if (files.length > 0) dropzone.classList.add('has-file');
+  files.forEach(addScreenshot);
+  input.value = '';
+});
+
+renderCanvas();
+</script>
+</body>
+</html>

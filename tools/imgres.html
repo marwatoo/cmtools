@@ -91,6 +91,12 @@
     .pos-row input[type=range]{flex:1}
     .pos-val{width:50px;flex-shrink:0;text-align:right;font-size:.72rem;color:var(--text3);font-family:'DM Mono',monospace;align-self:center}
 
+    /* Preview canvas draggable hint */
+    .preview-canvas-wrap.draggable{cursor:grab}
+    .preview-canvas-wrap.dragging{cursor:grabbing}
+    .canvas-hint{display:none;font-size:.65rem;color:var(--text3);margin-top:6px;text-align:center;font-style:italic}
+    .canvas-hint.visible{display:block}
+
     /* Logo overlay for IG Portrait */
     .logo-row{display:none;margin-bottom:10px;padding:10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs)}
     .logo-row.visible{display:block}
@@ -246,10 +252,11 @@
         <span>Preview</span>
         <span id="previewDim" style="font-family:'DM Mono',monospace;font-size:.7rem;font-weight:400;color:var(--text3)"></span>
       </div>
-      <div class="preview-canvas-wrap">
+      <div class="preview-canvas-wrap" id="canvasWrap">
         <div class="preview-placeholder" id="previewPlaceholder">Load an image to see the preview</div>
         <canvas id="previewCanvas" style="display:none"></canvas>
       </div>
+      <div class="canvas-hint" id="canvasHint">Drag on preview to reposition</div>
       <div class="preview-info" id="previewInfo" style="display:none">
         <div class="pi-item"><div class="pi-label">Original</div><div class="pi-val" id="origSize">—</div></div>
         <div class="pi-item"><div class="pi-label">Output</div><div class="pi-val" id="outSize">—</div></div>
@@ -317,6 +324,7 @@
     document.getElementById('previewDim').textContent = `${w} × ${h}`;
     document.getElementById('previewInfo').style.display = 'grid';
     document.getElementById('outRes').textContent = `${w} × ${h}`;
+    setPanCursor(false);
     // Estimate output size
     canvas.toBlob(blob => { if (blob) document.getElementById('outSize').textContent = fmtBytes(blob.size); }, targetFmt, parseInt(document.getElementById('qualitySlider').value)/100);
   }
@@ -359,6 +367,7 @@
       btn.classList.add('active'); fitMode = btn.dataset.fit;
       document.getElementById('fitDesc').textContent = FIT_DESC[fitMode];
       document.getElementById('posSliders').classList.toggle('visible', fitMode === 'cover');
+      setPanCursor(false);
       renderPreview();
     });
   });
@@ -415,6 +424,141 @@
     document.getElementById('posYVal').textContent = posY + '%';
     renderPreview();
   });
+
+  /* Canvas drag for cover mode */
+  let isPanning = false, panStartX = 0, panStartY = 0, panStartPosX = 0, panStartPosY = 0;
+  const canvasWrap = document.getElementById('canvasWrap');
+  const canvasHint = document.getElementById('canvasHint');
+
+  function getOverflowPixels() {
+    if (!srcImage || fitMode !== 'cover') return null;
+    const w = parseInt(document.getElementById('widthInput').value) || origW;
+    const h = parseInt(document.getElementById('heightInput').value) || origH;
+    const scale = Math.max(w / srcImage.naturalWidth, h / srcImage.naturalHeight);
+    const dw = srcImage.naturalWidth * scale;
+    const dh = srcImage.naturalHeight * scale;
+    return { ow: dw - w, oh: dh - h };
+  }
+
+  function setPanCursor(active) {
+    const overflow = getOverflowPixels();
+    const canDrag = fitMode === 'cover' && overflow && (overflow.ow > 0 || overflow.oh > 0);
+    if (canDrag) {
+      canvas.classList.add('draggable');
+      if (active) canvas.classList.add('dragging');
+      else canvas.classList.remove('dragging');
+      canvasHint.classList.add('visible');
+    } else {
+      canvas.classList.remove('draggable', 'dragging');
+      canvasHint.classList.remove('visible');
+    }
+  }
+
+  canvasWrap.addEventListener('mousedown', e => {
+    if (fitMode !== 'cover' || !srcImage) return;
+    const overflow = getOverflowPixels();
+    if (!overflow || (overflow.ow <= 0 && overflow.oh <= 0)) return;
+    e.preventDefault();
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartPosX = posX;
+    panStartPosY = posY;
+    canvas.classList.add('dragging');
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isPanning) return;
+    const overflow = getOverflowPixels();
+    if (!overflow) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const dx = (e.clientX - panStartX) * scaleX;
+    const dy = (e.clientY - panStartY) * scaleY;
+
+    let newX = panStartPosX;
+    let newY = panStartPosY;
+
+    if (overflow.ow > 0) newX += (dx / overflow.ow) * 100;
+    if (overflow.oh > 0) newY += (dy / overflow.oh) * 100;
+
+    newX = Math.max(0, Math.min(100, newX));
+    newY = Math.max(0, Math.min(100, newY));
+
+    posX = Math.round(newX);
+    posY = Math.round(newY);
+
+    document.getElementById('posXSlider').value = posX;
+    document.getElementById('posYSlider').value = posY;
+    document.getElementById('posXVal').textContent = posX + '%';
+    document.getElementById('posYVal').textContent = posY + '%';
+    renderPreview();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isPanning) {
+      isPanning = false;
+      canvas.classList.remove('dragging');
+    }
+  });
+
+  /* Touch support for canvas pan */
+  canvasWrap.addEventListener('touchstart', e => {
+    if (fitMode !== 'cover' || !srcImage) return;
+    const overflow = getOverflowPixels();
+    if (!overflow || (overflow.ow <= 0 && overflow.oh <= 0)) return;
+    const touch = e.touches[0];
+    isPanning = true;
+    panStartX = touch.clientX;
+    panStartY = touch.clientY;
+    panStartPosX = posX;
+    panStartPosY = posY;
+    canvas.classList.add('dragging');
+  }, { passive: true });
+
+  canvasWrap.addEventListener('touchmove', e => {
+    if (!isPanning) return;
+    const overflow = getOverflowPixels();
+    if (!overflow) return;
+    const touch = e.touches[0];
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const dx = (touch.clientX - panStartX) * scaleX;
+    const dy = (touch.clientY - panStartY) * scaleY;
+
+    let newX = panStartPosX;
+    let newY = panStartPosY;
+
+    if (overflow.ow > 0) newX += (dx / overflow.ow) * 100;
+    if (overflow.oh > 0) newY += (dy / overflow.oh) * 100;
+
+    newX = Math.max(0, Math.min(100, newX));
+    newY = Math.max(0, Math.min(100, newY));
+
+    posX = Math.round(newX);
+    posY = Math.round(newY);
+
+    document.getElementById('posXSlider').value = posX;
+    document.getElementById('posYSlider').value = posY;
+    document.getElementById('posXVal').textContent = posX + '%';
+    document.getElementById('posYVal').textContent = posY + '%';
+    renderPreview();
+  }, { passive: true });
+
+  canvasWrap.addEventListener('touchend', () => {
+    if (isPanning) {
+      isPanning = false;
+      canvas.classList.remove('dragging');
+    }
+  });
+
+  /* Update pan hint when fit mode changes */
 
   /* Logo controls */
   document.getElementById('addLogo').addEventListener('change', () => {
