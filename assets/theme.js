@@ -13,13 +13,7 @@
     updateIcon();
   }
 
-  function updateIcon() {
-    const icon = document.querySelector('.theme-icon');
-    if (icon) {
-      const theme = document.documentElement.getAttribute('data-theme');
-      icon.textContent = theme === 'dark' ? '○' : '☽';
-    }
-  }
+  function updateIcon() { /* CSS handles icon visibility via data-theme */ }
 
   // Wire toggle button
   document.addEventListener('DOMContentLoaded', () => {
@@ -32,4 +26,7 @@
       });
     }
   });
+
+  // Apply theme immediately
+  applyTheme(getTheme());
 })();

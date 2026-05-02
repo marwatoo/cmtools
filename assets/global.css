@@ -123,10 +123,38 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
   transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
 }
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+.theme-toggle svg {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.icon-moon {
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+.icon-sun {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+[data-theme="light"] .theme-toggle .icon-moon {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+[data-theme="light"] .theme-toggle .icon-sun {
+  opacity: 0;
+  transform: rotate(90deg);
+}
 
 /* ============================================
    HUB PAGE
