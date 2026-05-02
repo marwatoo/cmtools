@@ -183,7 +183,7 @@
     <div class="field" style="margin-top:12px;">
       <label>Zoom</label>
       <div style="display:flex;align-items:center;gap:12px;">
-        <input type="range" id="zoomSlider" min="1" max="300" value="100" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+        <input type="range" id="zoomSlider" min="10" max="300" value="100" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
         <span id="zoomValue" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent);min-width:40px;text-align:right;">100%</span>
       </div>
     </div>
@@ -594,7 +594,7 @@
         e.preventDefault();
         var dist = getTouchDist(e);
         var ratio = dist / pinchStartDist;
-        imgZoom = Math.max(1, Math.min(30, pinchStartZoom * ratio));
+        imgZoom = Math.max(0.1, Math.min(30, pinchStartZoom * ratio));
         document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
         document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
         renderFrame(loadedImg);
@@ -666,7 +666,7 @@
       if (!loadedImg) return;
       e.preventDefault();
       var delta = e.deltaY > 0 ? -0.05 : 0.05;
-      var newZoom = Math.max(1, Math.min(30, imgZoom + delta));
+      var newZoom = Math.max(0.1, Math.min(30, imgZoom + delta));
       var coords = getCanvasCoords(e);
       var imgCX = coords.x - imgOffsetX;
       var imgCY = coords.y - imgOffsetY;
