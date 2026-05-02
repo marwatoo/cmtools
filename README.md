@@ -1,6 +1,6 @@
 # MediaTools Studio
 
-A unified web app combining 35 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
+A unified web app combining 44 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
 
 ---
 
@@ -50,64 +50,81 @@ A unified web app combining 35 media production tools into one beautiful, respon
 | 33 | **Aspect Ratio** | Visual aspect ratio calculator |
 | 34 | **WikiFlag** | Search Wikipedia for country flags in HD |
 | 35 | **YT Channel ID Finder** | Get channel ID, RSS feed, and info from @username |
+| 36 | **Mockup Frames** | Frame screenshots in phone, laptop, browser mockups |
+| 37 | **Screenshot Showcase** | Arrange screenshots in beautiful layouts |
+| 38 | **Screenshot Annotator** | Add arrows, shapes, blur, and labels to screenshots |
+| 39 | **Image Compressor** | Reduce image file size with quality control |
+| 40 | **Notes Editor** | Write and save notes with Arabic RTL support |
+| 41 | **Image Filters** | Apply filters and adjustments to images |
+| 42 | **URL Shortener** | Shorten URLs with history tracking |
+| 43 | **Tier List Maker** | Create tier lists with drag-and-drop |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-mediatools/
+cmtools-dev/
 │
 ├── index.html                  ← Hub / landing page
+├── favicon.svg                 ← Site favicon
 │
 ├── assets/
-│   ├── global.css            ← Shared design system (dark/light theme)
-│   ├── theme.js              ← Dark/light mode toggle
-│   └── diapo/
-│       └── logo.png          ← Logo for Diapo Overlay & Image Resizer
+│   ├── global.css              ← Shared design system (dark/light theme)
+│   ├── theme.js                ← Dark/light mode toggle
+│   ├── diapo/
+│   │   └── logo.png           ← Logo for Diapo Overlay & Image Resizer
+│   ├── ig/
+│   │   └── branding.png       ← Instagram branding overlay
+│   └── overlays/              ← Overlay images (ar.png, fr.png, etc.)
 │
-├── fonts/                    ← Required fonts (YT Cover)
+├── fonts/                      ← Required fonts (Cairo-Bold.ttf, DINCondensed-Bold.ttf)
 │
-└── tools/
-    ├── ytcover.html          ← Tool 01
-    ├── igcover.html          ← Tool 02
-    ├── le360deck.html        ← Tool 03
-    ├── diapo.html            ← Tool 04
-    ├── instapost.html        ← Tool 05
-    ├── zflags.html           ← Tool 06
-    ├── flagig.html           ← Tool 07
-    ├── xdeck.html            ← Tool 08
-    ├── igdeck.html           ← Tool 09
-    ├── iframe.html           ← Tool 10
-    ├── text.html             ← Tool 11
-    ├── password.html         ← Tool 12
-    ├── colors.html           ← Tool 13
-    ├── imgconv.html          ← Tool 14
-    ├── imgres.html           ← Tool 15
-    ├── ytthumbnail.html      ← Tool 16
-    ├── water.html            ← Tool 17
-    ├── imageeditor.html      ← Tool 18
-    ├── mark.html             ← Tool 19
-    ├── ogcard.html           ← Tool 20
-    ├── charcount.html        ← Tool 21
-    ├── color.html            ← Tool 22
-    ├── brandbook.html        ← Tool 23
-    ├── sort.html             ← Tool 24
-    ├── tweetdown.html        ← Tool 25
-    ├── xpostimage.html       ← Tool 26
-    ├── stickynotes.html      ← Tool 27
-    ├── mdnotes.html          ← Tool 28
-    ├── wificard.html         ← Tool 29
-    ├── quotecard.html        ← Tool 30
-    ├── collage.html          ← Tool 31
-    ├── ytdeck.html           ← Tool 32
-    ├── aspectratio.html      ← Tool 33
-    ├── wikiflag.html         ← Tool 34
-    ├── ytchannelid.html      ← Tool 35
-    ├── gradient.html         ← Utility
-    ├── trimmer.html          ← Utility
-    ├── snippets.html         ← Snippets pad
-    └── flagig.html           ← Flag database
+└── tools/                      ← 44 tool pages (all standalone HTML files)
+    ├── ytcover.html            ← YT Cover Creator
+    ├── igcover.html            ← IG Sport Cover
+    ├── le360deck.html          ← Le360 Deck
+    ├── diapo.html              ← Diapo Overlay
+    ├── instapost.html          ← Le360 Post
+    ├── zflags.html             ← Dual Flag Generator
+    ├── flagig.html             ← IG Flag Post
+    ├── xdeck.html              ← X Deck
+    ├── igdeck.html             ← IG Deck
+    ├── iframe.html             ← iFrame Generator
+    ├── text.html               ← Text Transformer
+    ├── password.html           ← Password Generator
+    ├── colors.html             ← Color Palette Generator
+    ├── imgconv.html            ← Image Converter
+    ├── imgres.html             ← Image Resizer
+    ├── ytthumbnail.html        ← Video Thumbnail Extractor
+    ├── water.html              ← Watermark Tool
+    ├── imageeditor.html        ← Image Editor
+    ├── mark.html               ← Markdown Viewer
+    ├── ogcard.html             ← OG Card Preview
+    ├── charcount.html          ← Character Counter
+    ├── color.html              ← Color Converter
+    ├── brandbook.html          ← Le360 Brandbook
+    ├── sort.html               ← Text Sorter
+    ├── tweetdown.html          ← TweetDown
+    ├── xpostimage.html         ← X Post Image Generator
+    ├── stickynotes.html        ← Sticky Notes
+    ├── mdnotes.html            ← Markdown Notes
+    ├── wificard.html           ← WiFi Card
+    ├── quotecard.html          ← Quote Card
+    ├── collage.html            ← Collage Maker
+    ├── ytdeck.html             ← YT Deck
+    ├── aspectratio.html        ← Aspect Ratio Calculator
+    ├── wikiflag.html           ← WikiFlag
+    ├── ytchannelid.html        ← YT Channel ID Finder
+    ├── mockup.html             ← Mockup Frames
+    ├── showcase.html           ← Screenshot Showcase
+    ├── annotator.html          ← Screenshot Annotator
+    ├── imgcompress.html        ← Image Compressor
+    ├── notes.html              ← Notes Editor
+    ├── imgfilter.html          ← Image Filters
+    ├── shortlink.html          ← URL Shortener
+    ├── tierlist.html           ← Tier List Maker
+    └── snippets.html           ← Snippets Pad
 ```
 
 ---
