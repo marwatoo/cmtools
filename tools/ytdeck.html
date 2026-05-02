@@ -97,10 +97,19 @@
       z-index: 2; display: flex; align-items: center;
       gap: 10px; justify-content: space-between; flex-shrink: 0;
     }
-    .col-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      object-fit: cover; flex-shrink: 0;
-      background: var(--bg3); border: 1px solid var(--border2);
+    .col-avatar-wrap {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: var(--yt-red); border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .col-avatar-initial {
+      color: #fff; font-size: 0.75rem; font-weight: 700;
+      font-family: 'Syne', sans-serif; line-height: 1;
+    }
+    .col-avatar-img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border-radius: 50%; object-fit: cover;
     }
     .col-header-text { flex: 1; min-width: 0; }
     .deck-col-header h2 {
@@ -436,11 +445,21 @@
     .mobile-tab:hover { background: var(--bg3); }
     .mobile-tab.active { border-bottom-color: var(--yt-red); }
 
-    .mobile-tab-avatar {
+    .mobile-tab-avatar-wrap {
       width: 24px; height: 24px; border-radius: 50%;
-      background: var(--bg3); border: 1.5px solid var(--border2);
-      object-fit: cover; flex-shrink: 0;
+      background: var(--yt-red); border: 1.5px solid var(--border2);
+      position: relative; overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
       transition: border-color 0.15s;
+    }
+    .mobile-tab.active .mobile-tab-avatar-wrap { border-color: var(--yt-red); }
+    .mobile-tab-avatar-initial {
+      color: #fff; font-size: 0.5rem; font-weight: 700;
+      font-family: 'Syne', sans-serif; line-height: 1;
+    }
+    .mobile-tab-avatar-img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border-radius: 50%; object-fit: cover;
     }
     .mobile-tab.active .mobile-tab-avatar { border-color: var(--yt-red); }
 
@@ -517,7 +536,7 @@
 
       /* Column header compact */
       .deck-col-header { padding: 11px 14px; }
-      .col-avatar { width: 28px; height: 28px; }
+      .col-avatar-wrap { width: 28px; height: 28px; }
       .deck-col-header h2 { font-size: 0.88rem; }
       .deck-col-header .handle { font-size: 0.67rem; }
 
@@ -1075,7 +1094,7 @@ COLUMNS.forEach(col => {
   colEl.id = `col-${col.key}`;
   colEl.innerHTML = `
     <div class="deck-col-header">
-      <img class="col-avatar" id="avatar-${col.key}" alt="" />
+      <div class="col-avatar-wrap" id="avatar-${col.key}"><span class="col-avatar-initial">${col.label.charAt(0)}</span><img class="col-avatar-img" alt="" /></div>
       <div class="col-header-text">
         <h2>${col.label}</h2>
         <div class="handle">${col.handle}</div>
@@ -1091,22 +1110,91 @@ COLUMNS.forEach(col => {
 async function loadAvatar(col) {
   try {
     const html = await fetchWithProxy(`https://www.youtube.com/@${col.handle.slice(1)}`);
+
+    // Try multiple extraction strategies for robustness
+    const strategies = [
+      // Strategy 1: avatar thumbnails block
+      /"avatar"\s*:\s*\{\s*"thumbnails"\s*:\s*\[([^\]]+)\]/,
+      // Strategy 2: channel thumbnail with higher res
+      /"thumbnails"\s*:\s*\[\s*\{\s*"url"\s*:\s*"([^"]*yt3\.ggpht\.com[^"]*)"/,
+      // Strategy 3: c4 or channel banner fallback
+      /"channelId"\s*:\s*"([^"]+)"[^}]*"avatar"/,
+      // Strategy 4: og:image meta tag
+      /<meta\s+property="og:image"\s+content="([^"]+)"/,
+    ];
+
     let avatarUrl = '';
-    const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
-    if (avatarBlock) {
-      const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
-      if (thumbs && thumbs.length) {
-        avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+
+    for (const pattern of strategies) {
+      const match = html.match(pattern);
+      if (match) {
+        if (pattern === strategies[0]) {
+          // Extract URL from thumbnails array
+          const urls = match[1].match(/"url"\s*:\s*"([^"]+)"/g);
+          if (urls && urls.length) {
+            avatarUrl = urls[urls.length - 1].replace(/"url"\s*:\s*"/, '').replace(/"/g, '');
+          }
+        } else if (pattern === strategies[1] || pattern === strategies[3]) {
+          avatarUrl = match[1];
+        }
+        if (avatarUrl) break;
       }
     }
-    avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+
+    // Clean up URL escape sequences
+    avatarUrl = avatarUrl
+      .replace(/\\u0026/g, '&')
+      .replace(/\\\//g, '/')
+      .replace(/\\u/g, '')
+      .trim();
+
     if (avatarUrl) {
-      const img = document.getElementById(`avatar-${col.key}`);
-      if (img) img.src = avatarUrl;
-      const tabImg = document.getElementById(`tab-avatar-${col.key}`);
-      if (tabImg) tabImg.src = avatarUrl;
+      setAvatar(col.key, avatarUrl);
+      return;
     }
-  } catch(e) {}
+
+    // Fallback: construct avatar URL from channel page content or use a default
+    throw new Error('No avatar found in page');
+  } catch(e) {
+    // Leave the initial visible as fallback
+    console.warn('Avatar fetch failed for', col.key, e);
+  }
+}
+
+function setAvatar(colKey, url) {
+  const wrap = document.getElementById(`avatar-${colKey}`);
+  if (wrap) {
+    let img = wrap.querySelector('.col-avatar-img');
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'col-avatar-img';
+      img.alt = '';
+      wrap.appendChild(img);
+    }
+    img.src = url;
+    img.onerror = function() { this.style.display = 'none'; };
+    img.onload = function() { this.style.display = ''; };
+  }
+  const tabWrap = document.getElementById(`tab-avatar-${colKey}`);
+  if (tabWrap) {
+    const isImg = tabWrap.tagName === 'IMG';
+    if (isImg) {
+      tabWrap.src = url;
+      tabWrap.onerror = function() { this.style.display = 'none'; };
+      tabWrap.onload = function() { this.style.display = ''; };
+    } else {
+      let img = tabWrap.querySelector('.mobile-tab-avatar-img');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'mobile-tab-avatar-img';
+        img.alt = '';
+        tabWrap.appendChild(img);
+      }
+      img.src = url;
+      img.onerror = function() { this.style.display = 'none'; };
+      img.onload = function() { this.style.display = ''; };
+    }
+  }
 }
 
 async function updateColumn(col) {
@@ -1193,16 +1281,26 @@ function buildMobileTabs() {
     tab.className = 'mobile-tab' + (i === 0 ? ' active' : '');
     tab.dataset.index = i;
 
-    const avatar = document.createElement('img');
-    avatar.className = 'mobile-tab-avatar';
-    avatar.id = `tab-avatar-${col.key}`;
-    avatar.alt = col.label;
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'mobile-tab-avatar-wrap';
+    avatarWrap.id = `tab-avatar-${col.key}`;
+
+    const initial = document.createElement('span');
+    initial.className = 'mobile-tab-avatar-initial';
+    initial.textContent = col.label.charAt(0);
+
+    const avatarImg = document.createElement('img');
+    avatarImg.className = 'mobile-tab-avatar-img';
+    avatarImg.alt = col.label;
+
+    avatarWrap.appendChild(initial);
+    avatarWrap.appendChild(avatarImg);
 
     const label = document.createElement('span');
     label.className = 'mobile-tab-label';
     label.textContent = col.label;
 
-    tab.appendChild(avatar);
+    tab.appendChild(avatarWrap);
     tab.appendChild(label);
 
     tab.addEventListener('click', () => switchMobileTab(i));
