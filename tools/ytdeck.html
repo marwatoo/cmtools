@@ -397,7 +397,156 @@
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-    @media (max-width: 480px) { .deck-column { min-width: 240px; } }
+    /* ════════════════════════════════════════
+       MOBILE — TAB-BASED SINGLE COLUMN VIEW
+    ════════════════════════════════════════ */
+
+    /* Tab bar — hidden on desktop */
+    .mobile-tab-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 56px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border2);
+      z-index: 90;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      -webkit-overflow-scrolling: touch;
+      align-items: stretch;
+    }
+    .mobile-tab-bar::-webkit-scrollbar { display: none; }
+
+    .mobile-tab {
+      flex: 0 0 auto;
+      min-width: 72px;
+      max-width: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .mobile-tab:hover { background: var(--bg3); }
+    .mobile-tab.active { border-bottom-color: var(--yt-red); }
+
+    .mobile-tab-avatar {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--bg3); border: 1.5px solid var(--border2);
+      object-fit: cover; flex-shrink: 0;
+      transition: border-color 0.15s;
+    }
+    .mobile-tab.active .mobile-tab-avatar { border-color: var(--yt-red); }
+
+    .mobile-tab-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.55rem;
+      color: var(--text3);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .mobile-tab.active .mobile-tab-label { color: var(--yt-red); }
+
+    /* Slide animations for tab switching */
+    @keyframes slideInFromRight { from { transform: translateX(28px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+    @keyframes slideInFromLeft  { from { transform: translateX(-28px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+    .deck-column.slide-from-right { animation: slideInFromRight 0.22s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .deck-column.slide-from-left  { animation: slideInFromLeft  0.22s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+    @media (max-width: 700px) {
+
+      /* Kill the fadeUp re-trigger when columns are shown/hidden via mobile-active */
+      .deck-column {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      /* Nav: tighten up */
+      .nav { padding: 10px 14px; gap: 8px; }
+      .nav-back  { padding: 5px 9px; font-size: 0.78rem; }
+      .nav-stats { padding: 5px 9px; font-size: 0.78rem; }
+      .nav-title { font-size: 0.88rem; }
+      .nav-x-icon { display: none; }
+      .theme-toggle { width: 32px; height: 32px; font-size: 0.88rem; }
+
+      /* Show tab bar */
+      .mobile-tab-bar { display: flex; }
+
+      /* Deck: vertical single column mode */
+      .deck-container {
+        display: block;
+        height: calc(100vh - 53px);
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Each column: absolute, hidden by default */
+      .deck-column {
+        position: absolute;
+        inset: 0;
+        min-width: unset;
+        max-width: unset;
+        width: 100%;
+        border-right: none;
+        display: none;
+        flex-direction: column;
+        padding-bottom: 56px; /* tab bar height */
+      }
+      .deck-column.mobile-active { display: flex; }
+
+      /* Feed: scrollable, touch-friendly */
+      .deck-col-feed {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px;
+      }
+
+      /* Column header compact */
+      .deck-col-header { padding: 11px 14px; }
+      .col-avatar { width: 28px; height: 28px; }
+      .deck-col-header h2 { font-size: 0.88rem; }
+      .deck-col-header .handle { font-size: 0.67rem; }
+
+      /* Cards: compact */
+      .video-info    { padding: 10px; }
+      .video-title   { font-size: 0.82rem; }
+      .video-desc    { font-size: 0.75rem; -webkit-line-clamp: 2; }
+      .video-stat    { font-size: 0.7rem; }
+      .video-btn     { font-size: 0.65rem; padding: 4px 8px; }
+
+      /* Modal: bottom sheet */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-box {
+        max-width: 100%;
+        width: 100%;
+        max-height: 92vh;
+        border-radius: var(--radius) var(--radius) 0 0;
+        padding: 20px 18px 28px;
+      }
+      .modal-title { font-size: 0.98rem; }
+      .modal-stats { gap: 10px; flex-wrap: wrap; }
+      .modal-footer { flex-wrap: wrap; gap: 8px; }
+      .modal-open-btn { flex: 1; justify-content: center; text-align: center; }
+      .modal-copy-btn { flex: 1; text-align: center; }
+
+      /* Stats date range: stack */
+      .stats-date-range { gap: 6px; }
+      .stats-date-input { font-size: 0.74rem; }
+    }
   </style>
 </head>
 <body>
@@ -413,6 +562,9 @@
   </nav>
 
   <div class="deck-container" id="deckContainer"></div>
+
+  <!-- Mobile tab bar — built by JS -->
+  <div class="mobile-tab-bar" id="mobileTabBar"></div>
 
   <div class="modal-overlay hidden" id="modalOverlay">
     <div class="modal-box" id="modalBox">
@@ -951,6 +1103,8 @@ async function loadAvatar(col) {
     if (avatarUrl) {
       const img = document.getElementById(`avatar-${col.key}`);
       if (img) img.src = avatarUrl;
+      const tabImg = document.getElementById(`tab-avatar-${col.key}`);
+      if (tabImg) tabImg.src = avatarUrl;
     }
   } catch(e) {}
 }
@@ -999,7 +1153,7 @@ function updateLoop(background = false) {
       if (!background) {
         loadAvatar(col);
         const cached = getCachedFeed(col.key);
-        if (cached) {
+        if (cached && cached.length) {
           const feed = document.getElementById(`feed-${col.key}`);
           const loader = feed.querySelector('.deck-loading');
           if (loader) loader.remove();
@@ -1010,6 +1164,9 @@ function updateLoop(background = false) {
               seen[col.key].add(v.videoId);
             }
           });
+          // Cache rendered — schedule a background refresh instead of loading again immediately
+          setTimeout(() => updateColumn(col), 2000 + i * 200);
+          return;
         }
       }
       updateColumn(col);
@@ -1019,6 +1176,130 @@ function updateLoop(background = false) {
     setTimeout(() => updateLoop(true), 60000);
   }
 }
+
+// ═══════════════════════════════════════════
+//  MOBILE TAB BAR
+// ═══════════════════════════════════════════
+const IS_MOBILE = () => window.innerWidth <= 700;
+
+let mobileActiveIndex = 0;
+
+function buildMobileTabs() {
+  const bar = document.getElementById('mobileTabBar');
+  bar.innerHTML = '';
+
+  COLUMNS.forEach((col, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'mobile-tab' + (i === 0 ? ' active' : '');
+    tab.dataset.index = i;
+
+    const avatar = document.createElement('img');
+    avatar.className = 'mobile-tab-avatar';
+    avatar.id = `tab-avatar-${col.key}`;
+    avatar.alt = col.label;
+
+    const label = document.createElement('span');
+    label.className = 'mobile-tab-label';
+    label.textContent = col.label;
+
+    tab.appendChild(avatar);
+    tab.appendChild(label);
+
+    tab.addEventListener('click', () => switchMobileTab(i));
+    bar.appendChild(tab);
+  });
+}
+
+function switchMobileTab(newIndex, direction) {
+  if (!IS_MOBILE()) return;
+  if (newIndex === mobileActiveIndex) return;
+
+  const dir = direction !== undefined ? direction : (newIndex > mobileActiveIndex ? 'right' : 'left');
+  const animClass = dir === 'right' ? 'slide-from-right' : 'slide-from-left';
+
+  // Hide current
+  const oldCol = document.getElementById(`col-${COLUMNS[mobileActiveIndex].key}`);
+  if (oldCol) oldCol.classList.remove('mobile-active');
+
+  // Show new with animation
+  const newCol = document.getElementById(`col-${COLUMNS[newIndex].key}`);
+  if (newCol) {
+    newCol.classList.add('mobile-active');
+    newCol.classList.remove('slide-from-right', 'slide-from-left');
+    void newCol.offsetWidth; // force reflow
+    newCol.classList.add(animClass);
+    setTimeout(() => newCol.classList.remove(animClass), 300);
+  }
+
+  // Update tabs
+  document.querySelectorAll('.mobile-tab').forEach((t, i) => t.classList.toggle('active', i === newIndex));
+
+  // Scroll active tab into view in bar
+  const tabs = document.querySelectorAll('.mobile-tab');
+  if (tabs[newIndex]) tabs[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+  mobileActiveIndex = newIndex;
+}
+
+function applyMobileLayout() {
+  if (IS_MOBILE()) {
+    // Show only the active column
+    COLUMNS.forEach((col, i) => {
+      const el = document.getElementById(`col-${col.key}`);
+      if (el) el.classList.toggle('mobile-active', i === mobileActiveIndex);
+    });
+  } else {
+    // Desktop: show all columns normally
+    COLUMNS.forEach(col => {
+      const el = document.getElementById(`col-${col.key}`);
+      if (el) el.classList.remove('mobile-active');
+    });
+  }
+}
+
+// Sync tab avatars when column avatars load
+// Touch swipe between columns
+(function initSwipe() {
+  const container = document.getElementById('deckContainer');
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let swiping = false;
+
+  container.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    swiping = false;
+  }, { passive: true });
+
+  container.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+    // Only treat as horizontal swipe if clearly more horizontal than vertical
+    if (!swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+      swiping = true;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchend', e => {
+    if (!IS_MOBILE() || !swiping) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const THRESHOLD = 60;
+    if (dx < -THRESHOLD && mobileActiveIndex < COLUMNS.length - 1) {
+      switchMobileTab(mobileActiveIndex + 1, 'right');
+    } else if (dx > THRESHOLD && mobileActiveIndex > 0) {
+      switchMobileTab(mobileActiveIndex - 1, 'left');
+    }
+    swiping = false;
+  }, { passive: true });
+})();
+
+// Handle resize: switch between desktop/mobile layout
+window.addEventListener('resize', () => {
+  applyMobileLayout();
+});
+
+buildMobileTabs();
+applyMobileLayout();
 
 updateLoop(false);
 </script>

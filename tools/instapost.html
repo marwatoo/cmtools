@@ -220,11 +220,23 @@
       overflow: hidden;
     }
 
-    .canvas-wrap {
-      border-radius: calc(var(--radius) - 4px);
-      overflow: hidden;
-      background: #111;
+    .canvas-wrap { position: relative; user-select: none; -webkit-user-select: none; }
+    .canvas-wrap canvas { touch-action: none; border-radius: calc(var(--radius) - 4px); }
+
+    .drag-hint {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text3);
+      text-align: center;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
     }
+    .canvas-outer:hover + .drag-hint { opacity: 1; }
+    @media (hover: none) { .drag-hint { opacity: 1 !important; } }
 
     /* ── Preview label ── */
     .preview-label {
@@ -456,6 +468,8 @@
           </div>
         </div>
 
+        <div class="drag-hint">Pinch to zoom · Drag to reposition</div>
+
         <div id="dlWrap">
           <button class="btn btn-success" id="dlBtn">↓ Download Instagram post</button>
         </div>
@@ -465,10 +479,6 @@
   </div><!-- /tool-page -->
 
   <script>
-    /* ════════════════════════════════════════════════════════════════
-       All canvas / drawing logic is unchanged from the original.
-       Only the UI shell and CSS above have been updated.
-    ════════════════════════════════════════════════════════════════ */
     const W = 1080, H = 1350;
     const ORANGE = '#ff7a14';
     const MARGIN = 33;
@@ -498,6 +508,16 @@
 
     let currentFile = null;
     let currentMode = 'fr';
+    let loadedImg = null;
+    let imgW = 0, imgH = 0;
+    let imgOffsetX = 0, imgOffsetY = 0;
+    let imgZoom = 1;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetStartX = 0, dragOffsetStartY = 0;
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
 
     const MODES = {
       fr: {
@@ -577,20 +597,49 @@
 
     async function draw() {
       if (!currentFile) { updateDlBtn(); return; }
+      if (loadedImg) { renderFrame(); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => loadImg(e.target.result).then(drawAll);
+      reader.readAsDataURL(currentFile);
+    }
+
+    function previewDraw() {
+      if (!currentFile) return;
+      const reader = new FileReader();
+      reader.onload = (e) => loadImg(e.target.result).then(drawAll);
+      reader.readAsDataURL(currentFile);
+    }
+
+    function drawAll(img) {
+      if (!img) { renderFrame(); return; }
+      loadedImg = img;
+      imgW = img.width;
+      imgH = img.height;
+      renderFrame();
+    }
+
+    async function renderFrame() {
+      if (!loadedImg) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+        updateDlBtn();
+        return;
+      }
 
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      const bg       = await loadImg(URL.createObjectURL(currentFile));
-      const baseScale = Math.max(W / bg.width, H / bg.height);
-      const zoom      = (parseFloat(imgZoomEl.value) || 100) / 100;
-      const scale     = baseScale * zoom;
-      const offsetX   = parseFloat(imgXEl.value) || 0;
-      const offsetY   = parseFloat(imgYEl.value) || 0;
-      const drawW     = bg.width  * scale;
-      const drawH     = bg.height * scale;
-      ctx.drawImage(bg, (W - drawW) / 2 + offsetX, (H - drawH) / 2 + offsetY, drawW, drawH);
+      const zoom = imgZoom * (parseFloat(imgZoomEl.value) || 100) / 100;
+      const baseW = imgW * zoom;
+      const baseH = imgH * zoom;
+      const sliderOffX = parseFloat(imgXEl.value) || 0;
+      const sliderOffY = parseFloat(imgYEl.value) || 0;
+      const cx = W / 2, cy = H / 2;
+      const dx = cx - baseW / 2 + imgOffsetX + sliderOffX;
+      const dy = cy - baseH / 2 + imgOffsetY + sliderOffY;
+      ctx.drawImage(loadedImg, dx, dy, baseW, baseH);
 
       try {
         const sh = await getCached('shadow', '../assets/overlays/shadow.png');
@@ -783,9 +832,18 @@
 
     function enableFile(file) {
       currentFile = file;
+      loadedImg = null;
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
       dropzone.classList.add('has-file');
       uploadText.textContent = '✓ ' + file.name;
-      draw();
+      imgZoomEl.value = 100;
+      imgXEl.value = 0;
+      imgYEl.value = 0;
+      document.getElementById('imgZoomVal').textContent = '100 %';
+      document.getElementById('imgXVal').textContent = '0 px';
+      document.getElementById('imgYVal').textContent = '0 px';
+      previewDraw();
     }
 
     txtMain.addEventListener('input',       draw);
@@ -802,6 +860,8 @@
       imgZoomEl.value = 100;
       imgXEl.value    = 0;
       imgYEl.value    = 0;
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
       document.getElementById('imgZoomVal').textContent = '100 %';
       document.getElementById('imgXVal').textContent    = '0 px';
       document.getElementById('imgYVal').textContent    = '0 px';
@@ -836,6 +896,132 @@
         el.dispatchEvent(new Event('input', { bubbles: true }));
       });
     });
+
+    // ── Pinch/Zoom & Drag on canvas ──
+    canvas.addEventListener('mousedown', onDragStart);
+    canvas.addEventListener('mousemove', onDragMove);
+    canvas.addEventListener('mouseup', onDragEnd);
+    canvas.addEventListener('mouseleave', onDragEnd);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onDragEnd);
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+    }
+
+    function onDragStart(e) {
+      if (!loadedImg) return;
+      isDragging = true;
+      const coords = getCanvasCoords(e);
+      dragStartX = coords.x;
+      dragStartY = coords.y;
+      dragOffsetStartX = imgOffsetX;
+      dragOffsetStartY = imgOffsetY;
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !loadedImg) return;
+      const coords = getCanvasCoords(e);
+      imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+      imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+      renderFrame();
+      syncSliders();
+    }
+
+    function onTouchStart(e) {
+      if (!loadedImg) return;
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinching = true;
+        isDragging = false;
+        pinchStartDist = getTouchDist(e);
+        pinchStartZoom = imgZoom;
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        isDragging = true;
+        dragStartX = coords.x;
+        dragStartY = coords.y;
+        dragOffsetStartX = imgOffsetX;
+        dragOffsetStartY = imgOffsetY;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!loadedImg) return;
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        var dist = getTouchDist(e);
+        var ratio = dist / pinchStartDist;
+        imgZoom = Math.max(0.1, Math.min(30, pinchStartZoom * ratio));
+        document.getElementById('imgZoom').value = Math.round(imgZoom * 100);
+        document.getElementById('imgZoomVal').textContent = Math.round(imgZoom * 100) + ' %';
+        renderFrame();
+        return;
+      }
+      if (isDragging && e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+        imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+        renderFrame();
+        syncSliders();
+      }
+    }
+
+    function onDragEnd() {
+      isDragging = false;
+      isPinching = false;
+      syncSliders();
+    }
+
+    function syncSliders() {
+      if (!loadedImg) return;
+      var zoom = imgZoom * (parseFloat(imgZoomEl.value) || 100) / 100;
+      var baseW = imgW * zoom, baseH = imgH * zoom;
+      var maxOffX = baseW / 2, maxOffY = baseH / 2;
+      var xPct = Math.round((imgOffsetX / maxOffX) * 100);
+      var yPct = Math.round((imgOffsetY / maxOffY) * 100);
+      xPct = Math.max(-100, Math.min(100, xPct));
+      yPct = Math.max(-100, Math.min(100, yPct));
+      document.getElementById('imgX').value = xPct * 5.4;
+      document.getElementById('imgXVal').textContent = Math.round(xPct * 5.4) + ' px';
+      document.getElementById('imgY').value = yPct * 6.75;
+      document.getElementById('imgYVal').textContent = Math.round(yPct * 6.75) + ' px';
+    }
+
+    canvas.addEventListener('wheel', function(e) {
+      if (!loadedImg) return;
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? -0.05 : 0.05;
+      var newZoom = Math.max(0.1, Math.min(30, imgZoom + delta));
+      var coords = getCanvasCoords(e);
+      var imgCX = coords.x - imgOffsetX;
+      var imgCY = coords.y - imgOffsetY;
+      var scaleRatio = newZoom / imgZoom;
+      imgOffsetX = coords.x - imgCX * scaleRatio;
+      imgOffsetY = coords.y - imgCY * scaleRatio;
+      imgZoom = newZoom;
+      document.getElementById('imgZoom').value = Math.round(newZoom * 100);
+      document.getElementById('imgZoomVal').textContent = Math.round(newZoom * 100) + ' %';
+      renderFrame();
+      syncSliders();
+    }, { passive: false });
+
+    function getTouchDist(e) {
+      if (e.touches.length < 2) return 0;
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
 
     setMode('fr');
   </script>
