@@ -264,10 +264,10 @@
 
     /* Editor / preview body */
     .editor-body { flex: 1; display: none; overflow: hidden; }
-    .editor-body.visible { display: grid; }
-    .editor-body.visible.view-split   { grid-template-columns: 1fr 1fr; }
-    .editor-body.visible.view-editor  { grid-template-columns: 1fr; }
-    .editor-body.visible.view-preview { grid-template-columns: 1fr; }
+    .editor-body.show { display: grid; }
+    .editor-body.view-split   { grid-template-columns: 1fr 1fr; }
+    .editor-body.view-editor  { grid-template-columns: 1fr; }
+    .editor-body.view-preview { grid-template-columns: 1fr; }
 
     .editor-pane, .preview-pane { background: var(--bg); overflow-y: auto; height: 100%; }
     .editor-pane { border-right: 1px solid var(--border); }
@@ -286,8 +286,8 @@
     .preview-pane h2 { font-size:1.25rem; font-weight:700; }
     .preview-pane h3 { font-size:1.05rem; font-weight:700; }
     .preview-pane p  { margin:.8em 0; }
-    .preview-pane code { background:rgba(128,128,128,0.10); padding:2px 6px; border-radius:4px; font-family:'DM Mono',monospace; font-size:.85em; }
-    .preview-pane pre { background:rgba(128,128,128,0.07)!important; border:1px solid var(--border); padding:14px; border-radius:var(--radius-xs); overflow-x:auto; margin:12px 0; }
+    .preview-pane code { background:var(--bg3); padding:2px 6px; border-radius:4px; font-family:'DM Mono',monospace; font-size:.85em; }
+    .preview-pane pre { background:var(--bg3)!important; padding:14px; border-radius:var(--radius-xs); overflow-x:auto; margin:12px 0; }
     .preview-pane pre code { background:transparent!important; padding:0; display:block; }
     .preview-pane blockquote { border-left:3px solid var(--accent); padding-left:14px; color:var(--text2); margin:12px 0; }
     .preview-pane ul,.preview-pane ol { padding-left:24px; margin:.8em 0; }
@@ -318,22 +318,21 @@
     .shortcut-hint { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
     .shortcut-hint kbd { display:inline-block; padding:1px 5px; background:var(--bg3); border:1px solid var(--border2); border-radius:4px; font-size:0.6rem; }
 
-    /* hljs — blended, inherits pane background */
-    :root .hljs { background:transparent!important; color:var(--text); }
-    [data-theme="light"] .hljs { background:transparent!important; color:var(--text); }
-    :root .hljs-keyword,:root .hljs-selector-tag { color:#c792ea; }
-    :root .hljs-string,:root .hljs-attr { color:#c3e88d; }
-    :root .hljs-number,:root .hljs-literal { color:#f78c6c; }
-    :root .hljs-function,:root .hljs-title { color:#82aaff; }
-    :root .hljs-comment { color:var(--text3); font-style:italic; }
-    :root .hljs-built_in,:root .hljs-class { color:#89ddff; }
-    :root .hljs-params { color:var(--text2); }
-    [data-theme="light"] .hljs-keyword { color:#7c3aed; }
-    [data-theme="light"] .hljs-string  { color:#16a34a; }
-    [data-theme="light"] .hljs-number  { color:#c2410c; }
-    [data-theme="light"] .hljs-comment { color:var(--text3); font-style:italic; }
-    [data-theme="light"] .hljs-built_in{ color:#0369a1; }
-    [data-theme="light"] .hljs-function,[data-theme="light"] .hljs-title { color:#1d4ed8; }
+    /* hljs */
+    :root .hljs { background:#1a1a24!important; color:#e8e8f0; }
+    [data-theme="light"] .hljs { background:#f0f0f5!important; color:#1a1a24; }
+    :root .hljs-keyword,:root .hljs-selector-tag { color:#ff79c6; }
+    :root .hljs-string,:root .hljs-attr { color:#f1fa8c; }
+    :root .hljs-number,:root .hljs-literal { color:#bd93f9; }
+    :root .hljs-function,:root .hljs-title { color:#50fa7b; }
+    :root .hljs-comment { color:#6272a4; }
+    :root .hljs-built_in,:root .hljs-class { color:#8be9fd; }
+    :root .hljs-params { color:#ffb86c; }
+    [data-theme="light"] .hljs-keyword { color:#d63384; }
+    [data-theme="light"] .hljs-string  { color:#a31515; }
+    [data-theme="light"] .hljs-number  { color:#098658; }
+    [data-theme="light"] .hljs-comment { color:#008000; }
+    [data-theme="light"] .hljs-built_in{ color:#2b91af; }
 
     /* Search highlights */
     .tree-item-name mark { background:rgba(232,255,71,0.28); color:inherit; border-radius:2px; }
@@ -378,11 +377,11 @@
       .md-editor-panel { grid-column: 1; }
       .sidebar-backdrop { display: block; }
       .mobile-nav-bar { display: flex; }
-      .editor-body.visible.view-split {
+      .editor-body.view-split {
         display: flex; flex-direction: column;
       }
-      .editor-body.visible.view-split .editor-pane  { flex: 1; border-right: none; border-bottom: 1px solid var(--border); }
-      .editor-body.visible.view-split .preview-pane { flex: 1; }
+      .editor-body.view-split .editor-pane  { flex: 1; border-right: none; border-bottom: 1px solid var(--border); }
+      .editor-body.view-split .preview-pane { flex: 1; }
     }
 
     /* ════════════════════════════════════════
@@ -498,8 +497,6 @@
             <button class="icon-btn" id="exportBtn" title="Export JSON backup">↑</button>
             <button class="icon-btn" id="importBtn" title="Import from JSON">↓</button>
             <input type="file" id="importFile" accept=".json" style="display:none;">
-            <button class="icon-btn" id="loadMdBtn" title="Load .md / .txt file">📄</button>
-            <input type="file" id="loadMdFile" accept=".md,.markdown,.txt" multiple style="display:none;">
             <button class="icon-btn" id="newFolderBtn" title="New Folder">📁</button>
             <button class="icon-btn" id="toggleTreeBtn" title="Expand/Collapse all">📂</button>
             <button class="select-mode-btn" id="selectModeBtn">Select</button>
@@ -573,7 +570,7 @@
         </div>
       </div>
 
-      <div class="editor-body view-split" id="editorBody">
+      <div class="editor-body view-split" id="editorBody" style="display:none;">
         <div class="editor-pane">
           <textarea id="mdEditor" placeholder="# Start writing...&#10;&#10;Markdown supported — **bold**, *italic*, `code`, [links](url), > blockquote, etc."></textarea>
         </div>
@@ -883,7 +880,7 @@ function showCtxForFile(id, x, y) {
 }
 function showCtxForFolder(folderName, x, y) {
   ctxTarget = { type: 'folder', name: folderName };
-  document.getElementById('ctxMove').style.display  = 'flex';
+  document.getElementById('ctxMove').style.display  = 'none';
   document.getElementById('ctxColor').style.display = 'none';
   positionCtx(x, y);
 }
@@ -942,13 +939,9 @@ document.getElementById('ctxRename').addEventListener('click', function() {
 });
 
 document.getElementById('ctxMove').addEventListener('click', function() {
-  closeCtx(); if (!ctxTarget) return;
-  if (ctxTarget.type === 'folder') {
-    openMoveFolderModal(ctxTarget.name);
-  } else {
-    var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
-    openMoveModal(f);
-  }
+  closeCtx(); if (!ctxTarget || ctxTarget.type !== 'file') return;
+  var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+  openMoveModal(f);
 });
 
 document.getElementById('ctxColor').addEventListener('click', function() {
@@ -989,8 +982,7 @@ function openFile(id) {
   currentFile = f;
   document.getElementById('emptyState').style.display    = 'none';
   document.getElementById('editorToolbar').style.display = 'flex';
-  var body = document.getElementById('editorBody');
-  body.className = 'editor-body view-' + viewMode + ' visible';
+  document.getElementById('editorBody').style.display    = '';
   document.getElementById('editorStats').style.display   = 'flex';
   document.getElementById('currentFileName').textContent = f.name;
   document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
@@ -1033,7 +1025,7 @@ function clearEditor() {
   currentFile = null;
   document.getElementById('emptyState').style.display    = 'flex';
   document.getElementById('editorToolbar').style.display = 'none';
-  document.getElementById('editorBody').classList.remove('visible');
+  document.getElementById('editorBody').style.display    = 'none';
   document.getElementById('editorStats').style.display   = 'none';
   document.getElementById('mobileFileLabel').textContent = 'No file selected';
 }
@@ -1100,9 +1092,10 @@ function updateStats() {
 function setView(mode) {
   viewMode = mode;
   var body = document.getElementById('editorBody');
-  body.className = 'editor-body view-' + mode + (currentFile ? ' visible' : '');
+  body.className = 'editor-body view-' + mode;
+  body.style.display = '';
   var btn = document.getElementById('viewToggleBtn');
-  btn.textContent = mode==='split'?'Editor Only':mode==='editor'?'Preview Only':'Split View';
+  btn.textContent = mode==='split'?'Split':mode==='editor'?'Preview':'Edit';
   btn.classList.toggle('active', mode !== 'split');
   if (mode !== 'editor') renderPreview();
 }
@@ -1172,14 +1165,12 @@ document.getElementById('colorModal').addEventListener('click', function(e) {
 });
 
 /* ═══════════════════════════════════════════
-   MOVE MODAL
+   MOVE MODAL  ← BUG FIX for folders
 ═══════════════════════════════════════════ */
 function openMoveModal(f) {
-  moveTarget = { type: 'file', file: f };
+  moveTarget = f;
+  // Current folder of this file (for files inside a folder)
   moveDest = f.name.includes('/') ? f.name.split('/').slice(0,-1).join('/') : null;
-
-  document.querySelector('#moveModal .modal-title').textContent = 'Move File';
-  document.querySelector('#moveModal .modal-body').textContent  = 'Choose a destination for this file.';
 
   var folderNames = getFolderNames();
   var listEl = document.getElementById('folderList');
@@ -1209,93 +1200,16 @@ function openMoveModal(f) {
 
   document.getElementById('moveModal').classList.add('open');
 }
-
-function openMoveFolderModal(folderName) {
-  moveTarget = { type: 'folder', name: folderName };
-  // Determine current parent (if folder is nested like "Parent/FolderA", parent is "Parent")
-  var folderBaseName = folderName.split('/').pop();
-  var currentParent = folderName.includes('/') ? folderName.split('/').slice(0,-1).join('/') : null;
-  moveDest = currentParent;
-
-  document.querySelector('#moveModal .modal-title').textContent = 'Move Folder';
-  document.querySelector('#moveModal .modal-body').textContent  = 'Choose a destination for "' + folderBaseName + '" and its contents.';
-
-  // Exclude the folder itself and any of its descendants from valid destinations
-  var folderPrefix = folderName + '/';
-  var folderNames = getFolderNames().filter(function(n){
-    return n !== folderName && n.indexOf(folderPrefix) !== 0;
-  });
-  var listEl = document.getElementById('folderList');
-  listEl.innerHTML = '';
-
-  var rootBtn = document.createElement('button');
-  rootBtn.className = 'folder-option' + (moveDest===null?' selected':'');
-  rootBtn.innerHTML = '🗂 Root (no parent)';
-  rootBtn.addEventListener('click', function() {
-    moveDest = null;
-    listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
-    rootBtn.classList.add('selected');
-  });
-  listEl.appendChild(rootBtn);
-
-  folderNames.forEach(function(folder) {
-    var btn = document.createElement('button');
-    btn.className = 'folder-option' + (moveDest===folder?' selected':'');
-    btn.innerHTML = '📁 ' + esc(folder);
-    btn.addEventListener('click', function() {
-      moveDest = folder;
-      listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
-      btn.classList.add('selected');
-    });
-    listEl.appendChild(btn);
-  });
-
-  document.getElementById('moveModal').classList.add('open');
-}
-
 document.getElementById('moveConfirmBtn').addEventListener('click', function() {
   if (!moveTarget) return;
-
-  if (moveTarget.type === 'folder') {
-    var oldName = moveTarget.name;
-    // oldName is the folder's current full name (e.g. "FolderA" or "Parent/FolderA")
-    // The display name is always the last segment
-    var folderBaseName = oldName.split('/').pop();
-    // new full folder path
-    var newName = moveDest ? moveDest + '/' + folderBaseName : folderBaseName;
-    if (newName === oldName) { document.getElementById('moveModal').classList.remove('open'); return; }
-    // Check collision
-    if (getFolderNames().includes(newName)) { showInfoToast('A folder with that name already exists there'); return; }
-    // Update folder marker
-    var marker = files.find(function(f){ return f.isFolder && f.name === oldName + '/.folder'; });
-    if (marker) marker.name = newName + '/.folder';
-    // Update all children — match on full prefix "oldName/"
-    var oldPrefix = oldName + '/';
-    var newPrefix = newName + '/';
-    files.forEach(function(f) {
-      if (!f.isFolder && f.name.indexOf(oldPrefix) === 0) {
-        f.name = newPrefix + f.name.slice(oldPrefix.length);
-        if (currentFile && currentFile.id === f.id) {
-          currentFile = f;
-          document.getElementById('currentFileName').textContent = f.name;
-          document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
-        }
-      }
-    });
-    saveToStorage();
-    document.getElementById('moveModal').classList.remove('open');
-    renderTree();
-    return;
-  }
-
-  // File move
-  var f = files.find(function(x){ return x.id===moveTarget.file.id; }); if (!f) return;
+  var f = files.find(function(x){ return x.id===moveTarget.id; }); if (!f) return;
+  // Use only the filename (last segment) — fixes the bug where baseName was '.folder'
   var baseName = f.name.split('/').pop();
-  var newFileName = moveDest ? moveDest + '/' + baseName : baseName;
-  if (files.find(function(x){ return x.name===newFileName && x.id!==f.id; })) {
+  var newName  = moveDest ? moveDest + '/' + baseName : baseName;
+  if (files.find(function(x){ return x.name===newName && x.id!==f.id; })) {
     showInfoToast('File already exists there'); return;
   }
-  f.name = newFileName;
+  f.name = newName;
   if (currentFile && currentFile.id===f.id) {
     currentFile = f;
     document.getElementById('currentFileName').textContent = f.name;
@@ -1411,31 +1325,6 @@ document.getElementById('importFile').addEventListener('change', function(e) {
     } catch(err) { showInfoToast('Could not parse file'); }
   };
   reader.readAsText(file);
-});
-
-/* Load .md files via button */
-document.getElementById('loadMdBtn').addEventListener('click', function() {
-  document.getElementById('loadMdFile').value = '';
-  document.getElementById('loadMdFile').click();
-});
-document.getElementById('loadMdFile').addEventListener('change', function(e) {
-  var picked = Array.from(e.target.files);
-  if (!picked.length) return;
-  picked.forEach(function(file) {
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var name = file.name, i = 1;
-      while (files.find(function(f){ return f.name === name; })) {
-        name = file.name.replace(/\.[^.]+$/, '') + ' (' + (i++) + ')' + (file.name.match(/\.[^.]+$/) ? file.name.match(/\.[^.]+$/)[0] : '.md');
-      }
-      var f = { id: genId(), name: name, content: ev.target.result, color: null, rtl: false, createdAt: Date.now(), updatedAt: Date.now() };
-      files.push(f);
-      saveToStorage(); renderTree();
-      openFile(f.id);
-      showInfoToast('"' + name + '" loaded');
-    };
-    reader.readAsText(file);
-  });
 });
 
 /* ═══════════════════════════════════════════
