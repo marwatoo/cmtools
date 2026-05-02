@@ -5,630 +5,1654 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Markdown Notes — MediaTools Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      var t = localStorage.getItem('mts-theme') ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/global.css" />
   <script src="../assets/theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
-    :root {
-      --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;
-      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-      --text:#e8e8f0;--text2:#8888a8;--text3:#555570;
-      --accent:#e8ff47;--accent2:#7c6bff;--accent3:#ff6b6b;
-      --card-bg:#13131c;--card-hover:#1e1e2e;--input-bg:#1a1a26;
-      --btn-bg:#e8ff47;--btn-text:#0a0a0f;
-      --radius:16px;--radius-sm:10px;--radius-xs:6px;
+    /* ════════════════════════════════════════
+       LAYOUT
+    ════════════════════════════════════════ */
+    .md-layout {
+      display: grid;
+      grid-template-columns: 288px 1fr;
+      gap: 0;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      height: calc(100vh - 160px);
+      min-height: 500px;
+      position: relative;
     }
-    [data-theme="light"] {
-      --bg:#f4f4f0;--bg2:#ffffff;--bg3:#ebebeb;
-      --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
-      --text:#111118;--text2:#555570;--text3:#aaaacc;
-      --accent:#3a2fff;--accent2:#7c6bff;--accent3:#ff4444;
-      --card-bg:#ffffff;--card-hover:#f0f0ff;--input-bg:#f8f8fc;
-      --btn-bg:#111118;--btn-text:#ffffff;
+
+    /* ════════════════════════════════════════
+       SIDEBAR
+    ════════════════════════════════════════ */
+    .md-sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-
-    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--bg);border-bottom:1px solid var(--border)}
-    .nav-back{display:flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.85rem;font-weight:500;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--radius-xs)}
-    .nav-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1}
-    .theme-toggle{width:38px;height:38px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;font-size:1rem}
-
-    .app{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 60px)}
-    
-    .sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:16px;overflow-y:auto;max-height:calc(100vh - 60px)}
-    .sidebar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-    .sidebar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem}
-    
-    .tree{list-style:none}
-    .tree-item{padding:6px 8px;border-radius:var(--radius-xs);cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:6px;color:var(--text2);transition:all .15s}
-    .tree-item:hover{background:var(--card-hover);color:var(--text)}
-    .tree-item.active{background:var(--accent);color:var(--btn-text)}
-    .tree-item.folder{font-weight:600}
-    .tree-item.folder .tree-icon{font-size:1rem}
-    .tree-icon{font-size:.9rem}
-    .tree-children{padding-left:16px;display:none}
-    .tree-children.show{display:block}
-    
-    .editor-view{display:flex;flex-direction:column;height:100%}
-    .editor-toolbar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
-    .file-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;flex:1}
-    
-    .btn{padding:6px 12px;border:none;border-radius:var(--radius-xs);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
-    .btn:hover{opacity:.88}
-    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
-    .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
-    .btn-secondary:hover{border-color:var(--accent)}
-    .btn-secondary.active{background:var(--accent);color:var(--btn-text);border-color:var(--accent)}
-    .btn-icon{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center}
-
-    .editor-content{flex:1;display:none;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
-    .editor-content.show{display:grid}
-    .editor-pane,.preview-pane{background:var(--bg);padding:16px;overflow-y:auto;height:100%;box-sizing:border-box;display:flex;flex-direction:column}
-    .preview-pane{display:flex}
-    
-    .view-split .editor-pane,.view-split .preview-pane{grid-column:span 1}
-    .view-split { grid-template-columns: 1fr 1fr; }
-    .view-editor .editor-pane{grid-column:span 1}
-    .view-editor .preview-pane{display:none}
-    .view-editor { grid-template-columns: 1fr; }
-    .view-preview .editor-pane{display:none}
-    .view-preview .preview-pane{grid-column:span 1}
-    .view-preview { grid-template-columns: 1fr; }
-
-    .editor-pane{display:flex}
-    .editor-pane textarea{font-family:'JetBrains Mono',monospace;font-size:.9rem;line-height:1.6;border:none;resize:none;outline:none;width:100%;height:100%;background:transparent;color:var(--text)}
-
-    .preview-pane{font-size:.95rem;line-height:1.7}
-    .preview-pane h1,.preview-pane h2,.preview-pane h3{font-family:'Syne',sans-serif;margin:1em 0 .5em}
-    .preview-pane h1{font-size:1.6rem}
-    .preview-pane h2{font-size:1.3rem}
-    .preview-pane h3{font-size:1.1rem}
-    .preview-pane p{margin:.8em 0}
-    .preview-pane code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:.85em}
-    .preview-pane pre{background:var(--bg3);padding:12px;border-radius:var(--radius-xs);overflow-x:auto}
-    .preview-pane blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--text2)}
-    .preview-pane ul,.preview-pane ol{padding-left:24px;margin:.8em 0}
-    .preview-pane a{color:var(--accent)}
-    .preview-pane pre { background: transparent !important; padding: 12px; border-radius: var(--radius-xs); overflow-x: auto; margin: 12px 0; }
-    .preview-pane pre code { background: transparent !important; padding: 0; }
-    .preview-pane pre code { display: block; }
-    .preview-pane table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    .preview-pane th, .preview-pane td { border: 1px solid var(--border2); padding: 8px 12px; text-align: left; }
-    .preview-pane th { background: var(--bg3); }
-    .preview-pane img { max-width: 100%; border-radius: var(--radius-xs); }
-
-    :root .hljs { background: #1a1a24 !important; color: #e8e8f0; }
-    [data-theme="light"] .hljs { background: #f0f0f5 !important; color: #1a1a24; }
-    :root .hljs-keyword, :root .hljs-selector-tag { color: #ff79c6; }
-    :root .hljs-string, :root .hljs-attr { color: #f1fa8c; }
-    :root .hljs-number, :root .hljs-literal { color: #bd93f9; }
-    :root .hljs-function, :root .hljs-title { color: #50fa7b; }
-    :root .hljs-comment { color: #6272a4; }
-    :root .hljs-built_in, :root .hljs-class { color: #8be9fd; }
-    :root .hljs-params { color: #ffb86c; }
-    [data-theme="light"] .hljs-keyword, [data-theme="light"] .hljs-selector-tag { color: #d63384; }
-    [data-theme="light"] .hljs-string, [data-theme="light"] .hljs-attr { color: #a31515; }
-    [data-theme="light"] .hljs-number, [data-theme="light"] .hljs-literal { color: #098658; }
-    [data-theme="light"] .hljs-function, [data-theme="light"] .hljs-title { color: #010101; }
-    [data-theme="light"] .hljs-comment { color: #008000; }
-    [data-theme="light"] .hljs-built_in, [data-theme="light"] .hljs-class { color: #2b91af; }
-    [data-theme="light"] .hljs-params { color: #a31515; }
-
-    .empty-view{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)}
-
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;display:none}
-    .modal.show{display:flex}
-    .modal-content{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:400px}
-    .modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;margin-bottom:16px}
-    .form-input{width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-size:.9rem;margin-bottom:12px}
-
-    @media (max-width:768px) {
-      .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-      .sidebar{width:100%;max-height:200px;overflow-y:auto;border-right:none;border-bottom:1px solid var(--border)}
-      .sidebar-header{flex-direction:row;flex-wrap:wrap}
-      .sidebar-header .sidebar-title{width:100%;margin-bottom:4px}
-      .editor-toolbar{flex-wrap:wrap;gap:4px}
-      .editor-toolbar .file-name{width:100%;font-size:.9rem}
-      .btn{padding:8px 10px;font-size:.75rem}
-      .modal-content{padding:16px;margin:8px}
-      .editor-content{grid-template-columns:1fr}
-      .editor-content.show{display:flex;flex-direction:column}
-      .view-split .editor-pane,.view-split .preview-pane{width:100%;display:block}
-      .view-split .preview-pane{max-height:300px}
+    .sidebar-header {
+      padding: 12px 14px 8px;
+      border-bottom: 1px solid var(--border);
     }
-    @media (max-width:480px) {
-      .sidebar-header div{width:100%;justify-content:flex-start;flex-wrap:wrap}
-      .btn{padding:6px 8px;font-size:.7rem;min-width:36px}
+    .sidebar-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
     }
+    .sidebar-header h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .sidebar-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .new-btn {
+      padding: 5px 11px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .new-btn:hover { opacity: 0.8; }
+    .icon-btn {
+      width: 27px; height: 27px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .icon-btn.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+    .select-mode-btn {
+      padding: 5px 9px;
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-xs);
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .select-mode-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+    .select-mode-btn.active { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
+
+    /* Sort row */
+    .sidebar-sort { display: flex; align-items: center; gap: 4px; }
+    .sort-label { font-family: 'DM Mono', monospace; font-size: 0.59rem; color: var(--text3); white-space: nowrap; margin-right: 2px; }
+    .sort-btn {
+      padding: 3px 7px; border-radius: 100px;
+      font-size: 0.62rem; font-family: 'Syne', sans-serif; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent;
+      background: transparent; color: var(--text3); transition: all 0.15s;
+    }
+    .sort-btn:hover { color: var(--text2); }
+    .sort-btn.active { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+
+    /* Search */
+    .sidebar-search { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .sidebar-search-input {
+      width: 100%; padding: 7px 10px;
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.8rem; outline: none; transition: border-color 0.2s;
+    }
+    .sidebar-search-input::placeholder { color: var(--text3); }
+    .sidebar-search-input:focus { border-color: var(--accent); }
+
+    /* Selection bar */
+    .selection-bar {
+      overflow: hidden; max-height: 0; opacity: 0;
+      transition: max-height 0.25s cubic-bezier(0.4,0,0.2,1), padding 0.25s, opacity 0.2s;
+      padding: 0 12px;
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .selection-bar.visible { max-height: 60px; padding: 8px 12px; opacity: 1; }
+    .sel-count { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text2); flex: 1; }
+    .sel-btn {
+      padding: 4px 9px; border-radius: var(--radius-xs);
+      font-size: 0.65rem; font-family: 'Syne', sans-serif; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; border: 1px solid var(--border2); background: transparent; color: var(--text2);
+    }
+    .sel-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .sel-btn.danger { border-color: transparent; color: #ff5555; }
+    .sel-btn.danger:hover { background: #ff444422; border-color: #ff5555; }
+
+    /* File tree */
+    .file-tree-scroll { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+    .file-tree-empty { padding: 28px 12px; text-align: center; font-size: 0.75rem; color: var(--text3); line-height: 1.7; }
+
+    .tree { list-style: none; }
+    .tree-item {
+      padding: 7px 10px; border-radius: var(--radius-xs);
+      cursor: pointer; font-size: 0.82rem;
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text2); transition: background 0.12s, color 0.12s;
+      margin-bottom: 2px; position: relative;
+      border-left: 3px solid transparent;
+    }
+    .tree-item:hover { background: var(--bg3); color: var(--text); }
+    .tree-item.active { background: var(--card-hover); border-left-color: var(--accent); color: var(--text); }
+    .tree-item.selected { background: rgba(124,107,255,0.10); border-left-color: var(--accent2); }
+    .tree-item.folder { font-weight: 600; font-family: 'Syne', sans-serif; font-size: 0.78rem; letter-spacing: 0.02em; }
+    .tree-icon { font-size: 0.9rem; flex-shrink: 0; }
+    .file-color-dot {
+      width: 6px; height: 6px; min-width: 6px; border-radius: 50%;
+      background: var(--dot-color, transparent);
+      border: 1.5px solid var(--dot-color, var(--border2));
+      flex-shrink: 0; transition: transform 0.15s;
+    }
+    .tree-item:hover .file-color-dot { transform: scale(1.3); }
+    .file-checkbox {
+      width: 15px; height: 15px; min-width: 15px;
+      border: 1.5px solid var(--border2); border-radius: 3px;
+      display: none; align-items: center; justify-content: center;
+      background: var(--bg); transition: all 0.15s; flex-shrink: 0; font-size: 0.55rem;
+    }
+    .select-mode .file-checkbox { display: flex; }
+    .tree-item.selected .file-checkbox { background: var(--accent2); border-color: var(--accent2); color: white; }
+    .tree-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-item-delete {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; border: none; background: transparent;
+      color: var(--text3); font-size: 0.85rem; cursor: pointer; border-radius: 3px;
+      opacity: 0; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+    }
+    .tree-item:hover .tree-item-delete { opacity: 1; }
+    .tree-item-delete:hover { background: #ff444433; color: #ff4444; }
+    .select-mode .tree-item-delete { display: none !important; }
+    .tree-children { padding-left: 14px; display: none; }
+    .tree-children.show { display: block; }
+
+    /* Count / storage bar */
+    .files-count {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--text3);
+      padding: 7px 14px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .storage-bar-wrap { flex: 1; max-width: 72px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .storage-bar-fill { height: 100%; background: var(--accent2); border-radius: 2px; transition: width 0.4s; }
+    .storage-bar-fill.warn   { background: #ff8800; }
+    .storage-bar-fill.danger { background: #ff4444; }
+
+    /* ════════════════════════════════════════
+       EDITOR PANEL
+    ════════════════════════════════════════ */
+    .md-editor-panel {
+      display: flex; flex-direction: column; background: var(--bg); overflow: hidden;
+    }
+    .editor-toolbar {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+    }
+    .editor-toolbar-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+
+    /* color picker */
+    .color-picker-wrap { position: relative; flex-shrink: 0; }
+    .color-swatch-btn {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border2); cursor: pointer; transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-swatch-btn:hover { transform: scale(1.2); border-color: var(--text2); }
+    .color-palette {
+      display: none; position: absolute; top: 30px; left: 0;
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      padding: 8px; gap: 6px; flex-wrap: wrap; width: 116px; z-index: 50; box-shadow: var(--shadow2);
+    }
+    .color-palette.open { display: flex; }
+    .color-dot-opt {
+      width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s;
+    }
+    .color-dot-opt:hover { transform: scale(1.25); }
+    .color-dot-opt.active { border-color: var(--text); }
+    .color-dot-opt.none { background: transparent !important; border: 2px dashed var(--border2); }
+    .color-dot-opt.none:hover { border-color: var(--text2); }
+
+    .file-name-display {
+      flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem;
+      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .toolbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .toolbar-btn {
+      padding: 6px 10px; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text2); font-size: 0.67rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: 'Syne', sans-serif;
+    }
+    .toolbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .toolbar-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .toolbar-btn.flash  { background: var(--accent2); color: white; border-color: var(--accent2); }
+    .toolbar-btn.danger:hover { border-color: #ff4444; color: #ff4444; }
+    .save-indicator { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3); min-width: 44px; text-align: right; }
+    .save-indicator.saved { color: #28c840; }
+
+    /* Editor / preview body */
+    .editor-body { flex: 1; display: none; overflow: hidden; }
+    .editor-body.visible { display: grid; }
+    .editor-body.visible.view-split   { grid-template-columns: 1fr 1fr; }
+    .editor-body.visible.view-editor  { grid-template-columns: 1fr; }
+    .editor-body.visible.view-preview { grid-template-columns: 1fr; }
+
+    .editor-pane, .preview-pane { background: var(--bg); overflow-y: auto; height: 100%; }
+    .editor-pane { border-right: 1px solid var(--border); }
+    .view-editor .preview-pane  { display: none; }
+    .view-preview .editor-pane  { display: none; }
+
+    .editor-pane textarea {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; line-height: 1.65;
+      border: none; resize: none; outline: none; width: 100%; height: 100%;
+      background: transparent; color: var(--text); padding: 18px 20px; box-sizing: border-box;
+    }
+
+    .preview-pane { padding: 18px 24px; font-size: 0.95rem; line-height: 1.75; }
+    .preview-pane h1,.preview-pane h2,.preview-pane h3 { font-family:'Syne',sans-serif; margin: 1.1em 0 0.4em; }
+    .preview-pane h1 { font-size:1.6rem; font-weight:800; }
+    .preview-pane h2 { font-size:1.25rem; font-weight:700; }
+    .preview-pane h3 { font-size:1.05rem; font-weight:700; }
+    .preview-pane p  { margin:.8em 0; }
+    .preview-pane code { background:rgba(128,128,128,0.10); padding:2px 6px; border-radius:4px; font-family:'DM Mono',monospace; font-size:.85em; }
+    .preview-pane pre { background:rgba(128,128,128,0.07)!important; border:1px solid var(--border); padding:14px; border-radius:var(--radius-xs); overflow-x:auto; margin:12px 0; }
+    .preview-pane pre code { background:transparent!important; padding:0; display:block; }
+    .preview-pane blockquote { border-left:3px solid var(--accent); padding-left:14px; color:var(--text2); margin:12px 0; }
+    .preview-pane ul,.preview-pane ol { padding-left:24px; margin:.8em 0; }
+    .preview-pane a { color:var(--accent2); }
+    .preview-pane table { width:100%; border-collapse:collapse; margin:12px 0; }
+    .preview-pane th,.preview-pane td { border:1px solid var(--border2); padding:8px 12px; text-align:left; }
+    .preview-pane th { background:var(--bg3); }
+    .preview-pane img { max-width:100%; border-radius:var(--radius-xs); }
+    .preview-pane hr { border:none; border-top:1px solid var(--border2); margin:1.5em 0; }
+
+    /* Stats bar */
+    .editor-stats {
+      padding: 5px 20px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px; background: var(--bg2); flex-shrink: 0;
+    }
+    .editor-stat { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); }
+    .editor-stat span { color:var(--text2); font-weight:500; }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--text3); gap: 7px; padding: 40px 20px;
+    }
+    .empty-icon { font-size:2.4rem; opacity:0.3; }
+    .empty-text { font-size:0.9rem; }
+    .empty-sub  { font-size:0.72rem; }
+    .empty-shortcuts { margin-top:18px; display:flex; flex-direction:column; gap:5px; align-items:center; }
+    .shortcut-hint { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
+    .shortcut-hint kbd { display:inline-block; padding:1px 5px; background:var(--bg3); border:1px solid var(--border2); border-radius:4px; font-size:0.6rem; }
+
+    /* hljs — blended, inherits pane background */
+    :root .hljs { background:transparent!important; color:var(--text); }
+    [data-theme="light"] .hljs { background:transparent!important; color:var(--text); }
+    :root .hljs-keyword,:root .hljs-selector-tag { color:#c792ea; }
+    :root .hljs-string,:root .hljs-attr { color:#c3e88d; }
+    :root .hljs-number,:root .hljs-literal { color:#f78c6c; }
+    :root .hljs-function,:root .hljs-title { color:#82aaff; }
+    :root .hljs-comment { color:var(--text3); font-style:italic; }
+    :root .hljs-built_in,:root .hljs-class { color:#89ddff; }
+    :root .hljs-params { color:var(--text2); }
+    [data-theme="light"] .hljs-keyword { color:#7c3aed; }
+    [data-theme="light"] .hljs-string  { color:#16a34a; }
+    [data-theme="light"] .hljs-number  { color:#c2410c; }
+    [data-theme="light"] .hljs-comment { color:var(--text3); font-style:italic; }
+    [data-theme="light"] .hljs-built_in{ color:#0369a1; }
+    [data-theme="light"] .hljs-function,[data-theme="light"] .hljs-title { color:#1d4ed8; }
+
+    /* Search highlights */
+    .tree-item-name mark { background:rgba(232,255,71,0.28); color:inherit; border-radius:2px; }
+    [data-theme="light"] .tree-item-name mark { background:rgba(58,47,255,0.14); }
+
+    /* ════════════════════════════════════════
+       MOBILE
+    ════════════════════════════════════════ */
+    .sidebar-backdrop {
+      display: none; position: absolute; inset: 0; z-index: 15;
+      background: rgba(0,0,0,0.48); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity 0.28s;
+    }
+    .sidebar-backdrop.visible { opacity: 1; pointer-events: all; }
+    .mobile-nav-bar {
+      display: none; align-items: center; gap: 10px;
+      padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0;
+    }
+    .mobile-sidebar-toggle {
+      padding: 6px 11px; background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); color: var(--text2); font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; font-family: 'Syne', sans-serif; transition: all 0.15s; white-space: nowrap;
+    }
+    .mobile-sidebar-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .mobile-file-label {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.8rem; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+    }
+
+    @media (max-width: 700px) {
+      .md-layout { grid-template-columns: 1fr; height: calc(100vh - 140px); }
+      .md-sidebar {
+        position: absolute; inset: 0; z-index: 20;
+        width: 88%; max-width: 300px;
+        border-right: 1px solid var(--border2);
+        border-radius: 0 var(--radius) var(--radius) 0;
+        box-shadow: var(--shadow);
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      }
+      .md-sidebar.sidebar-open { transform: translateX(0); }
+      .md-editor-panel { grid-column: 1; }
+      .sidebar-backdrop { display: block; }
+      .mobile-nav-bar { display: flex; }
+      .editor-body.visible.view-split {
+        display: flex; flex-direction: column;
+      }
+      .editor-body.visible.view-split .editor-pane  { flex: 1; border-right: none; border-bottom: 1px solid var(--border); }
+      .editor-body.visible.view-split .preview-pane { flex: 1; }
+    }
+
+    /* ════════════════════════════════════════
+       TOAST
+    ════════════════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      padding: 10px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
+      z-index: 999; font-size: 0.82rem; color: var(--text);
+      opacity: 0; pointer-events: none; transition: opacity 0.22s, transform 0.22s;
+      white-space: nowrap; overflow: hidden;
+    }
+    .toast.visible { opacity:1; pointer-events:all; transform:translateX(-50%) translateY(0); }
+    .toast-undo { font-family:'Syne',sans-serif; font-weight:700; font-size:0.75rem; color:var(--accent); background:none; border:none; cursor:pointer; padding:0; transition:opacity .15s; }
+    .toast-undo:hover { opacity:0.7; }
+    .toast-bar { position:absolute; bottom:0; left:0; height:2px; background:var(--accent); width:100%; }
+
+    /* ════════════════════════════════════════
+       MODALS
+    ════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 300; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity 0.18s;
+    }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
+    .modal-box {
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius);
+      padding: 28px 28px 22px; max-width: 400px; width: 100%; box-shadow: var(--shadow);
+      transform: scale(0.95) translateY(8px); transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal-box { transform: scale(1) translateY(0); }
+    .modal-icon  { font-size:1.8rem; margin-bottom:10px; }
+    .modal-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem; margin-bottom:8px; }
+    .modal-body  { font-size:0.84rem; color:var(--text2); margin-bottom:14px; line-height:1.55; }
+    .modal-input {
+      width:100%; padding:9px 11px; background:var(--input-bg); border:1px solid var(--border2);
+      border-radius:var(--radius-xs); color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.88rem;
+      outline:none; margin-bottom:14px; transition:border-color 0.2s;
+    }
+    .modal-input:focus { border-color:var(--accent); }
+    .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .modal-btn {
+      padding:8px 18px; border-radius:var(--radius-xs); font-family:'Syne',sans-serif; font-weight:700; font-size:0.8rem;
+      cursor:pointer; transition:all .15s; border:1px solid var(--border2); background:transparent; color:var(--text2);
+    }
+    .modal-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .modal-btn.confirm { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+    .modal-btn.confirm:hover { opacity:0.85; }
+    .modal-btn.danger { background:#ff4444; border-color:#ff4444; color:white; }
+    .modal-btn.danger:hover { background:#ff2222; border-color:#ff2222; }
+
+    /* context menu */
+    .ctx-menu {
+      position: fixed; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      padding: 6px; min-width: 150px; box-shadow: var(--shadow2); z-index: 400;
+      opacity: 0; pointer-events: none; transform: scale(0.95); transition: opacity 0.14s, transform 0.14s;
+    }
+    .ctx-menu.open { opacity:1; pointer-events:all; transform:scale(1); }
+    .ctx-item {
+      padding: 8px 12px; border-radius: var(--radius-xs); font-size: 0.8rem; font-family:'DM Sans',sans-serif;
+      cursor: pointer; color: var(--text2); display: flex; align-items: center; gap: 8px; transition: background .12s, color .12s;
+    }
+    .ctx-item:hover { background:var(--bg3); color:var(--text); }
+    .ctx-item.danger:hover { background:#ff444422; color:#ff4444; }
+    .ctx-separator { height:1px; background:var(--border); margin:4px 0; }
+
+    /* move modal folder list */
+    .folder-list { display:flex; flex-direction:column; gap:4px; margin-bottom:14px; max-height:200px; overflow-y:auto; }
+    .folder-option {
+      padding: 8px 12px; border-radius: var(--radius-xs); border: 1px solid var(--border2);
+      background: transparent; color: var(--text2); font-size: 0.82rem; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; text-align: left; transition: all 0.14s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .folder-option:hover { border-color:var(--accent2); color:var(--text); background:var(--bg3); }
+    .folder-option.selected { border-color:var(--accent2); background:rgba(124,107,255,0.12); color:var(--text); }
+
+    /* color modal palette */
+    #colorModalPalette { position:static; display:flex; width:auto; margin-bottom:14px; }
+
+    @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+    .tool-header, .md-layout { opacity:0; transform:translateY(12px); animation:fadeUp .5s ease forwards; }
+    .tool-header  { animation-delay:.05s; }
+    .md-layout    { animation-delay:.1s; }
   </style>
 </head>
 <body>
+
 <nav class="nav">
   <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Markdown Notes</span>
   <button class="theme-toggle" id="themeToggle"><span class="theme-icon">○</span></button>
 </nav>
 
-<div class="app">
-  <div class="sidebar">
-    <div class="sidebar-header" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span class="sidebar-title">Files</span>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-secondary" id="toggleTreeBtn" title="Expand/Collapse">📂</button>
-        <button class="btn btn-secondary" id="newFolderBtn" title="New Folder">📁+</button>
-        <button class="btn btn-primary" id="loadFileBtn">Load</button>
-        <button class="btn btn-primary" id="newFileBtn">+ New</button>
+<div style="max-width:1200px;margin:0 auto;padding:14px 20px 60px;">
+  <div class="tool-header" style="margin-bottom:14px;">
+    <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.45rem;margin-bottom:3px;">Markdown Notes</h1>
+    <p style="color:var(--text2);font-size:0.83rem;">Write markdown with live preview. Folders, color labels, search, auto-save. Drop .md files to import.</p>
+  </div>
+
+  <div class="md-layout" id="mdLayout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <div class="md-sidebar" id="mdSidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-header-top">
+          <h3>Files</h3>
+          <div class="sidebar-header-actions">
+            <button class="icon-btn" id="exportBtn" title="Export JSON backup">↑</button>
+            <button class="icon-btn" id="importBtn" title="Import from JSON">↓</button>
+            <input type="file" id="importFile" accept=".json" style="display:none;">
+            <button class="icon-btn" id="loadMdBtn" title="Load .md / .txt file">📄</button>
+            <input type="file" id="loadMdFile" accept=".md,.markdown,.txt" multiple style="display:none;">
+            <button class="icon-btn" id="newFolderBtn" title="New Folder">📁</button>
+            <button class="icon-btn" id="toggleTreeBtn" title="Expand/Collapse all">📂</button>
+            <button class="select-mode-btn" id="selectModeBtn">Select</button>
+            <button class="new-btn" id="newFileBtn">+ New</button>
+          </div>
+        </div>
+        <div class="sidebar-sort">
+          <span class="sort-label">Sort:</span>
+          <button class="sort-btn active" data-sort="updated">Updated</button>
+          <button class="sort-btn" data-sort="created">Created</button>
+          <button class="sort-btn" data-sort="alpha">A–Z</button>
+        </div>
       </div>
-    </div>
-    <ul class="tree" id="fileTree"></ul>
-  </div>
 
-  <div class="editor-view">
-    <div class="editor-toolbar">
-      <span class="file-name" id="currentFileName">Select a file</span>
-      <button class="btn btn-secondary" id="viewToggleBtn">Split</button>
-      <button class="btn btn-secondary" id="rtlBtn">RTL</button>
-      <button class="btn btn-primary" id="saveBtn">Save</button>
-      <button class="btn btn-secondary btn-icon" id="deleteFileBtn" title="Delete">🗑</button>
-    </div>
-    <div class="editor-content" id="editorContent">
-      <div class="editor-pane">
-        <textarea id="mdEditor" placeholder="# Start writing..."></textarea>
+      <div class="sidebar-search">
+        <input type="search" class="sidebar-search-input" id="searchInput" placeholder="🔍  Search files…" autocomplete="off"/>
       </div>
-      <div class="preview-pane" id="mdPreview"></div>
+
+      <div class="selection-bar" id="selectionBar">
+        <span class="sel-count" id="selCount">None selected</span>
+        <button class="sel-btn" id="selAllBtn">All</button>
+        <button class="sel-btn danger" id="selDeleteBtn">Delete</button>
+      </div>
+
+      <div class="file-tree-scroll">
+        <ul class="tree" id="fileTree"></ul>
+      </div>
+
+      <div class="files-count">
+        <span id="filesCountText">0 files</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="storageText" style="font-size:0.57rem;"></span>
+          <div class="storage-bar-wrap"><div class="storage-bar-fill" id="storageBar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div><!-- /sidebar -->
+
+    <!-- ══════════ EDITOR PANEL ══════════ -->
+    <div class="md-editor-panel" id="editorPanel">
+
+      <div class="mobile-nav-bar" id="mobileNavBar">
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle">☰ Files</button>
+        <span class="mobile-file-label" id="mobileFileLabel">No file selected</span>
+      </div>
+
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📝</div>
+        <div class="empty-text">No file selected</div>
+        <div class="empty-sub">Create a new file or select one to edit</div>
+        <div class="empty-shortcuts">
+          <div class="shortcut-hint"><kbd>Ctrl N</kbd> New file</div>
+          <div class="shortcut-hint"><kbd>Ctrl S</kbd> Force save</div>
+          <div class="shortcut-hint"><kbd>Ctrl P</kbd> Toggle preview</div>
+        </div>
+      </div>
+
+      <div class="editor-toolbar" id="editorToolbar" style="display:none;">
+        <div class="editor-toolbar-left">
+          <div class="color-picker-wrap" id="colorPickerWrap">
+            <button class="color-swatch-btn" id="colorSwatchBtn" title="Color label"></button>
+            <div class="color-palette" id="colorPalette"></div>
+          </div>
+          <span class="file-name-display" id="currentFileName">Untitled.md</span>
+        </div>
+        <div class="toolbar-right">
+          <span class="save-indicator" id="saveIndicator"></span>
+          <button class="toolbar-btn" id="copyContentBtn">Copy MD</button>
+          <button class="toolbar-btn" id="rtlBtn">عربي</button>
+          <button class="toolbar-btn" id="viewToggleBtn">Split</button>
+          <button class="toolbar-btn danger" id="deleteFileBtn" title="Delete file">🗑</button>
+        </div>
+      </div>
+
+      <div class="editor-body view-split" id="editorBody">
+        <div class="editor-pane">
+          <textarea id="mdEditor" placeholder="# Start writing...&#10;&#10;Markdown supported — **bold**, *italic*, `code`, [links](url), > blockquote, etc."></textarea>
+        </div>
+        <div class="preview-pane" id="mdPreview"></div>
+      </div>
+
+      <div class="editor-stats" id="editorStats" style="display:none;">
+        <span class="editor-stat">Words: <span id="statWords">0</span></span>
+        <span class="editor-stat">Chars: <span id="statChars">0</span></span>
+        <span class="editor-stat">Lines: <span id="statLines">0</span></span>
+      </div>
+
+    </div><!-- /editor-panel -->
+  </div><!-- /md-layout -->
+</div>
+
+<!-- ══ Context menu ══ -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" id="ctxRename">✏️ Rename</div>
+  <div class="ctx-item" id="ctxMove">📂 Move</div>
+  <div class="ctx-item" id="ctxColor">🎨 Color label</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item danger" id="ctxDelete">🗑 Delete</div>
+</div>
+
+<!-- ══ Undo toast ══ -->
+<div class="toast" id="undoToast">
+  <span id="toastMsg">Deleted</span>
+  <button class="toast-undo" id="toastUndoBtn">Undo</button>
+  <div class="toast-bar" id="toastBar"></div>
+</div>
+
+<!-- ══ Confirm modal ══ -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-icon" id="confirmIcon">🗑️</div>
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <div class="modal-body"  id="confirmBody">Are you sure?</div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="confirmCancel">Cancel</button>
+      <button class="modal-btn danger" id="confirmOk">Delete</button>
     </div>
-    <div class="empty-view" id="emptyView">Select or create a file to start</div>
   </div>
 </div>
 
-<div class="modal" id="newModal">
-  <div class="modal-content">
-    <h2 class="modal-title">New File</h2>
-    <input type="text" class="form-input" id="newFileName" placeholder="filename.md">
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" id="createFileBtn">Create</button>
-      <button class="btn btn-secondary" id="cancelNewBtn">Cancel</button>
+<!-- ══ Prompt modal ══ -->
+<div class="modal-overlay" id="promptModal">
+  <div class="modal-box">
+    <div class="modal-icon" id="promptIcon">📄</div>
+    <div class="modal-title" id="promptTitle">New File</div>
+    <div class="modal-body"  id="promptBody" style="display:none;"></div>
+    <input type="text" class="modal-input" id="promptInput" placeholder="filename.md" autocomplete="off"/>
+    <div class="modal-actions">
+      <button class="modal-btn" id="promptCancel">Cancel</button>
+      <button class="modal-btn confirm" id="promptOk">Create</button>
     </div>
   </div>
 </div>
 
-<div class="modal" id="newFolderModal">
-  <div class="modal-content">
-    <h2 class="modal-title">New Folder</h2>
-    <input type="text" class="form-input" id="newFolderName" placeholder="folder name">
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" id="createFolderBtn">Create</button>
-      <button class="btn btn-secondary" id="cancelFolderBtn">Cancel</button>
+<!-- ══ Move modal ══ -->
+<div class="modal-overlay" id="moveModal">
+  <div class="modal-box">
+    <div class="modal-icon">📂</div>
+    <div class="modal-title">Move to Folder</div>
+    <div class="modal-body" style="margin-bottom:10px;">Choose a destination for this file.</div>
+    <div class="folder-list" id="folderList"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="moveCancelBtn">Cancel</button>
+      <button class="modal-btn confirm" id="moveConfirmBtn">Move</button>
     </div>
   </div>
 </div>
 
-<div class="modal" id="renameModal">
-  <div class="modal-content">
-    <h2 class="modal-title">Rename</h2>
-    <input type="text" class="form-input" id="renameInput" placeholder="new name">
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" id="confirmRenameBtn">Rename</button>
-      <button class="btn btn-secondary" id="cancelRenameBtn">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="contextModal">
-  <div class="modal-content">
-    <h2 class="modal-title">Options</h2>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-secondary" id="ctxRenameBtn">Rename</button>
-      <button class="btn btn-secondary" id="ctxMoveBtn">Move</button>
-      <button class="btn btn-secondary" id="ctxDeleteBtn">Delete</button>
-      <button class="btn btn-secondary" id="cancelCtxBtn">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="moveModal">
-  <div class="modal-content">
-    <h2 class="modal-title">Move to Folder</h2>
-    <input type="text" class="form-input" id="moveToFolder" placeholder="folder/name (empty for root)">
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" id="moveFileBtn">Move</button>
-      <button class="btn btn-secondary" id="cancelMoveBtn">Cancel</button>
+<!-- ══ Color modal ══ -->
+<div class="modal-overlay" id="colorModal">
+  <div class="modal-box">
+    <div class="modal-icon">🎨</div>
+    <div class="modal-title">Color Label</div>
+    <div class="modal-body">Pick a color for this file in the sidebar.</div>
+    <div class="color-palette open" id="colorModalPalette"></div>
+    <div class="modal-actions">
+      <button class="modal-btn confirm" id="colorModalClose">Done</button>
     </div>
   </div>
 </div>
 
 <script>
-let files = [];
-let currentFile = null;
-let viewMode = 'split';
-let rtlMode = false;
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+var STORAGE_KEY  = 'mdnotes-v2';
+var files        = [];
+var currentFile  = null;
+var viewMode     = 'split';
+var rtlMode      = false;
+var sortMode     = 'updated';
+var searchQuery  = '';
+var selectMode   = false;
+var selectedIds  = new Set();
+var saveTimeout  = null;
+var undoSnapshot = null;
+var undoTimerId  = null;
+var UNDO_DURATION = 5000;
+var confirmCb    = null;
+var promptCb     = null;
+var moveTarget   = null;
+var moveDest     = null;
+var ctxTarget    = null;
 
+var COLOR_OPTS = [
+  {c:null,     l:'None'},
+  {c:'#e8ff47',l:'Yellow'},
+  {c:'#7c6bff',l:'Purple'},
+  {c:'#ff6b6b',l:'Red'},
+  {c:'#6bffb8',l:'Green'},
+  {c:'#6bb5ff',l:'Blue'},
+  {c:'#ffb86b',l:'Orange'},
+  {c:'#ff6bd6',l:'Pink'},
+];
+
+/* ═══════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════ */
 function loadFiles() {
-  var stored = localStorage.getItem('mdnotes');
-  if (!stored) {
-    files = [];
-    renderTree();
-    return;
-  }
-  var raw = JSON.parse(stored);
-  files = [];
-  for (var i = 0; i < raw.length; i++) {
-    var f = raw[i];
-    if (f.isFolder === true || (f.name && f.name.endsWith('/.folder'))) {
-      f.isFolder = true;
-    }
-    files.push(f);
-  }
-  renderTree();
-}
-
-function saveToStorage() {
-  localStorage.setItem('mdnotes', JSON.stringify(files));
-}
-
-function setView(mode) {
-  viewMode = mode;
-  const content = document.getElementById('editorContent');
-  content.className = 'editor-content show view-' + mode;
-  const btn = document.getElementById('viewToggleBtn');
-  btn.textContent = mode === 'split' ? 'Split' : mode === 'preview' ? 'Edit' : 'Preview';
-}
-
-function renderTree() {
-  var tree = document.getElementById('fileTree');
-  var folders = {};
-  var rootFiles = [];
-  var folderMarkers = {};
-  
-  for (var i = 0; i < files.length; i++) {
-    var f = files[i];
-    if (f.isFolder) {
-      folderMarkers[f.name.replace('/.folder', '')] = f;
-    } else {
-      var parts = f.name.split('/');
-      if (parts.length > 1) {
-        var folder = parts[0];
-        if (!folders[folder]) folders[folder] = [];
-        folders[folder].push(f);
-      } else {
-        rootFiles.push(f);
-      }
-    }
-  }
-  
-  var html = '';
-  var folderKeys = Object.keys(folderMarkers).sort();
-  for (var fi = 0; fi < folderKeys.length; fi++) {
-    var folder = folderKeys[fi];
-    var folderFiles = folders[folder] || [];
-    var fileHtml = '';
-    for (var j = 0; j < folderFiles.length; j++) {
-      fileHtml += renderFileItem(folderFiles[j]);
-    }
-    html += '<li class="tree-item folder" data-folder="' + folder + '" onclick="toggleFolder(\'' + folder + '\')" oncontextmenu="folderContext(event, \'' + folder + '\'); return false;">' +
-      '<span class="tree-icon">📁</span>' + folder +
-    '</li>' +
-    '<ul class="tree-children show" id="folder-' + folder + '">' +
-      fileHtml + '</ul>';
-  }
-  var implicitKeys = Object.keys(folders).filter(function(f) { return !folderMarkers[f]; }).sort();
-  for (var fi = 0; fi < implicitKeys.length; fi++) {
-    var folder = implicitKeys[fi];
-    var folderFiles = folders[folder];
-    var fileHtml = '';
-    for (var j = 0; j < folderFiles.length; j++) {
-      fileHtml += renderFileItem(folderFiles[j]);
-    }
-    html += '<li class="tree-item folder" data-folder="' + folder + '" onclick="toggleFolder(\'' + folder + '\')" oncontextmenu="folderContext(event, \'' + folder + '\'); return false;">' +
-      '<span class="tree-icon">📁</span>' + folder +
-    '</li>' +
-    '<ul class="tree-children show" id="folder-' + folder + '">' +
-      fileHtml + '</ul>';
-  }
-  for (var j = 0; j < rootFiles.length; j++) {
-    html += renderFileItem(rootFiles[j]);
-  }
-  if (folderKeys.length === 0 && implicitKeys.length === 0 && rootFiles.length === 0) {
-    html = '<li class="tree-item" style="opacity:.5">No files</li>';
-  }
-  tree.innerHTML = html;
-}
-
-function renderFileItem(f) {
-  if (f.isFolder) return '';
-  const active = currentFile && currentFile.id === f.id ? 'active' : '';
-  return `<li class="tree-item ${active}" onclick="openFile(${f.id}, event)" oncontextmenu="fileContext(event, ${f.id}); return false;">
-    <span class="tree-icon">📄</span>${f.name.split('/').pop()}
-  </li>`;
-}
-
-function fileContext(e, id) {
-  e.preventDefault();
-  var f = files.find(function(x) { return x.id === id; });
-  if (!f) return;
-  currentFile = f;
-  document.getElementById('contextModal').classList.add('show');
-}
-
-function toggleFolder(name) {
-  var el = document.getElementById('folder-' + name);
-  if (el) el.classList.toggle('show');
-}
-
-function folderContext(e, folderName) {
-  e.preventDefault();
-  var folder = files.find(function(f) { return f.isFolder && f.name === folderName + '/.folder'; });
-  if (folder) {
-    currentFile = folder;
-    document.getElementById('contextModal').classList.add('show');
-  } else {
-    var implicitFiles = files.filter(function(f) { return !f.isFolder && f.name.split('/')[0] === folderName; });
-    if (implicitFiles.length > 0) {
-      alert('This folder is implicit. Move files to a real folder first to rename.');
-    } else {
-      alert('Folder not found.');
-    }
-  }
-}
-
-function openFile(id, e) {
-  if (e) e.stopPropagation();
-  const f = files.find(x => x.id === id);
-  if (!f) return;
-  currentFile = f;
-  document.getElementById('currentFileName').textContent = f.name;
-  document.getElementById('mdEditor').value = f.content || '';
-  document.getElementById('editorContent').classList.add('show');
-  document.getElementById('emptyView').style.display = 'none';
-  renderPreview();
-  renderTree();
-}
-
-function renderPreview() {
-  const md = document.getElementById('mdEditor').value;
-  const preview = document.getElementById('mdPreview');
-  if (!md.trim()) { preview.innerHTML = '<em style="opacity:.5">Start typing to see preview...</em>'; return; }
   try {
-    marked.setOptions({ highlight: function(code, lang) {
-      if (lang && hljs.getLanguage(lang)) {
-        try { return hljs.highlight(code, { language: lang }).value; }
-        catch(e) { return code; }
-      }
-      try { return hljs.highlightAuto(code).value; }
-      catch(e) { return code; }
-    }});
-    const html = marked.parse(md);
-    preview.innerHTML = html;
-    preview.querySelectorAll('pre code').forEach((block) => { hljs.highlightElement(block); });
-    preview.style.direction = rtlMode ? 'rtl' : 'ltr';
-    preview.style.textAlign = rtlMode ? 'right' : 'left';
-  } catch(e) { preview.innerHTML = '<span style="color:var(--accent3)">Error: ' + e.message + '</span>'; }
+    var raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    files = raw.map(function(f) {
+      if (f.name && f.name.endsWith('/.folder')) f.isFolder = true;
+      return f;
+    });
+  } catch(e) { files = []; }
+  renderTree();
+}
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+  updateStorageBar();
+}
+function updateStorageBar() {
+  try {
+    var bytes = new Blob([localStorage.getItem(STORAGE_KEY)||'']).size;
+    var pct   = Math.min(100, bytes / (5*1024*1024) * 100);
+    var bar   = document.getElementById('storageBar');
+    var txt   = document.getElementById('storageText');
+    bar.style.width = pct.toFixed(1) + '%';
+    bar.className   = 'storage-bar-fill' + (pct>85?' danger':pct>60?' warn':'');
+    txt.textContent = (bytes/1024).toFixed(1) + ' KB';
+    txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
+  } catch(e) {}
 }
 
-function saveFile() {
-  if (!currentFile) return;
-  const content = document.getElementById('mdEditor').value;
-  const f = files.find(x => x.id === currentFile.id);
-  if (f) f.content = content;
-  saveToStorage();
-  alert('Saved!');
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function hlText(text, q) {
+  if (!q) return esc(text);
+  return esc(text).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');
+}
+function getFolderNames() {
+  var seen = {};
+  files.forEach(function(f) {
+    if (f.isFolder) seen[f.name.replace('/.folder','')] = true;
+    else if (f.name.includes('/')) seen[f.name.split('/').slice(0,-1).join('/')] = true;
+  });
+  return Object.keys(seen).sort();
 }
 
-function createFile() {
-  const name = document.getElementById('newFileName').value.trim();
-  if (!name) return;
-  if (files.find(f => f.name === name)) {
-    alert('File already exists!');
-    return;
-  }
-  files.push({id: Date.now(), name: name, content: ''});
-  saveToStorage();
-  document.getElementById('newModal').classList.remove('show');
-  document.getElementById('newFileName').value = '';
-  loadFiles();
-}
-
-function createFolder() {
-  const name = document.getElementById('newFolderName').value.trim();
-  if (!name) return;
-  if (files.find(f => f.isFolder && f.name === name + '/.folder')) {
-    alert('Folder already exists!');
-    return;
-  }
-  files.push({id: Date.now(), name: name + '/.folder', content: '', isFolder: true});
-  saveToStorage();
-  document.getElementById('newFolderModal').classList.remove('show');
-  document.getElementById('newFolderName').value = '';
-  loadFiles();
-}
-
-function moveFile() {
-  if (!currentFile) return;
-  const folder = document.getElementById('moveToFolder').value.trim();
-  const f = files.find(x => x.id === currentFile.id);
-  if (!f) return;
-  const baseName = f.name.split('/').pop();
-  const newName = folder ? folder + '/' + baseName : baseName;
-  if (files.find(x => x.name === newName && x.id !== currentFile.id)) {
-    alert('File already exists in that location!');
-    return;
-  }
-  f.name = newName;
-  currentFile.name = newName;
-  document.getElementById('currentFileName').textContent = newName;
-  saveToStorage();
-  document.getElementById('moveModal').classList.remove('show');
-  loadFiles();
-}
-
-function deleteFile() {
-  if (!currentFile || !confirm('Delete this file?')) return;
-  files = files.filter(f => f.id !== currentFile.id);
-  saveToStorage();
-  currentFile = null;
-  document.getElementById('editorContent').classList.remove('show');
-  document.getElementById('emptyView').style.display = 'flex';
-  loadFiles();
-}
-
-document.getElementById('mdEditor').addEventListener('input', renderPreview);
-document.getElementById('saveBtn').addEventListener('click', saveFile);
-document.getElementById('deleteFileBtn').addEventListener('click', deleteFile);
-document.getElementById('newFileBtn').addEventListener('click', () => document.getElementById('newModal').classList.add('show'));
-document.getElementById('createFileBtn').addEventListener('click', createFile);
-document.getElementById('cancelNewBtn').addEventListener('click', function() { document.getElementById('newModal').classList.remove('show'); });
-
-document.getElementById('cancelRenameBtn').addEventListener('click', function() { document.getElementById('renameModal').classList.remove('show'); });
-document.getElementById('cancelCtxBtn').addEventListener('click', function() { document.getElementById('contextModal').classList.remove('show'); });
-document.getElementById('ctxRenameBtn').addEventListener('click', function() {
-  document.getElementById('contextModal').classList.remove('show');
-  document.getElementById('renameInput').value = currentFile.isFolder ? currentFile.name.replace('/.folder', '') : currentFile.name;
-  document.getElementById('renameModal').classList.add('show');
-});
-document.getElementById('ctxMoveBtn').addEventListener('click', function() {
-  document.getElementById('contextModal').classList.remove('show');
-  document.getElementById('moveToFolder').value = currentFile.isFolder ? currentFile.name.replace('/.folder', '') : (currentFile.name.includes('/') ? currentFile.name.split('/').slice(0, -1).join('/') : '');
-  document.getElementById('moveModal').classList.add('show');
-});
-document.getElementById('ctxDeleteBtn').addEventListener('click', function() {
-  document.getElementById('contextModal').classList.remove('show');
-  if (!currentFile) return;
-  var confirmDelete = currentFile.isFolder ? confirm('Delete folder "' + currentFile.name.replace('/.folder', '') + '" and all its files?') : confirm('Delete "' + currentFile.name + '"?');
-  if (!confirmDelete) return;
-  
-  if (currentFile.isFolder) {
-    var folderName = currentFile.name.replace('/.folder', '');
-    var remaining = [];
-    for (var i = 0; i < files.length; i++) {
-      var f = files[i];
-      if (f.isFolder && f.name === currentFile.name) continue;
-      if (!f.isFolder && f.name.split('/')[0] === folderName) continue;
-      remaining.push(f);
-    }
-    files = remaining;
-  } else {
-    files = files.filter(function(f) { return f.id !== currentFile.id; });
-  }
-  
-  saveToStorage();
-  currentFile = null;
-  document.getElementById('editorContent').classList.remove('show');
-  document.getElementById('emptyView').style.display = 'flex';
-  loadFiles();
-});
-document.getElementById('confirmRenameBtn').addEventListener('click', function() {
-  var newName = document.getElementById('renameInput').value.trim();
-  if (!newName || !currentFile) return;
-  if (currentFile.isFolder) {
-    var existing = files.find(function(f) { return f.isFolder && f.name === newName + '/.folder' && f.id !== currentFile.id; });
-    if (existing) {
-      alert('Folder already exists!');
-      return;
-    }
-  } else {
-    var existing = files.find(function(f) { return !f.isFolder && f.name === newName && f.id !== currentFile.id; });
-    if (existing) {
-      alert('File already exists!');
-      return;
-    }
-  }
-  var oldFile = files.find(function(f) { return f.id === currentFile.id; });
-  if (oldFile) {
-    if (currentFile.isFolder) {
-      var oldFolderName = oldFile.name.replace('/.folder', '');
-      var newFolderName = newName;
-      for (var i = 0; i < files.length; i++) {
-        var f = files[i];
-        if (!f.isFolder && f.name.split('/')[0] === oldFolderName) {
-          var parts = f.name.split('/');
-          parts[0] = newFolderName;
-          f.name = parts.join('/');
-        }
-      }
-      oldFile.name = newName + '/.folder';
-    } else {
-      oldFile.name = newName;
-    }
-    currentFile.name = oldFile.name;
-    document.getElementById('currentFileName').textContent = oldFile.name;
-  }
-  saveToStorage();
-  document.getElementById('renameModal').classList.remove('show');
-  loadFiles();
-});
-
-document.getElementById('newFolderBtn').addEventListener('click', () => document.getElementById('newFolderModal').classList.add('show'));
-
-document.getElementById('toggleTreeBtn').addEventListener('click', () => {
-  const folders = document.querySelectorAll('.tree-children');
-  const btn = document.getElementById('toggleTreeBtn');
-  const isExpanded = btn.classList.contains('active');
-  if (isExpanded) {
-    folders.forEach(f => f.classList.remove('show'));
-    btn.classList.remove('active');
-    btn.textContent = '📂';
-  } else {
-    folders.forEach(f => f.classList.add('show'));
-    btn.classList.add('active');
-    btn.textContent = '📁';
-  }
-});
-document.getElementById('createFolderBtn').addEventListener('click', createFolder);
-document.getElementById('cancelFolderBtn').addEventListener('click', () => document.getElementById('newFolderModal').classList.remove('show'));
-
-document.getElementById('loadFileBtn').addEventListener('click', () => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.md,.markdown,.txt';
-  input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const name = document.getElementById('newFileName').value.trim() || file.name;
-      if (files.find(f => f.name === name)) {
-        alert('File already exists!');
-        return;
-      }
-      files.push({id: Date.now(), name: name, content: ev.target.result});
-      saveToStorage();
-      loadFiles();
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-});
-document.getElementById('moveFileBtn').addEventListener('click', moveFile);
-document.getElementById('cancelMoveBtn').addEventListener('click', () => document.getElementById('moveModal').classList.remove('show'));
-
-var vToggle = document.getElementById('viewToggleBtn');
-if (vToggle) {
-  vToggle.addEventListener('click', function() {
-    if (viewMode === 'split') setView('preview');
-    else if (viewMode === 'preview') setView('editor');
-    else setView('split');
+/* ═══════════════════════════════════════════
+   SORT + FILTER
+═══════════════════════════════════════════ */
+function filteredFiles() {
+  var list = files.filter(function(f){ return !f.isFolder; });
+  if (sortMode === 'updated')      list.sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+  else if (sortMode === 'created') list.sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+  else list.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  if (!searchQuery) return list;
+  var q = searchQuery.toLowerCase();
+  return list.filter(function(f){
+    return (f.name||'').toLowerCase().includes(q) || (f.content||'').toLowerCase().includes(q);
   });
 }
 
-document.getElementById('rtlBtn').addEventListener('click', () => {
-  rtlMode = !rtlMode;
-  document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
-  renderPreview();
+/* ═══════════════════════════════════════════
+   RENDER TREE
+═══════════════════════════════════════════ */
+function renderTree() {
+  var allFiles = filteredFiles();
+  var byFolder = {};
+  var rootFiles = [];
+  var folderSet = {};
+
+  // collect folder markers
+  files.filter(function(f){ return f.isFolder; }).forEach(function(f){
+    folderSet[f.name.replace('/.folder','')] = true;
+  });
+  // bin files into folders or root
+  allFiles.forEach(function(f) {
+    var slash = f.name.indexOf('/');
+    if (slash !== -1) {
+      var folder = f.name.substring(0, slash);
+      folderSet[folder] = true;
+      if (!byFolder[folder]) byFolder[folder] = [];
+      byFolder[folder].push(f);
+    } else {
+      rootFiles.push(f);
+    }
+  });
+
+  var html = '';
+  var allFolderNames = Object.keys(folderSet).sort();
+
+  allFolderNames.forEach(function(folder) {
+    var folderFiles = byFolder[folder] || [];
+    var filesHtml   = folderFiles.map(renderFileItem).join('');
+    html += '<li class="tree-item folder" data-folder="' + esc(folder) + '">' +
+      '<span class="tree-icon">📁</span>' +
+      '<span class="tree-item-name">' + esc(folder) + '</span>' +
+      '</li>' +
+      '<ul class="tree-children show" id="folder-' + esc(folder) + '">' + filesHtml + '</ul>';
+  });
+  rootFiles.forEach(function(f){ html += renderFileItem(f); });
+
+  if (allFolderNames.length === 0 && rootFiles.length === 0) {
+    html = '<div class="file-tree-empty">No files yet.<br>Press <strong>+ New</strong> to start.</div>';
+  }
+  document.getElementById('fileTree').innerHTML = html;
+
+  var total = files.filter(function(f){ return !f.isFolder; }).length;
+  var shown = allFiles.length;
+  document.getElementById('filesCountText').textContent =
+    (searchQuery && shown < total) ? shown+' of '+total+' file'+(total!==1?'s':'') : total+' file'+(total!==1?'s':'');
+  updateSelectionBar();
+}
+
+function renderFileItem(f) {
+  var isActive   = currentFile && currentFile.id === f.id;
+  var isSelected = selectedIds.has(f.id);
+  var dotStyle   = f.color ? ' style="--dot-color:' + f.color + '"' : '';
+  var cls = 'tree-item' + (isActive?' active':'') + (isSelected?' selected':'');
+  var displayName = f.name.split('/').pop();
+  return '<li class="' + cls + '" data-id="' + f.id + '">' +
+    '<div class="file-checkbox">' + (isSelected?'✓':'') + '</div>' +
+    '<div class="file-color-dot"' + dotStyle + '></div>' +
+    '<span class="tree-icon">📄</span>' +
+    '<span class="tree-item-name">' + hlText(displayName, searchQuery) + '</span>' +
+    '<button class="tree-item-delete" data-id="' + f.id + '" title="Delete">×</button>' +
+    '</li>';
+}
+
+/* ═══════════════════════════════════════════
+   TREE EVENTS (delegated)
+═══════════════════════════════════════════ */
+document.getElementById('fileTree').addEventListener('click', function(e) {
+  // delete button
+  var delBtn = e.target.closest('.tree-item-delete');
+  if (delBtn) { e.stopPropagation(); softDeleteFile(delBtn.dataset.id); return; }
+  // folder click → toggle
+  var folderItem = e.target.closest('.tree-item.folder');
+  if (folderItem && !e.target.closest('.tree-children')) {
+    var fn = folderItem.dataset.folder;
+    var el = document.getElementById('folder-' + fn);
+    if (el) el.classList.toggle('show');
+    return;
+  }
+  // file click
+  var item = e.target.closest('.tree-item[data-id]');
+  if (item) {
+    e.stopPropagation();
+    if (selectMode) toggleSelect(item.dataset.id);
+    else { openFile(item.dataset.id); closeSidebarMobile(); }
+  }
 });
 
+// Context menu (right-click + long-press)
+(function() {
+  var pressTimer = null;
+  document.getElementById('fileTree').addEventListener('contextmenu', function(e) {
+    var file   = e.target.closest('.tree-item[data-id]');
+    var folder = e.target.closest('.tree-item.folder[data-folder]');
+    if (file)   { e.preventDefault(); showCtxForFile(file.dataset.id, e.clientX, e.clientY); }
+    else if (folder) { e.preventDefault(); showCtxForFolder(folder.dataset.folder, e.clientX, e.clientY); }
+  });
+  document.getElementById('fileTree').addEventListener('touchstart', function(e) {
+    var file   = e.target.closest('.tree-item[data-id]');
+    var folder = e.target.closest('.tree-item.folder[data-folder]');
+    if (!file && !folder) return;
+    var touch = e.touches[0];
+    pressTimer = setTimeout(function() {
+      if (file)   showCtxForFile(file.dataset.id, touch.clientX, touch.clientY);
+      else if (folder) showCtxForFolder(folder.dataset.folder, touch.clientX, touch.clientY);
+    }, 550);
+  }, { passive: true });
+  ['touchend','touchcancel','touchmove'].forEach(function(ev) {
+    document.getElementById('fileTree').addEventListener(ev, function(){ clearTimeout(pressTimer); }, { passive: true });
+  });
+})();
+
+/* ═══════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════ */
+function showCtxForFile(id, x, y) {
+  ctxTarget = { type: 'file', id: id };
+  document.getElementById('ctxMove').style.display  = 'flex';
+  document.getElementById('ctxColor').style.display = 'flex';
+  positionCtx(x, y);
+}
+function showCtxForFolder(folderName, x, y) {
+  ctxTarget = { type: 'folder', name: folderName };
+  document.getElementById('ctxMove').style.display  = 'flex';
+  document.getElementById('ctxColor').style.display = 'none';
+  positionCtx(x, y);
+}
+function positionCtx(x, y) {
+  var menu = document.getElementById('ctxMenu');
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  menu.classList.add('open');
+  var rect = menu.getBoundingClientRect();
+  if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width)  + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
+}
+function closeCtx() { document.getElementById('ctxMenu').classList.remove('open'); }
+document.addEventListener('click', function(e) { if (!e.target.closest('#ctxMenu')) closeCtx(); });
+
+document.getElementById('ctxRename').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget) return;
+  if (ctxTarget.type === 'folder') {
+    showPrompt('📁', 'Rename Folder', null, ctxTarget.name, 'Rename', function(newName) {
+      if (!newName || newName === ctxTarget.name) return;
+      if (getFolderNames().includes(newName)) { showInfoToast('Folder name already taken'); return; }
+      var oldName = ctxTarget.name;
+      // Update folder marker
+      var marker = files.find(function(f){ return f.isFolder && f.name === oldName + '/.folder'; });
+      if (marker) marker.name = newName + '/.folder';
+      // Update all children — support nested paths
+      files.forEach(function(f) {
+        if (!f.isFolder && f.name.split('/')[0] === oldName) {
+          f.name = newName + f.name.slice(oldName.length);
+          if (currentFile && currentFile.id === f.id) {
+            currentFile = f;
+            document.getElementById('currentFileName').textContent = f.name;
+            document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+          }
+        }
+      });
+      saveToStorage(); renderTree();
+    });
+  } else {
+    var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+    showPrompt('✏️', 'Rename File', null, f.name.split('/').pop(), 'Rename', function(newName) {
+      if (!newName) return;
+      var dir     = f.name.includes('/') ? f.name.split('/').slice(0,-1).join('/') + '/' : '';
+      var fullNew = dir + newName;
+      if (files.find(function(x){ return x.name === fullNew && x.id !== f.id; })) {
+        showInfoToast('File name already taken'); return;
+      }
+      f.name = fullNew;
+      if (currentFile && currentFile.id === f.id) {
+        currentFile = f;
+        document.getElementById('currentFileName').textContent = f.name;
+        document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+      }
+      saveToStorage(); renderTree();
+    });
+  }
+});
+
+document.getElementById('ctxMove').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget) return;
+  if (ctxTarget.type === 'folder') {
+    openMoveFolderModal(ctxTarget.name);
+  } else {
+    var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+    openMoveModal(f);
+  }
+});
+
+document.getElementById('ctxColor').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget || ctxTarget.type !== 'file') return;
+  var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+  openColorModal(f);
+});
+
+document.getElementById('ctxDelete').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget) return;
+  if (ctxTarget.type === 'folder') {
+    var fn = ctxTarget.name;
+    var childCount = files.filter(function(f){ return !f.isFolder && f.name.split('/')[0] === fn; }).length;
+    showConfirm('🗑️', 'Delete "' + fn + '"?',
+      'Deletes folder' + (childCount ? ' and its ' + childCount + ' file'+(childCount!==1?'s':'') : '') + '. Cannot be undone.',
+      'Delete', function() {
+        files = files.filter(function(f) {
+          if (f.isFolder && f.name === fn + '/.folder') return false;
+          if (!f.isFolder && f.name.split('/')[0] === fn) {
+            if (currentFile && currentFile.id === f.id) clearEditor();
+            return false;
+          }
+          return true;
+        });
+        saveToStorage(); renderTree();
+      });
+  } else {
+    softDeleteFile(ctxTarget.id);
+  }
+});
+
+/* ═══════════════════════════════════════════
+   OPEN / NEW / DELETE
+═══════════════════════════════════════════ */
+function openFile(id) {
+  var f = files.find(function(x){ return x.id == id; });
+  if (!f || f.isFolder) return;
+  currentFile = f;
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('editorToolbar').style.display = 'flex';
+  var body = document.getElementById('editorBody');
+  body.className = 'editor-body view-' + viewMode + ' visible';
+  document.getElementById('editorStats').style.display   = 'flex';
+  document.getElementById('currentFileName').textContent = f.name;
+  document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+  document.getElementById('mdEditor').value = f.content || '';
+  rtlMode = !!f.rtl;
+  document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
+  document.getElementById('mdEditor').setAttribute('dir', rtlMode?'rtl':'ltr');
+  document.getElementById('mdEditor').style.textAlign = rtlMode?'right':'left';
+  updateColorSwatch(f.color || null);
+  renderPreview();
+  updateStats();
+  renderTree();
+}
+
+function newFile(nameHint) {
+  var name = nameHint || 'Untitled.md';
+  var base = name.replace(/\.[^.]*$/, ''), ext = name.match(/\.[^.]*$/)?.[0] || '.md', i = 1;
+  while (files.find(function(f){ return f.name === name; })) {
+    name = base + ' (' + (i++) + ')' + ext;
+  }
+  var f = { id: genId(), name: name, content: '', color: null, rtl: false, createdAt: Date.now(), updatedAt: Date.now() };
+  files.push(f);
+  saveToStorage();
+  openFile(f.id);
+  renderTree();
+}
+
+function softDeleteFile(id) {
+  var f = files.find(function(x){ return x.id == id; }); if (!f) return;
+  undoSnapshot = JSON.parse(JSON.stringify(files));
+  var label = '"' + f.name.split('/').pop() + '"';
+  files = files.filter(function(x){ return x.id != id; });
+  selectedIds.delete(id);
+  if (currentFile && currentFile.id == id) clearEditor();
+  saveToStorage(); renderTree();
+  showToast(label + ' deleted');
+}
+
+function clearEditor() {
+  currentFile = null;
+  document.getElementById('emptyState').style.display    = 'flex';
+  document.getElementById('editorToolbar').style.display = 'none';
+  document.getElementById('editorBody').classList.remove('visible');
+  document.getElementById('editorStats').style.display   = 'none';
+  document.getElementById('mobileFileLabel').textContent = 'No file selected';
+}
+
+/* ═══════════════════════════════════════════
+   AUTO-SAVE
+═══════════════════════════════════════════ */
+function scheduleSave() {
+  var ind = document.getElementById('saveIndicator');
+  ind.textContent = 'saving…'; ind.classList.remove('saved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(function() {
+    if (!currentFile) return;
+    var f = files.find(function(x){ return x.id === currentFile.id; }); if (!f) return;
+    f.content   = document.getElementById('mdEditor').value;
+    f.updatedAt = Date.now();
+    saveToStorage();
+    ind.textContent = 'saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent = ''; }, 1500);
+    renderTree();
+  }, 400);
+}
+
+/* ═══════════════════════════════════════════
+   PREVIEW
+═══════════════════════════════════════════ */
+function renderPreview() {
+  var md      = document.getElementById('mdEditor').value;
+  var preview = document.getElementById('mdPreview');
+  if (!md.trim()) {
+    preview.innerHTML = '<em style="opacity:.4;font-size:.9rem">Start typing to see preview…</em>';
+    return;
+  }
+  try {
+    marked.setOptions({ highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try { return hljs.highlight(code, { language: lang }).value; } catch(e) {}
+      }
+      try { return hljs.highlightAuto(code).value; } catch(e) {}
+      return code;
+    }});
+    preview.innerHTML = marked.parse(md);
+    preview.querySelectorAll('pre code').forEach(function(b){ hljs.highlightElement(b); });
+    preview.style.direction = rtlMode ? 'rtl' : 'ltr';
+    preview.style.textAlign = rtlMode ? 'right' : 'left';
+  } catch(e) {
+    preview.innerHTML = '<span style="color:var(--accent3)">Render error: ' + esc(e.message) + '</span>';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+function updateStats() {
+  var t = document.getElementById('mdEditor').value;
+  document.getElementById('statWords').textContent = t.trim()===''?0:t.trim().split(/\s+/).length;
+  document.getElementById('statChars').textContent = t.length;
+  document.getElementById('statLines').textContent = t===''?0:t.split('\n').length;
+}
+
+/* ═══════════════════════════════════════════
+   VIEW MODE
+═══════════════════════════════════════════ */
+function setView(mode) {
+  viewMode = mode;
+  var body = document.getElementById('editorBody');
+  body.className = 'editor-body view-' + mode + (currentFile ? ' visible' : '');
+  var btn = document.getElementById('viewToggleBtn');
+  btn.textContent = mode==='split'?'Editor Only':mode==='editor'?'Preview Only':'Split View';
+  btn.classList.toggle('active', mode !== 'split');
+  if (mode !== 'editor') renderPreview();
+}
+
+/* ═══════════════════════════════════════════
+   COLOR LABELS
+═══════════════════════════════════════════ */
+function buildColorPalettes() {
+  ['colorPalette','colorModalPalette'].forEach(function(palId) {
+    var pal = document.getElementById(palId);
+    COLOR_OPTS.forEach(function(opt) {
+      var dot = document.createElement('div');
+      dot.className = 'color-dot-opt' + (opt.c?'':' none');
+      if (opt.c) dot.style.background = opt.c;
+      dot.title = opt.l; dot.dataset.color = opt.c||'';
+      dot.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // For inline palette act on currentFile; for modal palette override in openColorModal
+        if (palId === 'colorPalette' && currentFile) {
+          setFileColor(currentFile.id, opt.c||null);
+          document.getElementById('colorPalette').classList.remove('open');
+        }
+      });
+      pal.appendChild(dot);
+    });
+  });
+}
+function setFileColor(id, color) {
+  var f = files.find(function(x){ return x.id == id; }); if (!f) return;
+  f.color = color||null;
+  if (currentFile && currentFile.id == id) updateColorSwatch(f.color);
+  saveToStorage(); renderTree();
+}
+function updateColorSwatch(color) {
+  var btn = document.getElementById('colorSwatchBtn');
+  btn.style.background  = color||'var(--bg3)';
+  btn.style.borderColor = color||'var(--border2)';
+  document.querySelectorAll('#colorPalette .color-dot-opt').forEach(function(d) {
+    d.classList.toggle('active', (d.dataset.color||null) === (color||null));
+  });
+}
+document.getElementById('colorSwatchBtn').addEventListener('click', function(e) {
+  e.stopPropagation(); if (!currentFile) return;
+  document.getElementById('colorPalette').classList.toggle('open');
+});
+document.addEventListener('click', function() {
+  document.getElementById('colorPalette').classList.remove('open');
+});
+
+function openColorModal(f) {
+  document.getElementById('colorModal').classList.add('open');
+  document.querySelectorAll('#colorModalPalette .color-dot-opt').forEach(function(d) {
+    d.classList.toggle('active', (d.dataset.color||null) === (f.color||null));
+    d.onclick = function(e) {
+      e.stopPropagation();
+      setFileColor(f.id, d.dataset.color||null);
+      document.querySelectorAll('#colorModalPalette .color-dot-opt').forEach(function(x){ x.classList.remove('active'); });
+      d.classList.add('active');
+    };
+  });
+}
+document.getElementById('colorModalClose').addEventListener('click', function() {
+  document.getElementById('colorModal').classList.remove('open');
+});
+document.getElementById('colorModal').addEventListener('click', function(e) {
+  if (e.target===this) this.classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   MOVE MODAL
+═══════════════════════════════════════════ */
+function openMoveModal(f) {
+  moveTarget = { type: 'file', file: f };
+  moveDest = f.name.includes('/') ? f.name.split('/').slice(0,-1).join('/') : null;
+
+  document.querySelector('#moveModal .modal-title').textContent = 'Move File';
+  document.querySelector('#moveModal .modal-body').textContent  = 'Choose a destination for this file.';
+
+  var folderNames = getFolderNames();
+  var listEl = document.getElementById('folderList');
+  listEl.innerHTML = '';
+
+  var rootBtn = document.createElement('button');
+  rootBtn.className = 'folder-option' + (moveDest===null?' selected':'');
+  rootBtn.innerHTML = '🗂 Root (no folder)';
+  rootBtn.addEventListener('click', function() {
+    moveDest = null;
+    listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+    rootBtn.classList.add('selected');
+  });
+  listEl.appendChild(rootBtn);
+
+  folderNames.forEach(function(folder) {
+    var btn = document.createElement('button');
+    btn.className = 'folder-option' + (moveDest===folder?' selected':'');
+    btn.innerHTML = '📁 ' + esc(folder);
+    btn.addEventListener('click', function() {
+      moveDest = folder;
+      listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+    listEl.appendChild(btn);
+  });
+
+  document.getElementById('moveModal').classList.add('open');
+}
+
+function openMoveFolderModal(folderName) {
+  moveTarget = { type: 'folder', name: folderName };
+  // Determine current parent (if folder is nested like "Parent/FolderA", parent is "Parent")
+  var folderBaseName = folderName.split('/').pop();
+  var currentParent = folderName.includes('/') ? folderName.split('/').slice(0,-1).join('/') : null;
+  moveDest = currentParent;
+
+  document.querySelector('#moveModal .modal-title').textContent = 'Move Folder';
+  document.querySelector('#moveModal .modal-body').textContent  = 'Choose a destination for "' + folderBaseName + '" and its contents.';
+
+  // Exclude the folder itself and any of its descendants from valid destinations
+  var folderPrefix = folderName + '/';
+  var folderNames = getFolderNames().filter(function(n){
+    return n !== folderName && n.indexOf(folderPrefix) !== 0;
+  });
+  var listEl = document.getElementById('folderList');
+  listEl.innerHTML = '';
+
+  var rootBtn = document.createElement('button');
+  rootBtn.className = 'folder-option' + (moveDest===null?' selected':'');
+  rootBtn.innerHTML = '🗂 Root (no parent)';
+  rootBtn.addEventListener('click', function() {
+    moveDest = null;
+    listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+    rootBtn.classList.add('selected');
+  });
+  listEl.appendChild(rootBtn);
+
+  folderNames.forEach(function(folder) {
+    var btn = document.createElement('button');
+    btn.className = 'folder-option' + (moveDest===folder?' selected':'');
+    btn.innerHTML = '📁 ' + esc(folder);
+    btn.addEventListener('click', function() {
+      moveDest = folder;
+      listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+    listEl.appendChild(btn);
+  });
+
+  document.getElementById('moveModal').classList.add('open');
+}
+
+document.getElementById('moveConfirmBtn').addEventListener('click', function() {
+  if (!moveTarget) return;
+
+  if (moveTarget.type === 'folder') {
+    var oldName = moveTarget.name;
+    // oldName is the folder's current full name (e.g. "FolderA" or "Parent/FolderA")
+    // The display name is always the last segment
+    var folderBaseName = oldName.split('/').pop();
+    // new full folder path
+    var newName = moveDest ? moveDest + '/' + folderBaseName : folderBaseName;
+    if (newName === oldName) { document.getElementById('moveModal').classList.remove('open'); return; }
+    // Check collision
+    if (getFolderNames().includes(newName)) { showInfoToast('A folder with that name already exists there'); return; }
+    // Update folder marker
+    var marker = files.find(function(f){ return f.isFolder && f.name === oldName + '/.folder'; });
+    if (marker) marker.name = newName + '/.folder';
+    // Update all children — match on full prefix "oldName/"
+    var oldPrefix = oldName + '/';
+    var newPrefix = newName + '/';
+    files.forEach(function(f) {
+      if (!f.isFolder && f.name.indexOf(oldPrefix) === 0) {
+        f.name = newPrefix + f.name.slice(oldPrefix.length);
+        if (currentFile && currentFile.id === f.id) {
+          currentFile = f;
+          document.getElementById('currentFileName').textContent = f.name;
+          document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+        }
+      }
+    });
+    saveToStorage();
+    document.getElementById('moveModal').classList.remove('open');
+    renderTree();
+    return;
+  }
+
+  // File move
+  var f = files.find(function(x){ return x.id===moveTarget.file.id; }); if (!f) return;
+  var baseName = f.name.split('/').pop();
+  var newFileName = moveDest ? moveDest + '/' + baseName : baseName;
+  if (files.find(function(x){ return x.name===newFileName && x.id!==f.id; })) {
+    showInfoToast('File already exists there'); return;
+  }
+  f.name = newFileName;
+  if (currentFile && currentFile.id===f.id) {
+    currentFile = f;
+    document.getElementById('currentFileName').textContent = f.name;
+    document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+  }
+  saveToStorage();
+  document.getElementById('moveModal').classList.remove('open');
+  renderTree();
+});
+document.getElementById('moveCancelBtn').addEventListener('click', function() {
+  document.getElementById('moveModal').classList.remove('open');
+});
+document.getElementById('moveModal').addEventListener('click', function(e) {
+  if (e.target===this) this.classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   FOLDERS
+═══════════════════════════════════════════ */
+function createFolder(name) {
+  if (!name) return;
+  if (files.find(function(f){ return f.isFolder && f.name===name+'/.folder'; })) {
+    showInfoToast('Folder already exists'); return;
+  }
+  files.push({ id:genId(), name:name+'/.folder', content:'', isFolder:true, createdAt:Date.now(), updatedAt:Date.now() });
+  saveToStorage(); renderTree();
+}
+document.getElementById('newFolderBtn').addEventListener('click', function() {
+  showPrompt('📁','New Folder',null,'','Create',function(name){ if(name) createFolder(name); });
+});
+document.getElementById('toggleTreeBtn').addEventListener('click', function() {
+  var isExp = this.classList.contains('active');
+  document.querySelectorAll('.tree-children').forEach(function(el){
+    el.classList.toggle('show', !isExp);
+  });
+  this.classList.toggle('active', !isExp);
+});
+
+/* ═══════════════════════════════════════════
+   SELECTION
+═══════════════════════════════════════════ */
+function toggleSelectMode() {
+  selectMode = !selectMode; selectedIds.clear();
+  var btn = document.getElementById('selectModeBtn');
+  btn.classList.toggle('active', selectMode);
+  btn.textContent = selectMode ? 'Done' : 'Select';
+  document.getElementById('selectionBar').classList.toggle('visible', selectMode);
+  renderTree();
+}
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderTree();
+}
+function updateSelectionBar() {
+  var count = selectedIds.size;
+  var vis   = filteredFiles();
+  var allSel = vis.length>0 && vis.every(function(f){ return selectedIds.has(f.id); });
+  document.getElementById('selCount').textContent = count===0?'None selected':count+' selected';
+  document.getElementById('selAllBtn').textContent = allSel?'None':'All';
+  var dl = document.getElementById('selDeleteBtn');
+  dl.style.opacity = count===0?'0.4':'1'; dl.disabled = count===0;
+}
+document.getElementById('selAllBtn').addEventListener('click', function() {
+  var vis = filteredFiles(), allSel = vis.length>0 && vis.every(function(f){ return selectedIds.has(f.id); });
+  if (allSel) vis.forEach(function(f){ selectedIds.delete(f.id); });
+  else vis.forEach(function(f){ selectedIds.add(f.id); });
+  renderTree();
+});
+document.getElementById('selDeleteBtn').addEventListener('click', function() {
+  if (selectedIds.size===0) return;
+  var ids=Array.from(selectedIds), c=ids.length;
+  showConfirm('🗑️','Delete '+c+' file'+(c!==1?'s':'')+'?',
+    'Permanently removes '+(c===1?'this file':'these '+c+' files')+'. Cannot be undone.',
+    'Delete',function() {
+      files = files.filter(function(f){ return ids.indexOf(f.id)===-1; });
+      ids.forEach(function(id){ selectedIds.delete(id); });
+      if (currentFile && ids.indexOf(currentFile.id)!==-1) clearEditor();
+      saveToStorage(); renderTree();
+    });
+});
+document.getElementById('selectModeBtn').addEventListener('click', toggleSelectMode);
+
+/* ═══════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════ */
+document.getElementById('exportBtn').addEventListener('click', function() {
+  var blob = new Blob([JSON.stringify(files,null,2)],{type:'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='mdnotes-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', function() {
+  document.getElementById('importFile').value=''; document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', function(e) {
+  var file=e.target.files[0]; if (!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev) {
+    try {
+      var imp=JSON.parse(ev.target.result);
+      if (!Array.isArray(imp)) throw new Error();
+      var c=imp.length;
+      showConfirm('📥','Import '+c+' item'+(c!==1?'s':'')+'?',
+        'Merges with your '+files.length+' existing item'+(files.length!==1?'s.':'.'),'Import',function() {
+          imp.forEach(function(f) {
+            if (!f.id||files.find(function(x){ return x.id===f.id; })) f.id=genId();
+            f.createdAt=f.createdAt||Date.now(); f.updatedAt=f.updatedAt||Date.now();
+            files.push(f);
+          });
+          saveToStorage(); renderTree();
+        });
+    } catch(err) { showInfoToast('Could not parse file'); }
+  };
+  reader.readAsText(file);
+});
+
+/* Load .md files via button */
+document.getElementById('loadMdBtn').addEventListener('click', function() {
+  document.getElementById('loadMdFile').value = '';
+  document.getElementById('loadMdFile').click();
+});
+document.getElementById('loadMdFile').addEventListener('change', function(e) {
+  var picked = Array.from(e.target.files);
+  if (!picked.length) return;
+  picked.forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var name = file.name, i = 1;
+      while (files.find(function(f){ return f.name === name; })) {
+        name = file.name.replace(/\.[^.]+$/, '') + ' (' + (i++) + ')' + (file.name.match(/\.[^.]+$/) ? file.name.match(/\.[^.]+$/)[0] : '.md');
+      }
+      var f = { id: genId(), name: name, content: ev.target.result, color: null, rtl: false, createdAt: Date.now(), updatedAt: Date.now() };
+      files.push(f);
+      saveToStorage(); renderTree();
+      openFile(f.id);
+      showInfoToast('"' + name + '" loaded');
+    };
+    reader.readAsText(file);
+  });
+});
+
+/* ═══════════════════════════════════════════
+   COPY CONTENT
+═══════════════════════════════════════════ */
+function copyToClipboard(text, btn, lbl) {
+  function flash() {
+    if (!btn) return;
+    var orig=lbl||btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('flash');
+    setTimeout(function(){ btn.textContent=orig; btn.classList.remove('flash'); },1500);
+  }
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash).catch(function(){ fbCopy(text); flash(); });
+  else { fbCopy(text); flash(); }
+}
+function fbCopy(t) {
+  var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0;';
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+}
+document.getElementById('copyContentBtn').addEventListener('click', function() {
+  if (!currentFile) return;
+  copyToClipboard(document.getElementById('mdEditor').value, this, 'Copy MD');
+});
+
+/* ═══════════════════════════════════════════
+   TOOLBAR WIRING
+═══════════════════════════════════════════ */
+document.getElementById('viewToggleBtn').addEventListener('click', function() {
+  if (viewMode==='split') setView('editor');
+  else if (viewMode==='editor') setView('preview');
+  else setView('split');
+});
+document.getElementById('rtlBtn').addEventListener('click', function() {
+  if (!currentFile) return;
+  rtlMode = !rtlMode; this.classList.toggle('active', rtlMode);
+  var ta = document.getElementById('mdEditor');
+  ta.setAttribute('dir', rtlMode?'rtl':'ltr'); ta.style.textAlign=rtlMode?'right':'left';
+  var f = files.find(function(x){ return x.id===currentFile.id; });
+  if (f) { f.rtl=rtlMode; saveToStorage(); }
+  renderPreview();
+});
+document.getElementById('deleteFileBtn').addEventListener('click', function() {
+  if (!currentFile) return; softDeleteFile(currentFile.id);
+});
+document.getElementById('newFileBtn').addEventListener('click', function() {
+  showPrompt('📄','New File',null,'Untitled.md','Create',function(name){ if(name){ newFile(name); closeSidebarMobile(); } });
+});
+document.getElementById('mdEditor').addEventListener('input', function() {
+  scheduleSave(); renderPreview(); updateStats();
+});
+
+/* ═══════════════════════════════════════════
+   SEARCH + SORT
+═══════════════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', function() {
+  searchQuery=this.value.trim(); renderTree();
+});
+document.querySelectorAll('.sort-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sort-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active'); sortMode=btn.dataset.sort; renderTree();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════ */
+function openSidebarMobile() {
+  document.getElementById('mdSidebar').classList.add('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.add('visible');
+}
+function closeSidebarMobile() {
+  document.getElementById('mdSidebar').classList.remove('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.remove('visible');
+}
+document.getElementById('mobileSidebarToggle').addEventListener('click', openSidebarMobile);
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebarMobile);
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', function(e) {
+  var mod = e.ctrlKey||e.metaKey;
+  if (mod && e.key==='n') { e.preventDefault(); document.getElementById('newFileBtn').click(); }
+  if (mod && e.key==='s') {
+    e.preventDefault(); if (!currentFile) return;
+    clearTimeout(saveTimeout);
+    var f=files.find(function(x){ return x.id===currentFile.id; }); if (!f) return;
+    f.content=document.getElementById('mdEditor').value; f.updatedAt=Date.now(); saveToStorage();
+    var ind=document.getElementById('saveIndicator');
+    ind.textContent='saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent=''; },1500);
+    renderTree();
+  }
+  if (mod && e.key==='p') { e.preventDefault(); if(currentFile) document.getElementById('viewToggleBtn').click(); }
+  if (e.key==='Escape') {
+    closeCtx();
+    document.getElementById('colorPalette').classList.remove('open');
+    ['confirmModal','promptModal','moveModal','colorModal'].forEach(function(id){ document.getElementById(id).classList.remove('open'); });
+    closeSidebarMobile();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+function showToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast=document.getElementById('undoToast'), bar=document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastUndoBtn').style.display='';
+  bar.style.transition='none'; bar.style.width='100%';
+  toast.classList.add('visible');
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    bar.style.transition='width '+UNDO_DURATION+'ms linear'; bar.style.width='0%';
+  }); });
+  undoTimerId=setTimeout(function(){ hideToast(); undoSnapshot=null; },UNDO_DURATION);
+}
+function hideToast() {
+  document.getElementById('undoToast').classList.remove('visible'); clearTimeout(undoTimerId);
+}
+function showInfoToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast=document.getElementById('undoToast'), bar=document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastUndoBtn').style.display='none';
+  bar.style.transition='none'; bar.style.width='0%';
+  toast.classList.add('visible');
+  undoTimerId=setTimeout(function(){ hideToast(); document.getElementById('toastUndoBtn').style.display=''; },2200);
+}
+document.getElementById('toastUndoBtn').addEventListener('click', function() {
+  if (!undoSnapshot) return;
+  files=undoSnapshot; undoSnapshot=null;
+  saveToStorage(); renderTree(); hideToast();
+  if (currentFile && files.find(function(f){ return f.id===currentFile.id; })) openFile(currentFile.id);
+  else clearEditor();
+});
+
+/* ═══════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════ */
+function showConfirm(icon, title, body, okLabel, cb) {
+  document.getElementById('confirmIcon').textContent  = icon||'⚠️';
+  document.getElementById('confirmTitle').textContent = title||'Confirm';
+  document.getElementById('confirmBody').textContent  = body||'';
+  var okBtn=document.getElementById('confirmOk');
+  okBtn.textContent=okLabel||'OK';
+  okBtn.className='modal-btn '+(okLabel==='Import'?'confirm':'danger');
+  confirmCb=cb||null;
+  document.getElementById('confirmCancel').style.display='';
+  document.getElementById('confirmModal').classList.add('open');
+}
+document.getElementById('confirmCancel').addEventListener('click', function() {
+  document.getElementById('confirmModal').classList.remove('open'); confirmCb=null;
+});
+document.getElementById('confirmOk').addEventListener('click', function() {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmCb) { confirmCb(); confirmCb=null; }
+});
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+  if (e.target===this) { this.classList.remove('open'); confirmCb=null; }
+});
+
+function showPrompt(icon, title, body, defaultVal, okLabel, cb) {
+  document.getElementById('promptIcon').textContent  = icon||'📄';
+  document.getElementById('promptTitle').textContent = title||'';
+  var bodyEl=document.getElementById('promptBody');
+  if (body) { bodyEl.textContent=body; bodyEl.style.display='block'; } else bodyEl.style.display='none';
+  var inp=document.getElementById('promptInput');
+  inp.value=defaultVal||''; inp.placeholder=defaultVal||'';
+  document.getElementById('promptOk').textContent=okLabel||'OK';
+  promptCb=cb||null;
+  document.getElementById('promptModal').classList.add('open');
+  setTimeout(function(){ inp.focus(); inp.select(); },50);
+}
+function submitPrompt() {
+  var val=document.getElementById('promptInput').value.trim();
+  document.getElementById('promptModal').classList.remove('open');
+  if (promptCb) { promptCb(val); promptCb=null; }
+}
+document.getElementById('promptOk').addEventListener('click', submitPrompt);
+document.getElementById('promptInput').addEventListener('keydown', function(e){ if(e.key==='Enter') submitPrompt(); });
+document.getElementById('promptCancel').addEventListener('click', function() {
+  document.getElementById('promptModal').classList.remove('open'); promptCb=null;
+});
+document.getElementById('promptModal').addEventListener('click', function(e) {
+  if (e.target===this) { this.classList.remove('open'); promptCb=null; }
+});
+
+/* ═══════════════════════════════════════════
+   DROP .md FILES ANYWHERE
+═══════════════════════════════════════════ */
+document.addEventListener('dragover', function(e){ e.preventDefault(); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  var dropped=Array.from(e.dataTransfer.files).filter(function(f){ return /\.(md|markdown|txt)$/i.test(f.name); });
+  if (!dropped.length) return;
+  dropped.forEach(function(file) {
+    var reader=new FileReader();
+    reader.onload=function(ev) {
+      var name=file.name, i=1;
+      while (files.find(function(f){ return f.name===name; })) {
+        name=file.name.replace(/\.[^.]+$/,'')+'('+(i++)+')'+(file.name.match(/\.[^.]+$/)?.[0]||'');
+      }
+      files.push({ id:genId(), name:name, content:ev.target.result, color:null, rtl:false, createdAt:Date.now(), updatedAt:Date.now() });
+      saveToStorage(); renderTree();
+      showInfoToast('"'+name+'" imported');
+    };
+    reader.readAsText(file);
+  });
+});
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+buildColorPalettes();
 loadFiles();
+updateStorageBar();
 setView('split');
 </script>
 </body>
