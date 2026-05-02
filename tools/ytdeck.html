@@ -350,6 +350,7 @@
     .stats-date-range {
       display: flex; align-items: center; gap: 8px;
       margin-bottom: 16px; flex-wrap: wrap;
+      overflow: visible;
     }
     .stats-date-label {
       font-size: 0.78rem; color: var(--text2);
@@ -372,6 +373,7 @@
       background: var(--yt-red); color: #fff;
       cursor: pointer; font-family: 'DM Sans', sans-serif;
       font-weight: 600; transition: opacity 0.2s;
+      flex-shrink: 0; display: inline-flex; align-items: center;
     }
     .stats-apply-btn:hover { opacity: 0.85; }
 
@@ -936,40 +938,49 @@ function getDefaultWeek() {
   return { start, end };
 }
 
-async function openStatsModal() {
-  const overlay = document.getElementById('modalOverlay');
-  const body = document.getElementById('modalBody');
+function openStatsModal() {
+  try {
+    const overlay = document.getElementById('modalOverlay');
+    const body = document.getElementById('modalBody');
 
-  const week = getDefaultWeek();
-  statsStartDate = week.start;
-  statsEndDate = week.end;
+    const week = getDefaultWeek();
+    statsStartDate = week.start;
+    statsEndDate = week.end;
 
-  const startDateStr = statsStartDate.toISOString().split('T')[0];
-  const endDateStr = statsEndDate.toISOString().split('T')[0];
+    const startDateStr = statsStartDate.toISOString().split('T')[0];
+    const endDateStr = statsEndDate.toISOString().split('T')[0];
 
-  body.innerHTML = `
-    <div class="stats-header">Videos sous 5K vues</div>
-    <div class="stats-date-range">
-      <span class="stats-date-label">Du</span>
-      <input type="date" class="stats-date-input" id="statsStart" value="${startDateStr}">
-      <span class="stats-date-label">au</span>
-      <input type="date" class="stats-date-input" id="statsEnd" value="${endDateStr}">
-      <button class="stats-apply-btn" id="statsApplyBtn">Apply</button>
-    </div>
-    <div id="statsResults">
-      <div style="text-align:center;padding:20px;color:var(--text3);font-size:0.85rem;">Choose a date range and click Apply</div>
-    </div>
-  `;
-  
-  document.getElementById('statsApplyBtn').addEventListener('click', () => {
-    statsStartDate = new Date(document.getElementById('statsStart').value);
-    statsEndDate = new Date(document.getElementById('statsEnd').value);
-    statsEndDate.setHours(23, 59, 59, 999);
-    saveStatsDates();
-    loadStatsResults();
-  });
+    body.innerHTML = `
+      <div class="stats-header">Videos sous 5K vues</div>
+      <div class="stats-date-range">
+        <span class="stats-date-label">Du</span>
+        <input type="date" class="stats-date-input" id="statsStart" value="${startDateStr}">
+        <span class="stats-date-label">au</span>
+        <input type="date" class="stats-date-input" id="statsEnd" value="${endDateStr}">
+        <button class="stats-apply-btn" id="statsApplyBtn">Apply</button>
+      </div>
+      <div id="statsResults">
+        <div style="text-align:center;padding:20px;color:var(--text3);font-size:0.85rem;">Choose a date range and click Apply</div>
+      </div>
+    `;
 
-  overlay.classList.remove('hidden');
+    var applyBtn = document.getElementById('statsApplyBtn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function() {
+        try {
+          statsStartDate = new Date(document.getElementById('statsStart').value);
+          statsEndDate = new Date(document.getElementById('statsEnd').value);
+          statsEndDate.setHours(23, 59, 59, 999);
+          saveStatsDates();
+          loadStatsResults();
+        } catch(e) { console.error('Apply error:', e); }
+      });
+    }
+
+    overlay.classList.remove('hidden');
+  } catch(e) {
+    console.error('openStatsModal error:', e);
+  }
 }
 
 async function loadStatsResults() {
