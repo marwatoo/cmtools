@@ -1002,7 +1002,7 @@ function openStatsModal() {
   // Header
   const header = document.createElement('div');
   header.className = 'stats-header';
-  header.textContent = 'Videos sous 5K vues';
+  header.textContent = 'Videos under 5K views';
   body.appendChild(header);
 
   // Date range row
@@ -1011,7 +1011,7 @@ function openStatsModal() {
 
   const labelDu = document.createElement('span');
   labelDu.className = 'stats-date-label';
-  labelDu.textContent = 'Du';
+  labelDu.textContent = 'From';
   dateRange.appendChild(labelDu);
 
   const inputStart = document.createElement('input');
@@ -1022,7 +1022,7 @@ function openStatsModal() {
 
   const labelAu = document.createElement('span');
   labelAu.className = 'stats-date-label';
-  labelAu.textContent = 'au';
+  labelAu.textContent = 'to';
   dateRange.appendChild(labelAu);
 
   const inputEnd = document.createElement('input');
@@ -1117,13 +1117,13 @@ async function loadStatsResults() {
 
   const subtitle = document.createElement('div');
   subtitle.className = 'stats-subtitle';
-  subtitle.textContent = `Semaine du ${startStr} au ${endStr}`;
+  subtitle.textContent = `From ${startStr} to ${endStr}`;
   resultsDiv.appendChild(subtitle);
 
   if (channelResults.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'text-align:center;padding:40px;color:var(--text3);';
-    empty.textContent = 'Aucune video sous 5K vues pour cette periode';
+    empty.textContent = 'No videos under 5K views for this period';
     resultsDiv.appendChild(empty);
   } else {
     for (const cr of channelResults) {
