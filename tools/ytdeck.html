@@ -10,11 +10,50 @@
   <link rel="preconnect" href="https://www.youtube.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
     
     
+
+    :root {
+      --bg:        #0a0a0f;
+      --bg2:       #111118;
+      --bg3:       #1a1a24;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --text:      #e8e8f0;
+      --text2:     #8888a8;
+      --text3:     #555570;
+      --accent:    #e8ff47;
+      --accent2:   #7c6bff;
+      --accent3:   #ff6b6b;
+      --card-bg:   #13131c;
+      --card-hover:#1e1e2e;
+      --btn-bg:    #e8ff47;
+      --btn-text:  #0a0a0f;
+      --radius:    16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --yt-red:    #ff0000;
+    }
+    [data-theme="light"] {
+      --bg:        #f4f4f0;
+      --bg2:       #ffffff;
+      --bg3:       #ebebeb;
+      --border:    rgba(0,0,0,0.07);
+      --border2:   rgba(0,0,0,0.13);
+      --text:      #111118;
+      --text2:     #555570;
+      --text3:     #aaaacc;
+      --accent:    #3a2fff;
+      --accent2:   #7c6bff;
+      --accent3:   #ff4444;
+      --card-bg:   #ffffff;
+      --card-hover:#f0f0ff;
+      --btn-bg:    #111118;
+      --btn-text:  #ffffff;
+      --yt-red:    #cc0000;
+    }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
@@ -349,7 +388,7 @@
     }
     .stats-date-range {
       display: flex; align-items: center; gap: 8px;
-      margin-bottom: 16px; flex-wrap: wrap;
+      margin-bottom: 8px; flex-wrap: wrap;
       overflow: visible;
     }
     .stats-date-label {
@@ -589,15 +628,17 @@
   function applyTheme(t){
     document.documentElement.setAttribute('data-theme', t);
     localStorage.setItem(KEY, t);
+    updateIcon();
+  }
+  function updateIcon(){
     const icon = document.querySelector('.theme-icon');
-    if (icon) icon.textContent = t === 'dark' ? '○' : '☽';
+    if (icon) icon.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '○' : '☽';
   }
   applyTheme(getTheme());
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('themeToggle');
-    if (btn) btn.addEventListener('click', () => {
-      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-    });
+  // Script is at bottom of body — DOM is ready, bind directly
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.addEventListener('click', () => {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 })();
 
@@ -625,8 +666,17 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 function getCache() {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-  } catch { return {}; }
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    // Validate it's a plain object, not corrupted
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('bad cache');
+    return parsed;
+  } catch {
+    // Corrupted cache — wipe it so it never blocks script execution again
+    try { localStorage.removeItem(CACHE_KEY); } catch {}
+    return {};
+  }
 }
 
 function getCachedFeed(colKey) {
@@ -896,13 +946,13 @@ function openModal(video) {
 
 document.getElementById('modalClose').addEventListener('click', () =>
   document.getElementById('modalOverlay').classList.add('hidden'));
-document.getElementById('modalOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalOverlay'))
-    document.getElementById('modalOverlay').classList.add('hidden');
-});
+document.getElementById('modalBox').addEventListener('click', e => e.stopPropagation());
+document.getElementById('modalOverlay').addEventListener('click', () =>
+  document.getElementById('modalOverlay').classList.add('hidden'));
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
 });
+document.getElementById('statsBtn').addEventListener('click', openStatsModal);
 
 let statsStartDate = null;
 let statsEndDate = null;
@@ -939,48 +989,93 @@ function getDefaultWeek() {
 }
 
 function openStatsModal() {
-  try {
-    const overlay = document.getElementById('modalOverlay');
-    const body = document.getElementById('modalBody');
+  const overlay = document.getElementById('modalOverlay');
+  const body = document.getElementById('modalBody');
 
-    const week = getDefaultWeek();
-    statsStartDate = week.start;
-    statsEndDate = week.end;
+  // Clear previous content
+  body.innerHTML = '';
 
-    const startDateStr = statsStartDate.toISOString().split('T')[0];
-    const endDateStr = statsEndDate.toISOString().split('T')[0];
+  const week = getDefaultWeek();
+  statsStartDate = week.start;
+  statsEndDate = week.end;
 
-    body.innerHTML = `
-      <div class="stats-header">Videos sous 5K vues</div>
-      <div class="stats-date-range">
-        <span class="stats-date-label">Du</span>
-        <input type="date" class="stats-date-input" id="statsStart" value="${startDateStr}">
-        <span class="stats-date-label">au</span>
-        <input type="date" class="stats-date-input" id="statsEnd" value="${endDateStr}">
-        <button class="stats-apply-btn" id="statsApplyBtn">Apply</button>
-      </div>
-      <div id="statsResults">
-        <div style="text-align:center;padding:20px;color:var(--text3);font-size:0.85rem;">Choose a date range and click Apply</div>
-      </div>
-    `;
+  // Header
+  const header = document.createElement('div');
+  header.className = 'stats-header';
+  header.textContent = 'Videos sous 5K vues';
+  body.appendChild(header);
 
-    var applyBtn = document.getElementById('statsApplyBtn');
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function() {
-        try {
-          statsStartDate = new Date(document.getElementById('statsStart').value);
-          statsEndDate = new Date(document.getElementById('statsEnd').value);
-          statsEndDate.setHours(23, 59, 59, 999);
-          saveStatsDates();
-          loadStatsResults();
-        } catch(e) { console.error('Apply error:', e); }
-      });
-    }
+  // Date range row
+  const dateRange = document.createElement('div');
+  dateRange.className = 'stats-date-range';
 
-    overlay.classList.remove('hidden');
-  } catch(e) {
-    console.error('openStatsModal error:', e);
-  }
+  const labelDu = document.createElement('span');
+  labelDu.className = 'stats-date-label';
+  labelDu.textContent = 'Du';
+  dateRange.appendChild(labelDu);
+
+  const inputStart = document.createElement('input');
+  inputStart.type = 'date';
+  inputStart.className = 'stats-date-input';
+  inputStart.value = statsStartDate.toISOString().split('T')[0];
+  dateRange.appendChild(inputStart);
+
+  const labelAu = document.createElement('span');
+  labelAu.className = 'stats-date-label';
+  labelAu.textContent = 'au';
+  dateRange.appendChild(labelAu);
+
+  const inputEnd = document.createElement('input');
+  inputEnd.type = 'date';
+  inputEnd.className = 'stats-date-input';
+  inputEnd.value = statsEndDate.toISOString().split('T')[0];
+  dateRange.appendChild(inputEnd);
+
+  body.appendChild(dateRange);
+
+  // Apply button — plain button, all styles inline, zero class dependency
+  const applyBtn = document.createElement('button');
+  applyBtn.type = 'button';
+  applyBtn.textContent = 'Apply';
+  applyBtn.setAttribute('style', [
+    'display:block',
+    'width:100%',
+    'margin:12px 0 16px 0',
+    'padding:12px',
+    'background:#ff0000',
+    'color:#ffffff',
+    'font-size:1rem',
+    'font-weight:700',
+    'font-family:sans-serif',
+    'border:none',
+    'border-radius:6px',
+    'cursor:pointer',
+    '-webkit-appearance:none',
+    'appearance:none',
+    'touch-action:manipulation',
+  ].join(';'));
+  applyBtn.addEventListener('click', function() {
+    const startVal = inputStart.value;
+    const endVal = inputEnd.value;
+    if (!startVal || !endVal) return;
+    statsStartDate = new Date(startVal);
+    statsEndDate = new Date(endVal);
+    statsEndDate.setHours(23, 59, 59, 999);
+    saveStatsDates();
+    loadStatsResults();
+  });
+  body.appendChild(applyBtn);
+
+  // Results container
+  const resultsDiv = document.createElement('div');
+  resultsDiv.id = 'statsResults';
+  const hint = document.createElement('div');
+  hint.style.cssText = 'text-align:center;padding:20px;color:var(--text3);font-size:0.85rem;';
+  hint.textContent = 'Choose a date range and click Apply';
+  resultsDiv.appendChild(hint);
+  body.appendChild(resultsDiv);
+
+  overlay.classList.remove('hidden');
 }
 
 async function loadStatsResults() {
@@ -1079,7 +1174,6 @@ async function loadStatsResults() {
   }
 }
 
-document.getElementById('statsBtn').addEventListener('click', openStatsModal);
 
 const container = document.getElementById('deckContainer');
 
