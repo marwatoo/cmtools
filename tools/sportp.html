@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sport Post — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      var STORAGE_KEY = "mts-theme";
+      var theme = localStorage.getItem(STORAGE_KEY);
+      if (!theme) {
+        theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <script src="../assets/theme.js"></script>
+  <style>
+    .mode-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px;
+      flex-wrap: wrap;
+    }
+    .mode-tab {
+      flex: 1;
+      min-width: 100px;
+      padding: 9px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: var(--radius-xs);
+      transition: all .2s;
+    }
+    .mode-tab:hover { color: var(--text); background: var(--bg3); }
+    .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
+
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .mode-tabs, .notice, .upload-zone, .field, .field:nth-of-type(1), .field:nth-of-type(2) {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header  { animation-delay: 0.05s; }
+    .mode-tabs    { animation-delay: 0.1s; }
+    .notice       { animation-delay: 0.15s; }
+    .upload-zone  { animation-delay: 0.2s; }
+    .field:nth-of-type(1) { animation-delay: 0.25s; }
+    .field:nth-of-type(2) { animation-delay: 0.3s; }
+
+    @media (max-width: 480px) {
+      .fields-grid { grid-template-columns: 1fr; }
+      .mode-tabs { gap: 4px; }
+      .mode-tab { font-size: 0.68rem; padding: 8px 10px; }
+    }
+
+    #dlWrap {
+      margin-top: 16px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height .25s ease, opacity .25s ease;
+    }
+    #dlWrap.visible { max-height: 60px; opacity: 1; }
+    #dlWrap .btn { width: 100%; margin-bottom: 0; justify-content: center; }
+
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:var(--accent); border-radius:50%; cursor:pointer; border:2px solid var(--bg); box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+    input[type="range"]::-moz-range-thumb    { width:18px; height:18px; background:var(--accent); border-radius:50%; cursor:pointer; border:2px solid var(--bg); box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+
+    .canvas-wrap { position: relative; user-select: none; -webkit-user-select: none; }
+    .canvas-wrap canvas { touch-action: none; }
+    .drag-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text3);
+      background: var(--bg2);
+      padding: 4px 12px;
+      border-radius: var(--radius-xs);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .canvas-wrap:hover .drag-hint { opacity: 1; }
+
+    /* 3-line field hidden by default */
+    #txt3Wrap { display: none; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-back">← Back</a>
+    <span class="nav-title">Sport Post</span>
+    <button class="theme-toggle" id="themeToggle">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </nav>
+
+  <div class="tool-page">
+    <div class="tool-header">
+      <h1>Sport Post</h1>
+      <p>Generate 1080×1350 Instagram sport posts — text bottom 2L, text top 2L, or text bottom 3L.</p>
+    </div>
+
+    <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="mode1">⬇ Text Bottom 2L</button>
+      <button class="mode-tab"        data-mode="mode2">⬆ Text Top 2L</button>
+      <button class="mode-tab"        data-mode="mode3">⬇ Text Bottom 3L</button>
+    </div>
+
+    <div class="notice" id="modeNotice">
+      <span id="modeNoticeIcon">⬇</span>&nbsp;
+      <span id="modeNoticeText"><strong>Text Bottom 2 Lines</strong> — Arabic, 60pt</span>
+    </div>
+
+    <div class="upload-zone" id="dropzone">
+      <div class="upload-icon">⬆</div>
+      <div class="upload-text" id="uploadText">Drag an image here or <span class="upload-browse">choose a file</span></div>
+      <input type="file" id="upload" accept="image/*" />
+    </div>
+
+    <div class="fields-grid" id="fieldsGrid">
+      <div class="field">
+        <label id="label1">Line 1</label>
+        <input type="text" id="txt1" placeholder="السطر الأول" dir="rtl" />
+      </div>
+      <div class="field">
+        <label id="label2">Line 2</label>
+        <input type="text" id="txt2" placeholder="السطر الثاني" dir="rtl" />
+      </div>
+    </div>
+
+    <div class="field" id="txt3Wrap" style="margin-top:12px;">
+      <label id="label3">Line 3</label>
+      <input type="text" id="txt3" placeholder="السطر الثالث" dir="rtl" />
+    </div>
+
+    <div id="dlWrap">
+      <button class="btn btn-success" id="dlBtn">↓ Download</button>
+    </div>
+
+    <div class="canvas-wrap" style="aspect-ratio:4/5; margin-top:16px;">
+      <canvas id="canvas" width="1080" height="1350" style="width:100%;height:auto;display:block;"></canvas>
+      <div class="drag-hint">Scroll/pinch to zoom · Drag to reposition</div>
+    </div>
+
+    <div class="field" style="margin-top:12px;">
+      <label>Zoom</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" id="zoomSlider" min="10" max="300" value="100" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+        <span id="zoomValue" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--accent);min-width:40px;text-align:right;">100%</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+      <div class="field">
+        <label>Position X</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="posXSlider" min="-100" max="100" value="0" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+          <span id="posXValue" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);min-width:30px;text-align:right;">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Position Y</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="range" id="posYSlider" min="-100" max="100" value="0" style="flex:1;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:10px;outline:none;">
+          <span id="posYValue" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);min-width:30px;text-align:right;">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const upload         = document.getElementById('upload');
+    const canvas         = document.getElementById('canvas');
+    const ctx            = canvas.getContext('2d');
+    const dlWrap         = document.getElementById('dlWrap');
+    const dlBtn          = document.getElementById('dlBtn');
+    const txt1El         = document.getElementById('txt1');
+    const txt2El         = document.getElementById('txt2');
+    const txt3El         = document.getElementById('txt3');
+    const dropzone       = document.getElementById('dropzone');
+    const uploadText     = document.getElementById('uploadText');
+    const modeTabs       = document.getElementById('modeTabs');
+    const modeNoticeIcon = document.getElementById('modeNoticeIcon');
+    const modeNoticeText = document.getElementById('modeNoticeText');
+    const fieldsGrid     = document.getElementById('fieldsGrid');
+    const txt3Wrap       = document.getElementById('txt3Wrap');
+    const label1         = document.getElementById('label1');
+    const label2         = document.getElementById('label2');
+    const label3         = document.getElementById('label3');
+
+    const W = 1080, H = 1350;
+
+    let currentFile     = null;
+    let currentMode     = 'mode1';
+    let loadedImg       = null;
+    let imgW = 0, imgH  = 0;
+    let imgOffsetX = 0, imgOffsetY = 0;
+    let imgZoom         = 1;
+    let isDragging      = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetStartX = 0, dragOffsetStartY = 0;
+    let isPinching      = false;
+    let pinchStartDist  = 0, pinchStartZoom = 1;
+    let pinchMidX = 0,  pinchMidY = 0;
+    let pinchOffsetStartX = 0, pinchOffsetStartY = 0;
+
+    // ── Mode config ──────────────────────────────────────────────────────────
+    const MODES = {
+      mode1: {
+        icon: '⬇', label: 'Text Bottom 2 Lines', desc: 'Arabic, 60pt',
+        overlay: '../assets/overlays/mode1.png',
+        lines: 2, fontSize: 45,
+        // y positions for line 1 and line 2 (canvas coords, from top)
+        lineY: [1140, 1210],
+      },
+      mode2: {
+        icon: '⬆', label: 'Text Top 2 Lines', desc: 'Arabic, 60pt',
+        overlay: '../assets/overlays/mode2.png',
+        lines: 2, fontSize: 45,
+        lineY: [134, 204],
+      },
+      mode3: {
+        icon: '⬇', label: 'Text Bottom 3 Lines', desc: 'Arabic, 55pt',
+        overlay: '../assets/overlays/mode3.png',
+        lines: 3, fontSize: 41.5,
+        lineY: [1104, 1180, 1254],
+      },
+    };
+
+    // ── Image loader (with CORS retry) ───────────────────────────────────────
+    function loadImg(src, useCors = true) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        if (useCors) img.crossOrigin = 'anonymous';
+        img.onload  = () => resolve(img);
+        img.onerror = () => {
+          if (useCors) loadImg(src, false).then(resolve).catch(reject);
+          else reject(new Error('Cannot load: ' + src));
+        };
+        img.src = src;
+      });
+    }
+
+    // ── Overlay cache (pre-load all on startup) ───────────────────────────────
+    const overlayCache = {};
+    const overlayReady = {}; // fast boolean flags for sync drawFrame
+
+    function getOverlay(mode) {
+      const src = MODES[mode].overlay;
+      if (!overlayCache[mode]) {
+        overlayCache[mode] = loadImg(src).then(img => {
+          overlayReady[mode] = img;
+          return img;
+        }).catch(() => null);
+      }
+      return overlayCache[mode];
+    }
+    Object.keys(MODES).forEach(k => getOverlay(k));
+
+    // ── Font ─────────────────────────────────────────────────────────────────
+    let _fontReady = false;
+    async function loadFont() {
+      try {
+        const f = new FontFace('LamaSans', 'url(../fonts/LamaSans-ExtraBold.ttf)');
+        await f.load();
+        document.fonts.add(f);
+        _fontReady = true;
+      } catch(e) { console.warn('LamaSans not loaded, using fallback.'); _fontReady = true; }
+    }
+    const fontsReady = loadFont();
+
+    // ── File handling ─────────────────────────────────────────────────────────
+    function enableFile(file) {
+      currentFile  = file;
+      imgOffsetX   = 0; imgOffsetY = 0;
+      imgZoom      = 1;
+      loadedImg    = null;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      document.getElementById('posXSlider').value = 0;
+      document.getElementById('posXValue').textContent = '0';
+      document.getElementById('posYSlider').value = 0;
+      document.getElementById('posYValue').textContent = '0';
+      previewDraw();
+    }
+
+    function previewDraw() {
+      if (!currentFile) return;
+      loadImg(URL.createObjectURL(currentFile)).then(drawAll);
+    }
+
+    async function drawAll(img) {
+      if (!img) { renderFrame(null); return; }
+      loadedImg = img;
+      imgW = img.naturalWidth  || img.width;
+      imgH = img.naturalHeight || img.height;
+      // Cover-fit initial zoom
+      const scaleW = W / imgW, scaleH = H / imgH;
+      imgZoom = Math.max(scaleW, scaleH);
+      document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
+      document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
+      imgOffsetX = 0; imgOffsetY = 0;
+      syncSliders();
+      await renderFrame(img);
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    // Fast synchronous draw used during gestures (no awaits)
+    function drawFrame() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      if (loadedImg) {
+        const baseW = imgW * imgZoom;
+        const baseH = imgH * imgZoom;
+        const cx = W / 2, cy = H / 2;
+        ctx.drawImage(loadedImg, cx - baseW / 2 + imgOffsetX, cy - baseH / 2 + imgOffsetY, baseW, baseH);
+      }
+
+      const ov = overlayReady[currentMode];
+      if (ov) ctx.drawImage(ov, 0, 0, W, H);
+
+      if (_fontReady) drawText();
+    }
+
+    // RAF-throttled version for gestures
+    let _rafPending = false;
+    function scheduleRender() {
+      if (_rafPending) return;
+      _rafPending = true;
+      requestAnimationFrame(() => { _rafPending = false; drawFrame(); });
+    }
+
+    // Full async render (awaits font/overlay if needed, updates download state)
+    async function renderFrame(img) {
+      if (!overlayReady[currentMode]) await getOverlay(currentMode);
+      if (!_fontReady) await fontsReady;
+      drawFrame();
+      updateDownloadBtn();
+    }
+
+    function drawText() {
+      const cfg = MODES[currentMode];
+      const lines = [txt1El.value.trim(), txt2El.value.trim(), txt3El.value.trim()].slice(0, cfg.lines);
+
+      ctx.font      = `900 ${cfg.fontSize}pt LamaSans, Arial`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'right';
+      ctx.direction = 'rtl';
+      ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur    = 10;
+
+      lines.forEach((line, i) => {
+        if (line) ctx.fillText(line, W - 60, cfg.lineY[i]);
+      });
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur    = 0;
+    }
+
+    // ── Download ──────────────────────────────────────────────────────────────
+    function isReady() {
+      if (!currentFile) return false;
+      const cfg = MODES[currentMode];
+      const t1 = txt1El.value.trim(), t2 = txt2El.value.trim(), t3 = txt3El.value.trim();
+      if (cfg.lines === 3) return t1 !== '' && t2 !== '' && t3 !== '';
+      return t1 !== '' && t2 !== '';
+    }
+
+    function updateDownloadBtn() {
+      dlWrap.classList.toggle('visible', isReady());
+    }
+
+    dlBtn.addEventListener('click', () => {
+      try {
+        const now = new Date();
+        const ts  = now.getFullYear()
+          + String(now.getMonth()+1).padStart(2,'0')
+          + String(now.getDate()).padStart(2,'0')
+          + '_' + String(now.getHours()).padStart(2,'0')
+          + String(now.getMinutes()).padStart(2,'0')
+          + String(now.getSeconds()).padStart(2,'0');
+        const a = document.createElement('a');
+        a.href     = canvas.toDataURL('image/jpeg', 0.95);
+        a.download = `sport_post_${currentMode}_${ts}.jpg`;
+        a.click();
+      } catch(e) {
+        console.error('Download error:', e);
+        alert('Download error: ' + e.message);
+      }
+    });
+
+    // ── Mode switching ────────────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      const cfg   = MODES[mode];
+
+      document.querySelectorAll('.mode-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.mode === mode)
+      );
+
+      modeNoticeIcon.textContent = cfg.icon;
+      modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
+
+      // Show/hide 3rd line field
+      txt3Wrap.style.display = cfg.lines === 3 ? 'block' : 'none';
+
+      dlWrap.classList.remove('visible');
+
+      if (loadedImg) renderFrame(loadedImg);
+      else { ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────────────
+    modeTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (tab) setMode(tab.dataset.mode);
+    });
+
+    dropzone.addEventListener('click',    () => upload.click());
+    dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave',()  => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop',     e  => {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('touchend', function() { if (!currentFile) upload.click(); });
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
+
+    txt1El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    txt2El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    txt3El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+
+    // ── Canvas gestures ───────────────────────────────────────────────────────
+    canvas.addEventListener('mousedown',  onDragStart);
+    canvas.addEventListener('mousemove',  onDragMove);
+    canvas.addEventListener('mouseup',    onDragEnd);
+    canvas.addEventListener('mouseleave', onDragEnd);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    canvas.addEventListener('touchend',   onDragEnd);
+
+    function getCanvasCoords(e) {
+      const rect   = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+    }
+
+    function getTouchMid(e) {
+      const rect   = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      return { x: (mx - rect.left) * scaleX, y: (my - rect.top) * scaleY };
+    }
+
+    function getTouchDist(e) {
+      if (e.touches.length < 2) return 0;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onDragStart(e) {
+      if (!loadedImg) return;
+      isDragging = true;
+      const coords = getCanvasCoords(e);
+      dragStartX = coords.x; dragStartY = coords.y;
+      dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !loadedImg) return;
+      const coords = getCanvasCoords(e);
+      imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+      imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+      scheduleRender();
+      syncSliders();
+    }
+
+    function onTouchStart(e) {
+      if (!loadedImg) return;
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinching = true; isDragging = false;
+        pinchStartDist = getTouchDist(e);
+        pinchStartZoom = imgZoom;
+        const mid = getTouchMid(e);
+        pinchMidX = mid.x; pinchMidY = mid.y;
+        pinchOffsetStartX = imgOffsetX; pinchOffsetStartY = imgOffsetY;
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        isDragging = true;
+        dragStartX = coords.x; dragStartY = coords.y;
+        dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!loadedImg) return;
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        const ratio    = getTouchDist(e) / pinchStartDist;
+        const newZoom  = Math.max(0.1, Math.min(30, pinchStartZoom * ratio));
+        const imgCX    = pinchMidX - pinchOffsetStartX;
+        const imgCY    = pinchMidY - pinchOffsetStartY;
+        const sr       = newZoom / pinchStartZoom;
+        imgOffsetX = pinchMidX - imgCX * sr;
+        imgOffsetY = pinchMidY - imgCY * sr;
+        imgZoom    = newZoom;
+        document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
+        document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
+        scheduleRender();
+        syncSliders();
+        return;
+      }
+      if (isDragging && e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+        imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+        scheduleRender();
+        syncSliders();
+      }
+    }
+
+    function onDragEnd() {
+      isDragging = false; isPinching = false;
+      syncSliders();
+      if (loadedImg) renderFrame(loadedImg);
+    }
+
+    // ── Scroll-wheel zoom (cursor-anchored) ───────────────────────────────────
+    canvas.addEventListener('wheel', function(e) {
+      if (!loadedImg) return;
+      e.preventDefault();
+      const delta    = e.deltaY > 0 ? -0.05 : 0.05;
+      const newZoom  = Math.max(0.1, Math.min(30, imgZoom + delta));
+      const coords   = getCanvasCoords(e);
+      const imgCX    = coords.x - imgOffsetX;
+      const imgCY    = coords.y - imgOffsetY;
+      const sr       = newZoom / imgZoom;
+      imgOffsetX = coords.x - imgCX * sr;
+      imgOffsetY = coords.y - imgCY * sr;
+      imgZoom    = newZoom;
+      document.getElementById('zoomSlider').value = Math.round(newZoom * 100);
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      scheduleRender();
+      syncSliders();
+    }, { passive: false });
+
+    // ── Sliders ───────────────────────────────────────────────────────────────
+    function syncSliders() {
+      if (!loadedImg) return;
+      const baseW = imgW * imgZoom, baseH = imgH * imgZoom;
+      let xPct = Math.round((imgOffsetX / (baseW / 2)) * 100);
+      let yPct = Math.round((imgOffsetY / (baseH / 2)) * 100);
+      xPct = Math.max(-100, Math.min(100, xPct));
+      yPct = Math.max(-100, Math.min(100, yPct));
+      document.getElementById('posXSlider').value = xPct;
+      document.getElementById('posXValue').textContent = xPct;
+      document.getElementById('posYSlider').value = yPct;
+      document.getElementById('posYValue').textContent = yPct;
+    }
+
+    document.getElementById('posXSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      imgOffsetX = (parseInt(this.value) / 100) * (imgW * imgZoom / 2);
+      document.getElementById('posXValue').textContent = this.value;
+      scheduleRender();
+    });
+
+    document.getElementById('posYSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      imgOffsetY = (parseInt(this.value) / 100) * (imgH * imgZoom / 2);
+      document.getElementById('posYValue').textContent = this.value;
+      scheduleRender();
+    });
+
+    document.getElementById('zoomSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      const newZoom = parseInt(this.value) / 100;
+      const cx = W / 2, cy = H / 2;
+      const sr = newZoom / imgZoom;
+      imgOffsetX = imgOffsetX * sr + (cx - imgW * newZoom / 2) - (cx - imgW * imgZoom / 2) * sr;
+      imgOffsetY = imgOffsetY * sr + (cy - imgH * newZoom / 2) - (cy - imgH * imgZoom / 2) * sr;
+      imgZoom = newZoom;
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      scheduleRender();
+      syncSliders();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    setMode('mode1');
+  </script>
+</body>
+</html>
