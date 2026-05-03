@@ -447,6 +447,22 @@
     .toolbar-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .toolbar-btn.flash  { background: var(--accent2); color: white; border-color: var(--accent2); }
 
+    .font-size-select {
+      padding: 6px 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      color: var(--text2);
+      font-size: 0.67rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Syne', sans-serif;
+      outline: none;
+    }
+    .font-size-select:hover { border-color: var(--accent); color: var(--accent); }
+    .font-size-select:focus { border-color: var(--accent); }
+
     .save-indicator {
       font-family: 'DM Mono', monospace;
       font-size: 0.65rem;
@@ -814,6 +830,19 @@
           <button class="toolbar-btn" id="copyContentBtn">Copy</button>
           <button class="toolbar-btn" id="cleanWsBtn">Clean WS</button>
           <button class="toolbar-btn" id="rtlToggle" dir="rtl">عربي</button>
+          <select class="font-size-select" id="fontSizeSelect" title="Font size">
+            <option value="0.8rem">0.8x</option>
+            <option value="1rem" selected>1x</option>
+            <option value="1.2rem">1.2x</option>
+            <option value="1.4rem">1.4x</option>
+            <option value="1.6rem">1.6x</option>
+            <option value="2rem">2x</option>
+            <option value="2.2rem">2.2x</option>
+            <option value="2.4rem">2.4x</option>
+            <option value="2.6rem">2.6x</option>
+            <option value="2.8rem">2.8x</option>
+            <option value="3rem">3x</option>
+          </select>
         </div>
       </div>
 
@@ -878,6 +907,9 @@ var COLOR_OPTS = [
   {c:'#ffb86b',l:'Orange'},
   {c:'#ff6bd6',l:'Pink'},
 ];
+
+var FONT_SIZE_KEY = 'mts-notes-font-size';
+var currentFontSize = localStorage.getItem(FONT_SIZE_KEY) || '1rem';
 
 /* ═══════════════════════════════════════════
    PERSISTENCE
@@ -1344,6 +1376,21 @@ document.getElementById('selectModeBtn').addEventListener('click', toggleSelectM
 document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
 document.getElementById('noteTextarea').addEventListener('input', function(){ scheduleSave(); updateStats(); });
 document.getElementById('searchInput').addEventListener('input', function(){ searchQuery=this.value.trim(); renderNotesList(); });
+
+/* ═══════════════════════════════════════════
+   FONT SIZE
+   ═══════════════════════════════════════════ */
+function applyFontSize(size) {
+  document.getElementById('noteTextarea').style.fontSize = size;
+  document.getElementById('fontSizeSelect').value = size;
+  localStorage.setItem(FONT_SIZE_KEY, size);
+  currentFontSize = size;
+}
+document.getElementById('fontSizeSelect').addEventListener('change', function(){
+  applyFontSize(this.value);
+});
+// Apply saved font size on load
+applyFontSize(currentFontSize);
 
 /* ═══════════════════════════════════════════
    KEYBOARD SHORTCUTS
