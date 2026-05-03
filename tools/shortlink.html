@@ -212,7 +212,10 @@
     });
 
 const API_BASE = 'https://shortlink-production-fdbf.up.railway.app';
-const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+
+    function cleanUrl(url) {
+      return url.replace(/[^\x20-\x7E]/g, '').trim();
+    }
 
     // Shorten action
     shortenBtn.addEventListener('click', async () => {
@@ -221,27 +224,26 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
       shortenBtn.disabled = true;
       statusDiv.textContent = 'Shortening…';
       try {
-        const resp = await fetch(PROXY(`${API_BASE}/api/shorten`), {
+        const resp = await fetch(`${API_BASE}/api/shorten`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url }),
-          mode: 'cors'
         });
         const data = await resp.json();
         if (resp.ok && data.short_url) {
+          const shortUrl = cleanUrl(data.short_url);
           longUrlInput.value = '';
           longUrlInput.focus();
-          statusDiv.textContent = `✅ Shortened: ${data.short_url}`;
-          const shortUrl = data.short_url.replace(/[^a-zA-Z0-9:/.-].*$/, '');
+          statusDiv.textContent = `✅ Shortened: ${shortUrl}`;
           await navigator.clipboard.writeText(shortUrl);
           await loadHistory();
         } else {
           statusDiv.textContent = '❌ ' + (data.error || 'Failed');
         }
       } catch (e) {
-        statusDiv.textContent = '❌ Network error';
+        statusDiv.textContent = '❌ Network error: ' + e.message;
       } finally {
-        shortenBtn.disabled = true;
+        shortenBtn.disabled = !longUrlInput.value.trim();
       }
     });
 
@@ -265,7 +267,7 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
       historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">Loading…</td></tr>';
       try {
         const innerUrl = `${API_BASE}/api/history?_=${Date.now()}`;
-        const resp = await fetch(PROXY(innerUrl), { mode: 'cors' });
+        const resp = await fetch(innerUrl);
         allHistory = await resp.json();
         if (!allHistory.length) {
           historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">No links yet.</td></tr>';
@@ -291,7 +293,7 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
 
       let html = '';
       batch.forEach(entry => {
-        const cleanShortUrl = entry.short_url.replace(/📋/g, '').trim();
+        const cleanShortUrl = cleanUrl(entry.short_url);
         html += `<tr data-long-url="${escapeHtml(entry.long_url)}">
           <td class="preview-cell">
             <div class="preview-loading" style="width:60px;height:60px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:var(--text3);">Loading...</div>
@@ -333,15 +335,13 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
       });
     }
 
-    // Fetch OG image with no caching/localStorage
+    // Fetch OG image via own API (avoids CORS on external sites)
     async function fetchOgImage(longUrl) {
       try {
-        const resp = await fetch(PROXY(longUrl), { mode: 'cors' });
+        const resp = await fetch(`${API_BASE}/api/og?url=${encodeURIComponent(longUrl)}`);
         if (!resp.ok) return null;
-        const html = await resp.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const ogImage = doc.querySelector('meta[property="og:image"]')?.content;
-        return ogImage ? new URL(ogImage, longUrl).href : null;
+        const data = await resp.json();
+        return data.og_image || null;
       } catch { return null; }
     }
 
