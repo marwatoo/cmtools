@@ -134,6 +134,9 @@
     @keyframes fadeUp {
       to { opacity: 1; transform: translateY(0); }
     }
+    .preview-cell { width: 70px; padding: 8px !important; }
+    .preview-loading { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
   </style>
 </head>
 <body>
@@ -173,7 +176,7 @@
         <table class="history-table" id="historyTable">
           <thead>
             <tr>
-              <th>Long URL</th>
+              <th>Preview</th>
               <th>Short URL</th>
               <th>Clicks</th>
               <th>Date</th>
@@ -187,6 +190,9 @@
           </tbody>
         </table>
       </div>
+      <div id="loadMoreContainer" style="text-align:center; margin-top:12px; display:none;">
+        <button id="loadMoreBtn" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 16px;font-weight:600;font-size:0.85rem;cursor:pointer;">Load More</button>
+      </div>
     </div>
   </div>
 
@@ -195,6 +201,10 @@
     const longUrlInput = document.getElementById('longUrl');
     const statusDiv = document.getElementById('status');
     const historyBody = document.getElementById('historyBody');
+
+    let allHistory = [];
+    let renderedCount = 0;
+    const BATCH_SIZE = 10;
 
     // Enable button only when input is non‑empty
     longUrlInput.addEventListener('input', () => {
@@ -254,35 +264,85 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
     async function loadHistory() {
       historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">Loading…</td></tr>';
       try {
-        // Append a unique timestamp to force the proxy to bypass its cache
         const innerUrl = `${API_BASE}/api/history?_=${Date.now()}`;
         const resp = await fetch(PROXY(innerUrl), { mode: 'cors' });
-        const rows = await resp.json();
-        if (!rows.length) {
+        allHistory = await resp.json();
+        if (!allHistory.length) {
           historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">No links yet.</td></tr>';
+          document.getElementById('loadMoreContainer').style.display = 'none';
           return;
         }
-        let html = '';
-        rows.forEach(entry => {
-          const cleanShortUrl = entry.short_url.replace(/📋/g, '').trim();
-          html += `<tr>
-            <td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(entry.long_url)}">${escapeHtml(entry.long_url)}</td>
-            <td class="short-url">${escapeHtml(cleanShortUrl)}</td>
-            <td>${entry.clicks}</td>
-            <td style="white-space:nowrap;">${entry.date}</td>
-            <td><button class="copy-btn" data-url="${escapeHtml(cleanShortUrl)}">Copy</button></td>
-          </tr>`;
-        });
-        historyBody.innerHTML = html;
-        // Attach copy events
-        document.querySelectorAll('.copy-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            copyToClipboard(btn.dataset.url, btn);
-          });
-        });
+        renderedCount = 0;
+        historyBody.innerHTML = '';
+        await renderBatch();
       } catch (e) {
         historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text3);">Failed to load history.</td></tr>';
+        document.getElementById('loadMoreContainer').style.display = 'none';
       }
+    }
+
+    // Render next batch of 10 entries
+    async function renderBatch() {
+      const batch = allHistory.slice(renderedCount, renderedCount + BATCH_SIZE);
+      if (!batch.length) {
+        document.getElementById('loadMoreContainer').style.display = 'none';
+        return;
+      }
+
+      let html = '';
+      batch.forEach(entry => {
+        const cleanShortUrl = entry.short_url.replace(/📋/g, '').trim();
+        html += `<tr data-long-url="${escapeHtml(entry.long_url)}">
+          <td class="preview-cell">
+            <div class="preview-loading" style="width:60px;height:60px;background:var(--bg3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:var(--text3);">Loading...</div>
+          </td>
+          <td class="short-url">${escapeHtml(cleanShortUrl)}</td>
+          <td>${entry.clicks}</td>
+          <td style="white-space:nowrap;">${entry.date}</td>
+          <td><button class="copy-btn" data-url="${escapeHtml(cleanShortUrl)}">Copy</button></td>
+        </tr>`;
+      });
+      historyBody.insertAdjacentHTML('beforeend', html);
+      renderedCount += batch.length;
+
+      // Update Load More button
+      const loadMoreContainer = document.getElementById('loadMoreContainer');
+      if (renderedCount < allHistory.length) {
+        loadMoreContainer.style.display = 'block';
+        document.getElementById('loadMoreBtn').textContent = `Load More (${Math.min(BATCH_SIZE, allHistory.length - renderedCount)} more)`;
+      } else {
+        loadMoreContainer.style.display = 'none';
+      }
+
+      // Attach copy events + fetch OG images for new rows
+      batch.forEach((entry, idx) => {
+        const rowIdx = renderedCount - batch.length + idx;
+        const row = historyBody.querySelectorAll('tr[data-long-url]')[rowIdx];
+        // Copy button
+        const copyBtn = row.querySelector('.copy-btn');
+        copyBtn.addEventListener('click', () => copyToClipboard(copyBtn.dataset.url, copyBtn));
+        // OG image fetch
+        fetchOgImage(entry.long_url).then(ogUrl => {
+          const previewCell = row.querySelector('.preview-cell');
+          if (ogUrl) {
+            previewCell.innerHTML = `<img src="${escapeHtml(ogUrl)}" alt="Preview" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" title="${escapeHtml(entry.long_url)}" onerror="this.parentElement.innerHTML='<div style=\'width:60px;height:60px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;\'>🖼️</div>'">`;
+          } else {
+            previewCell.innerHTML = `<div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;" title="${escapeHtml(entry.long_url)}">🖼️</div>`;
+          }
+        });
+      });
+    }
+
+    // Fetch OG image with no caching/localStorage
+    async function fetchOgImage(longUrl) {
+      try {
+        const resp = await fetch(PROXY(longUrl), { mode: 'cors' });
+        if (!resp.ok) return null;
+        const html = await resp.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const ogImage = doc.querySelector('meta[property="og:image"]')?.content;
+        return ogImage ? new URL(ogImage, longUrl).href : null;
+      } catch { return null; }
     }
 
     function escapeHtml(text) {
@@ -306,6 +366,8 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
         }
       }
     });
+
+    document.getElementById('loadMoreBtn').addEventListener('click', renderBatch);
   </script>
 </body>
 </html>
