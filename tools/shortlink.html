@@ -264,12 +264,13 @@ const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
         }
         let html = '';
         rows.forEach(entry => {
+          const cleanShortUrl = entry.short_url.replace(/📋/g, '').trim();
           html += `<tr>
-            <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(entry.long_url)}">${escapeHtml(entry.long_url)}</td>
-            <td class="short-url">${escapeHtml(entry.short_url)}</td>
+            <td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(entry.long_url)}">${escapeHtml(entry.long_url)}</td>
+            <td class="short-url">${escapeHtml(cleanShortUrl)}</td>
             <td>${entry.clicks}</td>
             <td style="white-space:nowrap;">${entry.date}</td>
-            <td><button class="copy-btn" data-url="${escapeHtml(entry.short_url)}">Copy</button></td>
+            <td><button class="copy-btn" data-url="${escapeHtml(cleanShortUrl)}">Copy</button></td>
           </tr>`;
         });
         historyBody.innerHTML = html;
