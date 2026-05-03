@@ -26,6 +26,18 @@
       animation: fadeUp 0.5s ease 0.1s forwards;
     }
 
+    /* RTL modal */
+    .modal-box.rtl { direction: rtl; text-align: right; }
+    .modal-box.rtl .modal-close { right: auto; left: 16px; }
+    .modal-box.rtl h2 { padding-right: 0; padding-left: 40px; }
+    .modal-box.rtl .slider-prev { left: auto; right: 10px; }
+    .modal-box.rtl .slider-next { right: auto; left: 10px; }
+
+    /* RTL columns */
+    .deck-column.rtl { direction: rtl; text-align: right; }
+    .deck-column.rtl .deck-card h3 { text-align: right; }
+    .deck-column.rtl .deck-card-date { text-align: right; }
+
     /* ════════════════════════════════════════
        MOBILE — TAB-BASED SINGLE COLUMN VIEW
     ════════════════════════════════════════ */
@@ -136,7 +148,7 @@
   <nav class="nav">
     <a href="../index.html" class="nav-back">← Back</a>
     <span class="nav-title">Le360 Deck</span>
-    
+    <span class="nav-num">03 / 04</span>
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
       <a href="snippets.html" style="font-size:0.78rem;color:var(--text2);text-decoration:none;padding:5px 10px;border:1px solid var(--border2);border-radius:6px;">⌨ Snippets</a>
       <button class="theme-toggle" id="themeToggle" style="margin-left:0;"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
@@ -225,7 +237,7 @@
 
     Object.keys(sources).forEach(key => {
       const col = document.createElement('div');
-      col.className = 'deck-column';
+      col.className = 'deck-column' + (key === 'AR' || key === 'Sport_AR' ? ' rtl' : '');
       col.id = `col-${key}`;
       col.innerHTML = `
         <div class="deck-col-header">
@@ -296,7 +308,8 @@
           date:  item.querySelector('pubDate')?.textContent || '',
           content: content || desc || '<p>No content.</p>',
           description: desc,
-          contentImages: extractImagesFromHTML(content)
+          contentImages: extractImagesFromHTML(content),
+          _isRtl: key === 'AR' || key === 'Sport_AR'
         };
       });
     }
@@ -486,6 +499,7 @@
       const overlay = document.getElementById('modalOverlay');
       const body    = document.getElementById('modalBody');
       const hasCarousel = article.contentImages.length > 1;
+      const isRTL = article._isRtl;
 
       let mediaHTML = '';
       if (hasCarousel) {
@@ -514,6 +528,7 @@
         <div class="modal-content-html">${contentHTML}</div>`;
 
       overlay.classList.remove('hidden');
+      body.closest('.modal-box').classList.toggle('rtl', isRTL);
 
       // Load Twitter widgets on-demand
       if (!window.twttr?.widgets) {
@@ -614,8 +629,10 @@
       container.addEventListener('touchend', e => {
         if (!IS_MOBILE() || !swiping) return;
         const dx = e.changedTouches[0].clientX - tx;
-        if (dx < -60 && mobileActiveIndex < COLS_LIST.length - 1) switchMobileTab(mobileActiveIndex + 1, 'right');
-        else if (dx > 60 && mobileActiveIndex > 0) switchMobileTab(mobileActiveIndex - 1, 'left');
+        const activeCol = document.getElementById(`col-${COLS_LIST[mobileActiveIndex]}`);
+        const isRtlSwipe = activeCol?.classList.contains('rtl');
+        if (dx < -60 && mobileActiveIndex < COLS_LIST.length - 1) switchMobileTab(mobileActiveIndex + 1, isRtlSwipe ? 'left' : 'right');
+        else if (dx > 60 && mobileActiveIndex > 0) switchMobileTab(mobileActiveIndex - 1, isRtlSwipe ? 'right' : 'left');
         swiping = false;
       }, { passive: true });
     })();
