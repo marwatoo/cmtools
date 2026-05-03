@@ -276,6 +276,22 @@
       align-items: center;
       gap: 16px;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .sync-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text3);
+      cursor: pointer;
+      user-select: none;
+      margin-left: auto;
+    }
+    .sync-toggle input {
+      accent-color: var(--accent);
+      cursor: pointer;
     }
 
     /* Override global .btn full-width for this context */
@@ -382,6 +398,10 @@
     <div class="bottom-row">
       <button class="btn btn-primary" id="dlBtn" disabled>↓ Download 1920×1080 PNG</button>
       <span class="status" id="status"></span>
+      <label class="sync-toggle">
+        <input type="checkbox" id="syncToggle">
+        <span>Sync zoom & position</span>
+      </label>
     </div>
 
     <div class="canvas-wrap">
@@ -397,11 +417,160 @@
     const noticeEl = document.getElementById('statusNotice');
     const statusEl = document.getElementById('status');
     const dlBtn    = document.getElementById('dlBtn');
+    const syncToggle = document.getElementById('syncToggle');
 
     let flagL = null, flagR = null;
     let zoomL = 1.0, zoomR = 1.0;
-    // Position offsets as fractions of the half-width / height (−1 to +1)
     let posL = { x: 0, y: 0 }, posR = { x: 0, y: 0 };
+    let syncMode = false;
+
+    syncToggle.addEventListener('change', () => {
+      syncMode = syncToggle.checked;
+    });
+
+    // ── Touch handling for canvas (pinch-to-zoom, pan) ──────────────────────
+    let lastPinchDist = null;
+    let lastTouchCenter = null;
+    let activeSide = null; // 'L' or 'R', determined by touch start position
+
+    function getTouchSide(clientX) {
+      const rect = cv.getBoundingClientRect();
+      return clientX < rect.left + rect.width / 2 ? 'L' : 'R';
+    }
+
+    function pinchDistance(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function touchCenter(touchList) {
+      let cx = 0, cy = 0;
+      for (let t of touchList) { cx += t.clientX; cy += t.clientY; }
+      return { x: cx / touchList.length, y: cy / touchList.length };
+    }
+
+    cv.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        activeSide = getTouchSide(e.touches[0].clientX);
+        lastTouchCenter = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        const mid = touchCenter(e.touches);
+        activeSide = getTouchSide(mid.x);
+        lastPinchDist = pinchDistance(e.touches[0], e.touches[1]);
+        lastTouchCenter = mid;
+      }
+    }, { passive: false });
+
+    cv.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && lastPinchDist !== null && lastTouchCenter !== null) {
+        const newDist = pinchDistance(e.touches[0], e.touches[1]);
+        const scale = newDist / lastPinchDist;
+        applyZoomByTouch(scale, activeSide);
+        lastPinchDist = newDist;
+
+        const newCenter = touchCenter(e.touches);
+        const rect = cv.getBoundingClientRect();
+        const dx = (newCenter.x - lastTouchCenter.x) / rect.width * CW;
+        const dy = (newCenter.y - lastTouchCenter.y) / rect.height * CH;
+        applyPanByTouch(dx, dy, activeSide);
+        lastTouchCenter = newCenter;
+      } else if (e.touches.length === 1 && lastTouchCenter !== null) {
+        const t = e.touches[0];
+        const dx = t.clientX - lastTouchCenter.x;
+        const dy = t.clientY - lastTouchCenter.y;
+        const rect = cv.getBoundingClientRect();
+        applyPanByTouch(dx / rect.width * CW, dy / rect.height * CH, activeSide);
+        lastTouchCenter = { x: t.clientX, y: t.clientY };
+      }
+    }, { passive: false });
+
+    cv.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) lastPinchDist = null;
+      if (e.touches.length === 0) { lastTouchCenter = null; activeSide = null; }
+    });
+
+    cv.addEventListener('touchcancel', () => {
+      lastPinchDist = null;
+      lastTouchCenter = null;
+      activeSide = null;
+    });
+
+    // Mouse wheel zoom on canvas
+    cv.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const side = getTouchSide(e.clientX);
+      const delta = e.deltaY > 0 ? -5 : 5;
+      let val = Math.round((side === 'L' ? zoomL : zoomR) * 100) + delta;
+      val = Math.max(50, Math.min(300, val));
+      setZoom(side, val);
+      if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
+    }, { passive: false });
+
+    // Mouse drag pan on canvas — per-half
+    let isDragging = false;
+    let dragStart = null;
+    let dragSide = null;
+
+    cv.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragSide = getTouchSide(e.clientX);
+      dragStart = { x: e.clientX, y: e.clientY };
+      cv.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging || !dragStart) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      const rect = cv.getBoundingClientRect();
+      const scaledDx = dx / rect.width * CW;
+      const scaledDy = dy / rect.height * CH;
+      applyPanByTouch(scaledDx, scaledDy, dragSide);
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        dragStart = null;
+        dragSide = null;
+        cv.style.cursor = '';
+      }
+    });
+
+    function applyZoomByTouch(scale, side) {
+      let val = Math.round((side === 'L' ? zoomL : zoomR) * 100 * scale);
+      val = Math.max(50, Math.min(300, val));
+      setZoom(side, val);
+      if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
+    }
+
+    function applyPanByTouch(dx, dy, side) {
+      const pos = side === 'L' ? posL : posR;
+      const half = CW / 2;
+      const panScale = 0.5;
+      let newX = pos.x + (dx / half) * panScale;
+      let newY = pos.y + (dy / CH) * panScale;
+      newX = Math.max(-1, Math.min(1, newX));
+      newY = Math.max(-1, Math.min(1, newY));
+      pos.x = newX; pos.y = newY;
+      document.getElementById('posX' + side).value = Math.round(newX * 100);
+      document.getElementById('posY' + side).value = Math.round(newY * 100);
+      updatePosLabels(side);
+
+      if (syncMode) {
+        const otherSide = side === 'L' ? 'R' : 'L';
+        const otherPos = otherSide === 'L' ? posL : posR;
+        otherPos.x = newX; otherPos.y = newY;
+        document.getElementById('posX' + otherSide).value = Math.round(newX * 100);
+        document.getElementById('posY' + otherSide).value = Math.round(newY * 100);
+        updatePosLabels(otherSide);
+      }
+      drawCanvas();
+    }
 
     function setStatus(msg) {
       noticeEl.textContent = msg;
@@ -485,6 +654,17 @@
     }
 
     // ── Zoom setup ──────────────────────────────────────────────────────────
+    function setZoom(side, val) {
+      val = Math.max(50, Math.min(300, Math.round(val)));
+      const slider = document.getElementById('slider' + side);
+      const labelEl = document.getElementById('zoomLabel' + side);
+      slider.value = val;
+      labelEl.textContent = val + '%';
+      if (side === 'L') zoomL = val / 100;
+      else              zoomR = val / 100;
+      drawCanvas();
+    }
+
     function setupZoom(side) {
       const slider    = document.getElementById('slider'    + side);
       const labelEl   = document.getElementById('zoomLabel' + side);
@@ -493,12 +673,8 @@
       const btnReset  = document.getElementById('zoomReset' + side);
 
       function applyZoom(val) {
-        val = Math.max(50, Math.min(300, Math.round(val)));
-        slider.value = val;
-        labelEl.textContent = val + '%';
-        if (side === 'L') zoomL = val / 100;
-        else              zoomR = val / 100;
-        drawCanvas();
+        setZoom(side, val);
+        if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
       }
 
       slider.addEventListener('input', () => applyZoom(parseInt(slider.value)));
@@ -510,6 +686,17 @@
     setupZoom('L');
     setupZoom('R');
 
+    function updatePosLabels(side) {
+      const sliderX = document.getElementById('posX' + side);
+      const sliderY = document.getElementById('posY' + side);
+      const labelX = document.getElementById('posXLabel' + side);
+      const labelY = document.getElementById('posYLabel' + side);
+      const xVal = parseInt(sliderX.value);
+      const yVal = parseInt(sliderY.value);
+      labelX.textContent = (xVal >= 0 ? '+' : '') + xVal + '%';
+      labelY.textContent = (yVal >= 0 ? '+' : '') + yVal + '%';
+    }
+
     // ── Position setup ──────────────────────────────────────────────────────
     function setupPosition(side) {
       const sliderX   = document.getElementById('posX'      + side);
@@ -519,22 +706,33 @@
       const btnReset  = document.getElementById('posReset'  + side);
       const pos       = side === 'L' ? posL : posR;
 
-      function applyPos() {
+      function applyPos(fromSide) {
         const xVal = parseInt(sliderX.value);
         const yVal = parseInt(sliderY.value);
         labelX.textContent = (xVal >= 0 ? '+' : '') + xVal + '%';
         labelY.textContent = (yVal >= 0 ? '+' : '') + yVal + '%';
         pos.x = xVal / 100;
         pos.y = yVal / 100;
+        if (syncMode && fromSide) {
+          const otherSide = fromSide === 'L' ? 'R' : 'L';
+          const otherSliderX = document.getElementById('posX' + otherSide);
+          const otherSliderY = document.getElementById('posY' + otherSide);
+          const otherPos = otherSide === 'L' ? posL : posR;
+          otherSliderX.value = xVal;
+          otherSliderY.value = yVal;
+          otherPos.x = xVal / 100;
+          otherPos.y = yVal / 100;
+          updatePosLabels(otherSide);
+        }
         drawCanvas();
       }
 
-      sliderX.addEventListener('input', applyPos);
-      sliderY.addEventListener('input', applyPos);
+      sliderX.addEventListener('input', () => applyPos(side));
+      sliderY.addEventListener('input', () => applyPos(side));
       btnReset.addEventListener('click', () => {
         sliderX.value = 0;
         sliderY.value = 0;
-        applyPos();
+        applyPos(side);
       });
     }
 

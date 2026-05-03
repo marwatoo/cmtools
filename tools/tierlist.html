@@ -8,6 +8,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
   <style>
     
     

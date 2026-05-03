@@ -88,12 +88,12 @@
     @keyframes fadeUp {
       to { opacity: 1; transform: translateY(0); }
     }
-    .tool-header, .upload-zone, .workspace {
+    .tool-header, .dropzone, .workspace {
       opacity: 0;
       transform: translateY(12px);
       animation: fadeUp 0.5s ease forwards;
     }
-    .upload-zone { animation-delay: 0.1s; }
+    .dropzone { animation-delay: 0.1s; }
     .workspace { animation-delay: 0.2s; }
   </style>
 </head>
@@ -110,14 +110,12 @@
       <p>Adjust brightness, contrast, saturation and apply filters to your images. Export as PNG or JPG.</p>
     </div>
 
-    <div class="upload-zone" id="uploadZone">
-      <div class="dropzone" id="dropzone">
-        <input type="file" id="fileInput" accept="image/*">
-        <div class="dz-icon">🖼</div>
-        <div class="dz-text">Drop image here or click to upload</div>
-        <div class="dz-sub">Supports JPG, PNG, WebP — Max 10MB</div>
-      </div>
+    <div class="dropzone" id="dropzone">
+      <div class="dz-icon">🖼</div>
+      <div class="dz-text">Drop image here or click to upload</div>
+      <div class="dz-sub">Supports JPG, PNG, WebP — Max 10MB</div>
     </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
 
     <div class="workspace" id="workspace" style="display:none">
       <!-- Canvas preview -->
@@ -246,6 +244,7 @@
       };
 
       // File handling
+      dropzone.addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', handleFile);
       dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
       dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
