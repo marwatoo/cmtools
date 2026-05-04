@@ -134,8 +134,15 @@
       display:flex; justify-content:center; align-items:center;
       background:var(--bg3); border-radius:var(--radius-xs);
       min-height:280px; overflow:hidden; position:relative;
+      /* Prevent text selection and touch callouts during gestures */
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .preview-canvas-wrap canvas { width:100%; height:auto; display:block; }
+    .preview-canvas-wrap canvas {
+      width:100%; height:auto; display:block;
+      /* Disable browser's native touch handling so our gesture handlers get clean events */
+      touch-action: none;
+    }
     .preview-hint { font-size:0.7rem; color:var(--text3); text-align:center; margin-top:6px; }
   </style>
 </head>
@@ -193,7 +200,7 @@
           <div class="cell"></div><div class="cell"></div><div class="cell"></div>
         </div>
         <span class="label">3×3</span>
-</div>
+      </div>
     </div>
 
     <div class="config-row">
@@ -239,7 +246,7 @@
       <div class="preview-canvas-wrap" id="previewWrap">
         <canvas id="previewCanvas"></canvas>
       </div>
-      <p class="preview-hint">Click image in list above to adjust position/scale</p>
+      <p class="preview-hint">Drag to pan · Scroll/pinch to zoom · Click image in list to select</p>
     </div>
 
     <button class="btn btn-primary" id="downloadBtn" disabled>⊕ Download Collage</button>
@@ -247,59 +254,101 @@
   </div>
 
   <script>
-    const uploadInput = document.getElementById('uploadInput');
-    const uploadZone = document.getElementById('uploadZone');
-    const fileListEl = document.getElementById('fileList');
-    const layoutGrid = document.getElementById('layoutGrid');
-    const aspectRatioEl = document.getElementById('aspectRatio');
-    const gapSizeEl = document.getElementById('gapSize');
-    const bgColorEl = document.getElementById('bgColor');
-    const borderSizeEl = document.getElementById('borderSize');
-    const imageControls = document.getElementById('imageControls');
-    const imgScaleEl = document.getElementById('imgScale');
-    const imgOffsetXEl = document.getElementById('imgOffsetX');
-    const imgOffsetYEl = document.getElementById('imgOffsetY');
-    const scaleVal = document.getElementById('scaleVal');
-    const offsetXVal = document.getElementById('offsetXVal');
-    const offsetYVal = document.getElementById('offsetYVal');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const doneMsg = document.getElementById('doneMsg');
+    const uploadInput    = document.getElementById('uploadInput');
+    const uploadZone     = document.getElementById('uploadZone');
+    const fileListEl     = document.getElementById('fileList');
+    const layoutGrid     = document.getElementById('layoutGrid');
+    const aspectRatioEl  = document.getElementById('aspectRatio');
+    const gapSizeEl      = document.getElementById('gapSize');
+    const bgColorEl      = document.getElementById('bgColor');
+    const borderSizeEl   = document.getElementById('borderSize');
+    const imageControls  = document.getElementById('imageControls');
+    const imgScaleEl     = document.getElementById('imgScale');
+    const imgOffsetXEl   = document.getElementById('imgOffsetX');
+    const imgOffsetYEl   = document.getElementById('imgOffsetY');
+    const scaleVal       = document.getElementById('scaleVal');
+    const offsetXVal     = document.getElementById('offsetXVal');
+    const offsetYVal     = document.getElementById('offsetYVal');
+    const previewCanvas  = document.getElementById('previewCanvas');
+    const downloadBtn    = document.getElementById('downloadBtn');
+    const clearBtn       = document.getElementById('clearBtn');
+    const doneMsg        = document.getElementById('doneMsg');
 
     const sizes = { '16:9': [1920, 1080], '1:1': [1080, 1080], '4:5': [1080, 1350], '9:16': [1080, 1920] };
 
-    let files = [];
-    let imageData = [];
+    let files        = [];
+    let imageData    = [];
     let currentLayout = null;
-    let selectedIdx = -1;
-    let draggedIdx = null;
+    let selectedIdx  = -1;
+    let draggedIdx   = null;
+
+    // ── Image cache (key fix) ─────────────────────────────────────────────────
+    // Each entry is an HTMLImageElement that has already been decoded from its
+    // File object.  We build/update this cache whenever files change and draw
+    // directly from it during gestures — exactly like ytcover's `loadedImg`
+    // pattern — so no image re-decode happens on every gesture frame.
+    let imageCache   = [];   // imageCache[i] is the loaded Image for files[i]
+    let objectURLs   = [];   // parallel array; we revoke old URLs on teardown
+
+    function revokeAllURLs() {
+      objectURLs.forEach(u => { try { URL.revokeObjectURL(u); } catch(e) {} });
+      objectURLs = [];
+    }
+
+    /**
+     * Rebuild the image cache after files[] changes.
+     * We diff against the existing cache: entries that already correspond to
+     * the same File object are kept; new ones are loaded; removed ones are
+     * revoked.  When all loads are done we call renderPreview().
+     */
+    async function rebuildImageCache() {
+      // We need a fresh cache sized to files.length.
+      // Simple strategy: revoke old URLs, create new ones for current files.
+      revokeAllURLs();
+      imageCache = new Array(files.length).fill(null);
+
+      const loads = files.map((f, i) => {
+        return new Promise((resolve) => {
+          const url = URL.createObjectURL(f);
+          objectURLs[i] = url;
+          const img = new Image();
+          img.onload  = () => { imageCache[i] = img; resolve(); };
+          img.onerror = () => { imageCache[i] = null;  resolve(); };
+          img.src = url;
+        });
+      });
+
+      await Promise.all(loads);
+      renderPreview();
+    }
 
     const dims = () => sizes[aspectRatioEl.value];
 
     function clearAll() {
-      files = [];
-      imageData = [];
+      files      = [];
+      imageData  = [];
       selectedIdx = -1;
+      revokeAllURLs();
+      imageCache = [];
       renderFileList();
     }
 
     uploadInput.addEventListener('change', () => {
       const newFiles = [...uploadInput.files];
-      const newData = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
-      files = [...files, ...newFiles];
+      const newData  = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      files     = [...files, ...newFiles];
       imageData = [...imageData, ...newData];
       if (files.length >= 2 && selectedIdx < 0) selectedIdx = 0;
       renderFileList();
     });
 
-    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
     uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
     uploadZone.addEventListener('drop', e => {
       e.preventDefault(); uploadZone.classList.remove('dragover');
       const newFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-      const newData = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
-      files = [...files, ...newFiles];
+      const newData  = newFiles.map(() => ({ scale: 100, offsetX: 0, offsetY: 0 }));
+      files     = [...files, ...newFiles];
       imageData = [...imageData, ...newData];
       if (files.length >= 2 && selectedIdx < 0) selectedIdx = 0;
       renderFileList();
@@ -308,25 +357,29 @@
     function renderFileList() {
       fileListEl.innerHTML = '';
       doneMsg.style.display = 'none';
-      downloadBtn.disabled = files.length < 2;
+      downloadBtn.disabled  = files.length < 2;
       clearBtn.style.display = files.length > 0 ? 'block' : 'none';
 
       files.forEach((f, i) => {
         const li = document.createElement('li');
-        li.draggable = true;
+        li.draggable    = true;
         li.dataset.index = i;
-        li.className = i === selectedIdx ? 'active' : '';
+        li.className    = i === selectedIdx ? 'active' : '';
+
+        // Reuse cached object URL for thumbnail if available, else create a
+        // temporary one just for the <img> src (not stored in objectURLs).
+        const thumbSrc = objectURLs[i] || URL.createObjectURL(f);
         li.innerHTML = `
           <span class="num">${i + 1}</span>
-          <img class="thumb" src="${URL.createObjectURL(f)}">
+          <img class="thumb" src="${thumbSrc}">
           <span class="name">${f.name}</span>
           <span class="remove">✕</span>
         `;
-        li.onclick = (e) => { if (!e.target.classList.contains('remove')) selectImage(i); };
-        li.ondragstart = (e) => { draggedIdx = i; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
-        li.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; li.classList.add('drag-over'); };
-        li.ondragleave = () => { li.classList.remove('drag-over'); };
-        li.ondrop = (e) => {
+        li.onclick      = (e) => { if (!e.target.classList.contains('remove')) selectImage(i); };
+        li.ondragstart  = (e) => { draggedIdx = i; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+        li.ondragover   = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; li.classList.add('drag-over'); };
+        li.ondragleave  = () => { li.classList.remove('drag-over'); };
+        li.ondrop       = (e) => {
           e.preventDefault();
           li.classList.remove('drag-over');
           if (draggedIdx !== null && draggedIdx !== i) {
@@ -334,33 +387,48 @@
             const data = imageData.splice(draggedIdx, 1)[0];
             files.splice(i, 0, item);
             imageData.splice(i, 0, data);
-            if (selectedIdx === draggedIdx) selectedIdx = i;
-            else if (draggedIdx < selectedIdx && i >= selectedIdx) selectedIdx--;
-            else if (draggedIdx > selectedIdx && i <= selectedIdx) selectedIdx++;
+            if      (selectedIdx === draggedIdx)                              selectedIdx = i;
+            else if (draggedIdx < selectedIdx && i >= selectedIdx)           selectedIdx--;
+            else if (draggedIdx > selectedIdx && i <= selectedIdx)           selectedIdx++;
             draggedIdx = null;
+            // Files reordered — rebuild cache then re-render
+            rebuildImageCache();
             renderFileList();
             return;
           }
           draggedIdx = null;
         };
-        li.ondragend = () => { li.classList.remove('dragging'); draggedIdx = null; };
-        li.querySelector('.remove').onclick = () => { files.splice(i, 1); imageData.splice(i, 1); if (selectedIdx >= files.length) selectedIdx = files.length - 1; renderFileList(); };
+        li.ondragend    = () => { li.classList.remove('dragging'); draggedIdx = null; };
+        li.querySelector('.remove').onclick = () => {
+          files.splice(i, 1);
+          imageData.splice(i, 1);
+          if (selectedIdx >= files.length) selectedIdx = files.length - 1;
+          rebuildImageCache();
+          renderFileList();
+        };
         fileListEl.appendChild(li);
       });
 
       updateLayoutButtons();
       imageControls.classList.toggle('disabled', selectedIdx < 0);
       if (selectedIdx >= 0) {
-        imgScaleEl.value = imageData[selectedIdx].scale;
+        imgScaleEl.value   = imageData[selectedIdx].scale;
         imgOffsetXEl.value = imageData[selectedIdx].offsetX;
         imgOffsetYEl.value = imageData[selectedIdx].offsetY;
-        scaleVal.textContent = imageData[selectedIdx].scale + '%';
+        scaleVal.textContent   = imageData[selectedIdx].scale + '%';
         offsetXVal.textContent = imageData[selectedIdx].offsetX;
         offsetYVal.textContent = imageData[selectedIdx].offsetY;
       } else {
         previewCanvas.style.display = 'none';
       }
-      renderPreview();
+
+      // Rebuild image cache whenever file list changes, then render.
+      // Skip re-build if cache is already in sync (same length, same files).
+      if (imageCache.length !== files.length) {
+        rebuildImageCache(); // async; will call renderPreview when done
+      } else {
+        renderPreview();
+      }
     }
 
     function selectImage(idx) { selectedIdx = idx; renderFileList(); }
@@ -386,42 +454,50 @@
     });
 
     aspectRatioEl.addEventListener('change', renderPreview);
-    gapSizeEl.addEventListener('input', renderPreview);
-    borderSizeEl.addEventListener('input', renderPreview);
-    bgColorEl.addEventListener('input', renderPreview);
+    gapSizeEl.addEventListener('input',      renderPreview);
+    borderSizeEl.addEventListener('input',   renderPreview);
+    bgColorEl.addEventListener('input',      renderPreview);
 
     imgScaleEl.addEventListener('input', () => {
-      if (selectedIdx >= 0) { imageData[selectedIdx].scale = parseInt(imgScaleEl.value); scaleVal.textContent = imgScaleEl.value + '%'; renderPreview(); }
+      if (selectedIdx >= 0) {
+        imageData[selectedIdx].scale = parseInt(imgScaleEl.value);
+        scaleVal.textContent = imgScaleEl.value + '%';
+        renderPreview();
+      }
     });
     imgOffsetXEl.addEventListener('input', () => {
-      if (selectedIdx >= 0) { imageData[selectedIdx].offsetX = parseInt(imgOffsetXEl.value); offsetXVal.textContent = imgOffsetXEl.value; renderPreview(); }
+      if (selectedIdx >= 0) {
+        imageData[selectedIdx].offsetX = parseInt(imgOffsetXEl.value);
+        offsetXVal.textContent = imgOffsetXEl.value;
+        renderPreview();
+      }
     });
     imgOffsetYEl.addEventListener('input', () => {
-      if (selectedIdx >= 0) { imageData[selectedIdx].offsetY = parseInt(imgOffsetYEl.value); offsetYVal.textContent = imgOffsetYEl.value; renderPreview(); }
+      if (selectedIdx >= 0) {
+        imageData[selectedIdx].offsetY = parseInt(imgOffsetYEl.value);
+        offsetYVal.textContent = imgOffsetYEl.value;
+        renderPreview();
+      }
     });
 
-    function loadImg(src) {
-      return new Promise((res, rej) => {
-        const img = new Image();
-        img.onload = () => res(img);
-        img.onerror = rej;
-        img.src = src;
-      });
-    }
-
-    async function renderPreview() {
-      if (files.length < 2 || !currentLayout) { 
+    /**
+     * Synchronous canvas draw from the in-memory image cache.
+     * No async image loading here — cache was already built in rebuildImageCache().
+     * This mirrors ytcover's renderFrame(loadedImg) pattern exactly.
+     */
+    function renderPreview() {
+      if (files.length < 2 || !currentLayout) {
         previewCanvas.width = 0;
         previewCanvas.style.display = 'none';
-        return; 
+        return;
       }
 
-      const [w, h] = dims();
+      const [w, h]        = dims();
       const { cols, rows } = currentLayout;
-      const gap = parseInt(gapSizeEl.value) || 0;
+      const gap    = parseInt(gapSizeEl.value)    || 0;
       const border = parseInt(borderSizeEl.value) || 0;
 
-      previewCanvas.width = w;
+      previewCanvas.width  = w;
       previewCanvas.height = h;
       const ctx = previewCanvas.getContext('2d');
 
@@ -430,26 +506,29 @@
 
       const availW = w - border * 2;
       const availH = h - border * 2;
-      const cellW = (availW - gap * (cols - 1)) / cols;
-      const cellH = (availH - gap * (rows - 1)) / rows;
+      const cellW  = (availW - gap * (cols - 1)) / cols;
+      const cellH  = (availH - gap * (rows - 1)) / rows;
 
-      const loadAndDraw = async (file, idx) => {
+      const maxCells = Math.min(files.length, cols * rows);
+
+      for (let idx = 0; idx < maxCells; idx++) {
+        const img = imageCache[idx];
+        if (!img) continue;   // still loading (shouldn't normally happen)
+
         const col = idx % cols;
         const row = Math.floor(idx / cols);
-        const x = border + col * (cellW + gap);
-        const y = border + row * (cellH + gap);
+        const x   = border + col * (cellW + gap);
+        const y   = border + row * (cellH + gap);
 
-        const img = await loadImg(URL.createObjectURL(file));
+        const data       = imageData[idx] || { scale: 100, offsetX: 0, offsetY: 0 };
+        const scale      = data.scale / 100;
+        const ox         = (data.offsetX / 100) * cellW;
+        const oy         = (data.offsetY / 100) * cellH;
 
-        const data = imageData[idx] || { scale: 100, offsetX: 0, offsetY: 0 };
-        const scale = data.scale / 100;
-        const ox = (data.offsetX / 100) * cellW;
-        const oy = (data.offsetY / 100) * cellH;
-
-        const baseScale = Math.max(cellW / img.width, cellH / img.height);
+        const baseScale  = Math.max(cellW / img.width, cellH / img.height);
         const finalScale = baseScale * scale;
-        const iw = img.width * finalScale;
-        const ih = img.height * finalScale;
+        const iw         = img.width  * finalScale;
+        const ih         = img.height * finalScale;
 
         ctx.save();
         ctx.beginPath();
@@ -457,11 +536,6 @@
         ctx.clip();
         ctx.drawImage(img, x + (cellW - iw) / 2 + ox, y + (cellH - ih) / 2 + oy, iw, ih);
         ctx.restore();
-      };
-
-      const maxCells = Math.min(files.length, cols * rows);
-      for (let i = 0; i < maxCells; i++) {
-        await loadAndDraw(files[i], i);
       }
 
       previewCanvas.style.display = 'block';
@@ -475,24 +549,213 @@
 
     downloadBtn.addEventListener('click', async () => {
       if (files.length < 2) return;
-      downloadBtn.disabled = true;
+      downloadBtn.disabled    = true;
       downloadBtn.textContent = 'Downloading...';
-      doneMsg.style.display = 'none';
+      doneMsg.style.display   = 'none';
 
       const dataUrl = previewCanvas.toDataURL('image/png');
       const a = document.createElement('a');
-      a.href = dataUrl;
+      a.href     = dataUrl;
       a.download = `collage_${timestamp()}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
 
-      downloadBtn.disabled = false;
+      downloadBtn.disabled    = false;
       downloadBtn.textContent = '⊕ Download Collage';
-      doneMsg.style.display = 'block';
+      doneMsg.style.display   = 'block';
     });
 
     clearBtn.addEventListener('click', clearAll);
+
+    // ── Gesture helpers ──────────────────────────────────────────────────────
+    function getCellIdxAtPoint(clientX, clientY) {
+      if (!currentLayout || files.length < 2) return -1;
+      const rect   = previewCanvas.getBoundingClientRect();
+      const [w, h] = dims();
+      const scaleX = w / rect.width;
+      const scaleY = h / rect.height;
+      const cx     = (clientX - rect.left) * scaleX;
+      const cy     = (clientY - rect.top)  * scaleY;
+
+      const { cols, rows } = currentLayout;
+      const gap    = parseInt(gapSizeEl.value)    || 0;
+      const border = parseInt(borderSizeEl.value) || 0;
+      const availW = w - border * 2;
+      const availH = h - border * 2;
+      const cellW  = (availW - gap * (cols - 1)) / cols;
+      const cellH  = (availH - gap * (rows - 1)) / rows;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = border + col * (cellW + gap);
+          const y = border + row * (cellH + gap);
+          if (cx >= x && cx <= x + cellW && cy >= y && cy <= y + cellH) {
+            const idx = row * cols + col;
+            return idx < files.length ? idx : -1;
+          }
+        }
+      }
+      return -1;
+    }
+
+    function applyGestureZoom(scaleFactor, idx) {
+      if (idx < 0 || idx >= imageData.length) return;
+      const d = imageData[idx];
+      let newScale = Math.round(d.scale * scaleFactor);
+      newScale = Math.max(50, Math.min(200, newScale));
+      d.scale = newScale;
+      if (idx === selectedIdx) {
+        imgScaleEl.value     = newScale;
+        scaleVal.textContent = newScale + '%';
+      }
+      renderPreview();  // synchronous — no flicker
+    }
+
+    function applyGesturePan(dx, dy, idx) {
+      if (idx < 0 || idx >= imageData.length) return;
+      const [w, h]        = dims();
+      const { cols, rows } = currentLayout;
+      const gap    = parseInt(gapSizeEl.value)    || 0;
+      const border = parseInt(borderSizeEl.value) || 0;
+      const cellW  = (w - border * 2 - gap * (cols - 1)) / cols;
+      const cellH  = (h - border * 2 - gap * (rows - 1)) / rows;
+
+      const rect   = previewCanvas.getBoundingClientRect();
+      const scaleX = w / rect.width;
+      const scaleY = h / rect.height;
+      const panX   = (dx * scaleX / cellW) * 100 * 0.5;
+      const panY   = (dy * scaleY / cellH) * 100 * 0.5;
+
+      const d = imageData[idx];
+      d.offsetX = Math.max(-100, Math.min(100, d.offsetX + panX));
+      d.offsetY = Math.max(-100, Math.min(100, d.offsetY + panY));
+      if (idx === selectedIdx) {
+        imgOffsetXEl.value     = Math.round(d.offsetX);
+        imgOffsetYEl.value     = Math.round(d.offsetY);
+        offsetXVal.textContent = Math.round(d.offsetX);
+        offsetYVal.textContent = Math.round(d.offsetY);
+      }
+      renderPreview();  // synchronous — no flicker
+    }
+
+    // ── Touch gestures (pinch-zoom + pan) ───────────────────────────────────
+    let lastPinchDist   = null;
+    let lastTouchCenter = null;
+    let touchActiveIdx  = -1;
+    // Track pinch start state to avoid zoom-jumps on first move
+    let isPinching      = false;
+    let pinchStartDist  = 0;
+    let pinchStartScale = 1;
+
+    function pinchDist(t1, t2) {
+      const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    function touchMid(tl) {
+      let x = 0, y = 0;
+      for (const t of tl) { x += t.clientX; y += t.clientY; }
+      return { x: x / tl.length, y: y / tl.length };
+    }
+
+    previewCanvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        touchActiveIdx  = getCellIdxAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+        lastTouchCenter = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        lastPinchDist   = null;
+        isPinching      = false;
+      } else if (e.touches.length === 2) {
+        if (touchActiveIdx < 0) {
+          touchActiveIdx = getCellIdxAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+        }
+        isPinching      = true;
+        pinchStartDist  = pinchDist(e.touches[0], e.touches[1]);
+        pinchStartScale = touchActiveIdx >= 0 ? imageData[touchActiveIdx].scale : 100;
+        lastPinchDist   = pinchStartDist;
+        lastTouchCenter = touchMid(e.touches);
+      }
+      if (touchActiveIdx >= 0) selectImage(touchActiveIdx);
+    }, { passive: false });
+
+    previewCanvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (touchActiveIdx < 0) return;
+
+      if (e.touches.length === 2 && isPinching && lastPinchDist !== null) {
+        const newDist   = pinchDist(e.touches[0], e.touches[1]);
+        // Scale relative to pinch start (ytcover pattern) — avoids cumulative drift
+        const ratio     = newDist / pinchStartDist;
+        const d         = imageData[touchActiveIdx];
+        let newScale    = Math.round(pinchStartScale * ratio);
+        newScale        = Math.max(50, Math.min(200, newScale));
+        d.scale         = newScale;
+        if (touchActiveIdx === selectedIdx) {
+          imgScaleEl.value     = newScale;
+          scaleVal.textContent = newScale + '%';
+        }
+
+        const newCenter = touchMid(e.touches);
+        applyGesturePan(newCenter.x - lastTouchCenter.x, newCenter.y - lastTouchCenter.y, touchActiveIdx);
+        lastTouchCenter = newCenter;
+        // renderPreview already called by applyGesturePan; call it here only
+        // if pan didn't (single-draw = no double-paint flicker)
+        renderPreview();
+
+      } else if (e.touches.length === 1 && !isPinching && lastTouchCenter) {
+        const t = e.touches[0];
+        applyGesturePan(t.clientX - lastTouchCenter.x, t.clientY - lastTouchCenter.y, touchActiveIdx);
+        lastTouchCenter = { x: t.clientX, y: t.clientY };
+      }
+    }, { passive: false });
+
+    previewCanvas.addEventListener('touchend', e => {
+      if (e.touches.length < 2) { isPinching = false; lastPinchDist = null; }
+      if (e.touches.length === 0) { lastTouchCenter = null; touchActiveIdx = -1; }
+    });
+    previewCanvas.addEventListener('touchcancel', () => {
+      isPinching = false; lastPinchDist = null; lastTouchCenter = null; touchActiveIdx = -1;
+    });
+
+    // ── Mouse wheel zoom ─────────────────────────────────────────────────────
+    previewCanvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const idx = getCellIdxAtPoint(e.clientX, e.clientY);
+      if (idx < 0) return;
+      if (idx !== selectedIdx) selectImage(idx);
+      const factor = e.deltaY > 0 ? 0.95 : 1.05;
+      applyGestureZoom(factor, idx);
+    }, { passive: false });
+
+    // ── Mouse drag pan ───────────────────────────────────────────────────────
+    let isDragging = false, dragStart = null, dragIdx = -1;
+
+    previewCanvas.addEventListener('mousedown', e => {
+      const idx = getCellIdxAtPoint(e.clientX, e.clientY);
+      if (idx < 0) return;
+      selectImage(idx);
+      dragIdx    = idx;
+      isDragging = true;
+      dragStart  = { x: e.clientX, y: e.clientY };
+      previewCanvas.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDragging || dragIdx < 0) return;
+      applyGesturePan(e.clientX - dragStart.x, e.clientY - dragStart.y, dragIdx);
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) { isDragging = false; dragStart = null; dragIdx = -1; previewCanvas.style.cursor = ''; }
+    });
+
+    previewCanvas.addEventListener('mousemove', e => {
+      if (isDragging) return;
+      previewCanvas.style.cursor = getCellIdxAtPoint(e.clientX, e.clientY) >= 0 ? 'grab' : '';
+    });
+    previewCanvas.addEventListener('mouseleave', () => { if (!isDragging) previewCanvas.style.cursor = ''; });
+
   </script>
 </body>
 </html>
