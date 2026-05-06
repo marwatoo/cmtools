@@ -192,33 +192,32 @@
     const cache  = {};
     const articleMap = {}; // key → array of full article objects for cache persistence
     const CACHE_KEY = 'le360deck_cache';
-    const CACHE_TTL = 5 * 60 * 1000; // 5 min
+    const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
     function loadCache() {
       try {
         const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return;
         const data = JSON.parse(raw);
-        if (Date.now() - data.ts < CACHE_TTL) {
-          Object.entries(data.feeds || {}).forEach(([k, articles]) => {
-            if (!articles.length) return;
-            cache[k] = new Set(articles.map(a => a.link));
-            articleMap[k] = articles;
-            const feed = document.getElementById(`feed-${k}`);
-            if (feed) {
-              const loader = feed.querySelector('.deck-loading');
-              if (loader) loader.remove();
-              const frag = document.createDocumentFragment();
-              articles.forEach((a, i) => {
-                // Restore missing arrays/fields that may not have been saved in older cache
-                a.contentImages = a.contentImages || [];
-                a._isRtl = a._isRtl || (k === 'AR' || k === 'Sport_AR');
-                frag.appendChild(createCard(a, i === 0));
-              });
-              feed.appendChild(frag);
-            }
-          });
-        }
+        // Always render whatever we have — even if stale — so user sees content immediately.
+        // Fresh fetch will update cards in the background.
+        Object.entries(data.feeds || {}).forEach(([k, articles]) => {
+          if (!articles.length) return;
+          cache[k] = new Set(articles.map(a => a.link));
+          articleMap[k] = articles;
+          const feed = document.getElementById(`feed-${k}`);
+          if (feed) {
+            const loader = feed.querySelector('.deck-loading');
+            if (loader) loader.remove();
+            const frag = document.createDocumentFragment();
+            articles.forEach((a, i) => {
+              a.contentImages = a.contentImages || [];
+              a._isRtl = a._isRtl || (k === 'AR' || k === 'Sport_AR');
+              frag.appendChild(createCard(a, i === 0));
+            });
+            feed.appendChild(frag);
+          }
+        });
       } catch(e) {}
     }
 
@@ -468,6 +467,7 @@
         // Keep articleMap trimmed to 12 items
         articleMap[key] = articleMap[key].slice(0, 12);
         feed.insertBefore(frag, feed.firstChild);
+        saveCache(); // persist immediately so closing tab before all columns load still saves progress
       } catch(e) {
         // Silent retry once before showing error
         if (!isRetry) {
