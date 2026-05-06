@@ -382,7 +382,10 @@
       renderFrame(img);
     }
 
+    let _renderGen = 0; // generation counter — cancels stale async renders
+
     async function renderFrame(img) {
+      const gen = ++_renderGen; // claim this generation
       const cfg = MODES[currentMode];
 
       ctx.clearRect(0, 0, W, H);
@@ -401,17 +404,20 @@
       if (cfg.overlay) {
         try {
           const ov = await getOverlay(currentMode);
+          if (gen !== _renderGen) return; // a newer render started — bail out
           if (ov) ctx.drawImage(ov, 0, 0, W, H);
         } catch(e) { console.warn(e.message); }
       }
 
       if (cfg.hasCountry && countrySelect.value) {
         const co = await loadCountryOverlay(countrySelect.value);
+        if (gen !== _renderGen) return; // bail out if superseded
         if (co) ctx.drawImage(co, 0, 0, W, H);
       }
 
       if (cfg.showText) {
         await fontsReady;
+        if (gen !== _renderGen) return; // bail out if superseded
         drawText();
       }
 
