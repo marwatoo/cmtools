@@ -524,6 +524,7 @@
     });
     dropzone.addEventListener('touchend', function(e) {
       if (currentFile) return;
+      e.preventDefault(); // prevent synthetic 'click' from also firing on mobile
       upload.click();
     });
     upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
