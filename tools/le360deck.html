@@ -175,6 +175,8 @@
       url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
       url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
       url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+      url => `https://proxy.cors.sh/${url}`,
     ];
 
     const sources = {
@@ -188,6 +190,7 @@
 
     const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
     const cache  = {};
+    const articleMap = {}; // key → array of full article objects for cache persistence
     const CACHE_KEY = 'le360deck_cache';
     const CACHE_TTL = 5 * 60 * 1000; // 5 min
 
@@ -198,13 +201,20 @@
         const data = JSON.parse(raw);
         if (Date.now() - data.ts < CACHE_TTL) {
           Object.entries(data.feeds || {}).forEach(([k, articles]) => {
+            if (!articles.length) return;
             cache[k] = new Set(articles.map(a => a.link));
+            articleMap[k] = articles;
             const feed = document.getElementById(`feed-${k}`);
-            if (feed && articles.length) {
+            if (feed) {
               const loader = feed.querySelector('.deck-loading');
               if (loader) loader.remove();
               const frag = document.createDocumentFragment();
-              articles.forEach((a, i) => frag.appendChild(createCard(a, i === 0)));
+              articles.forEach((a, i) => {
+                // Restore missing arrays/fields that may not have been saved in older cache
+                a.contentImages = a.contentImages || [];
+                a._isRtl = a._isRtl || (k === 'AR' || k === 'Sport_AR');
+                frag.appendChild(createCard(a, i === 0));
+              });
               feed.appendChild(frag);
             }
           });
@@ -218,14 +228,8 @@
         Object.entries(cache).forEach(([k, links]) => {
           const feed = document.getElementById(`feed-${k}`);
           if (feed) {
-            const cards = feed.querySelectorAll('.deck-card');
-            const articles = [];
-            cards.forEach(c => {
-              const link = c.querySelector('.copy-link')?.dataset.link || '';
-              const title = c.querySelector('h3')?.textContent || '';
-              if (link) articles.push({ link, title });
-            });
-            data.feeds[k] = articles.slice(0, 12);
+            // Store full article objects from the in-memory articleMap
+            data.feeds[k] = (articleMap[k] || []).slice(0, 12);
           }
         });
         localStorage.setItem(CACHE_KEY, JSON.stringify(data));
@@ -252,12 +256,17 @@
 
     // ── Fetch with proxy race (fastest wins) ──────────────────────────────
     async function fetchWithProxy(url) {
-      const cacheBuster = '?_t=' + Date.now();
-      const bustUrl = url + (url.includes('?') ? '&' : '') + cacheBuster;
-      const results = PROXIES.map(proxy =>
-        fetch(proxy(bustUrl), { signal: AbortSignal.timeout(12000) })
-          .then(res => { if (!res.ok) throw new Error('not ok'); return res.text(); })
-          .then(text => { if (!text) throw new Error('empty'); return text; })
+      // No cache-busting — allows CDN caching and reduces load
+      const results = PROXIES.map((proxy, i) =>
+        new Promise((resolve, reject) => {
+          // Stagger proxy attempts slightly so the best proxy wins without hammering all at once
+          setTimeout(() => {
+            fetch(proxy(url), { signal: AbortSignal.timeout(10000) })
+              .then(res => { if (!res.ok) throw new Error('not ok'); return res.text(); })
+              .then(text => { if (!text || text.length < 100) throw new Error('empty'); resolve(text); })
+              .catch(reject);
+          }, i * 150);
+        })
       );
       return Promise.any(results);
     }
@@ -439,6 +448,7 @@
     async function updateColumn(key, url, isRetry = false) {
       const feed = document.getElementById(`feed-${key}`);
       if (!cache[key]) cache[key] = new Set();
+      if (!articleMap[key]) articleMap[key] = [];
 
       try {
         const articles = await fetchArticles(key, url);
@@ -453,7 +463,10 @@
         fresh.forEach((a, i) => {
           frag.appendChild(createCard(a, i === 0 && !feed.querySelector('.deck-card')));
           cache[key].add(a.link);
+          articleMap[key].unshift(a);
         });
+        // Keep articleMap trimmed to 12 items
+        articleMap[key] = articleMap[key].slice(0, 12);
         feed.insertBefore(frag, feed.firstChild);
       } catch(e) {
         // Silent retry once before showing error
@@ -481,17 +494,17 @@
     async function updateLoop() {
       await Promise.allSettled(Object.entries(sources).map(([k, u]) => updateColumn(k, u)));
       saveCache();
-      setTimeout(updateLoop, 30000);
+      setTimeout(updateLoop, 60000); // Increased to 60s to reduce proxy hammering
     }
 
-    // Load from cache immediately, then fetch fresh
+    // Load from cache immediately, then fetch all columns in parallel
     loadCache();
     setTimeout(() => {
-      const keys = Object.keys(sources);
-      keys.forEach((key, i) => {
-        setTimeout(() => updateColumn(key, sources[key]), i * 300);
-      });
-      setTimeout(updateLoop, 15000);
+      // Fetch all columns at once in parallel — no need to stagger since proxies are already raced
+      Promise.allSettled(
+        Object.entries(sources).map(([key, url]) => updateColumn(key, url))
+      ).then(saveCache);
+      setTimeout(updateLoop, 65000);
     }, 200);
 
     // ── Modal ──────────────────────────────────────────────────────────────
