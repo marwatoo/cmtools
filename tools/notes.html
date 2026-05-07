@@ -747,7 +747,7 @@
 <div style="max-width:1120px;margin:0 auto;padding:14px 20px 60px;">
   <div style="margin-bottom:14px;">
     <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.45rem;margin-bottom:3px;">Notes Editor</h1>
-    <p style="color:var(--text2);font-size:0.83rem;">Write and save notes with full Arabic RTL support. Auto-saves to localStorage.</p>
+    <p style="color:var(--text2);font-size:0.83rem;">Write and save notes with full Arabic RTL support. Auto-saves to IndexedDB.</p>
   </div>
 
   <div class="notes-layout" id="notesLayout">
@@ -883,7 +883,6 @@
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
-var STORAGE_KEY  = 'mts-notes';
 var notes        = [];
 var activeNoteId = null;
 var saveTimeout  = null;
@@ -909,30 +908,126 @@ var COLOR_OPTS = [
 ];
 
 var FONT_SIZE_KEY = 'mts-notes-font-size';
-var currentFontSize = localStorage.getItem(FONT_SIZE_KEY) || '1rem';
+
+/* ═══════════════════════════════════════════
+   INDEXED DB
+═══════════════════════════════════════════ */
+var DB_NAME  = 'MediaToolsNotes';
+var DB_VER   = 1;
+var STORE    = 'notes';
+var KEY_META = '__meta__';
+
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror   = function() { reject(req.error); };
+  });
+}
+
+function idbGetAll() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  });
+}
+
+function idbSaveAll(items) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx    = db.transaction(STORE, 'readwrite');
+      var store = tx.objectStore(STORE);
+      store.clear();
+      for (var i = 0; i < items.length; i++) store.put(items[i], i);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror    = function() { reject(tx.error); };
+    });
+  });
+}
+
+function idbGetMeta(key) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY_META);
+      req.onsuccess = function() { resolve(req.result ? req.result[key] : null); };
+      req.onerror   = function() { resolve(null); };
+    });
+  });
+}
+
+function idbSetMeta(key, val) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx    = db.transaction(STORE, 'readwrite');
+      var store = tx.objectStore(STORE);
+      var req   = store.get(KEY_META);
+      req.onsuccess = function() {
+        var meta = req.result || {};
+        meta[key] = val;
+        store.put(meta, KEY_META);
+        resolve();
+      };
+      req.onerror = function() { resolve(); };
+    });
+  });
+}
+
+function idbSize() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() {
+        var bytes = 0;
+        for (var i = 0; i < req.result.length; i++) bytes += new Blob([JSON.stringify(req.result[i])]).size;
+        resolve(bytes);
+      };
+      req.onerror = function() { resolve(0); };
+    });
+  });
+}
 
 /* ═══════════════════════════════════════════
    PERSISTENCE
 ═══════════════════════════════════════════ */
+var currentFontSize = '1rem';
+
 function loadNotes() {
-  try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-  catch(e) { notes = []; }
+  idbGetMeta(FONT_SIZE_KEY).then(function(size) {
+    if (size) { currentFontSize = size; applyFontSize(size); }
+  });
+  idbGetAll().then(function(items) {
+    notes = items.filter(function(x) { return x !== null && x !== undefined && x.id; });
+    renderNotesList();
+    updateStorageBar();
+  }).catch(function() { notes = []; renderNotesList(); });
 }
+
 function saveNotes() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  idbSaveAll(notes).catch(function() {});
   updateStorageBar();
 }
+
 function updateStorageBar() {
-  try {
-    var bytes = new Blob([localStorage.getItem(STORAGE_KEY)||'']).size;
-    var pct   = Math.min(100, bytes / (5*1024*1024) * 100);
-    var bar   = document.getElementById('storageBar');
-    var txt   = document.getElementById('storageText');
-    bar.style.width = pct.toFixed(1)+'%';
-    bar.className   = 'storage-bar-fill'+(pct>85?' danger':pct>60?' warn':'');
-    txt.textContent = (bytes/1024).toFixed(1)+' KB';
-    txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
-  } catch(e){}
+  idbSize().then(function(bytes) {
+    try {
+      var pct = Math.min(100, bytes / (5*1024*1024) * 100);
+      var bar = document.getElementById('storageBar');
+      var txt = document.getElementById('storageText');
+      bar.style.width = pct.toFixed(1)+'%';
+      bar.className   = 'storage-bar-fill'+(pct>85?' danger':pct>60?' warn':'');
+      txt.textContent = (bytes/1024).toFixed(1)+' KB';
+      txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
+    } catch(e){}
+  });
 }
 
 /* ═══════════════════════════════════════════
@@ -1383,7 +1478,7 @@ document.getElementById('searchInput').addEventListener('input', function(){ sea
 function applyFontSize(size) {
   document.getElementById('noteTextarea').style.fontSize = size;
   document.getElementById('fontSizeSelect').value = size;
-  localStorage.setItem(FONT_SIZE_KEY, size);
+  idbSetMeta(FONT_SIZE_KEY, size).catch(function(){});
   currentFontSize = size;
 }
 document.getElementById('fontSizeSelect').addEventListener('change', function(){

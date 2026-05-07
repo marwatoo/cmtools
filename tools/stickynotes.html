@@ -137,22 +137,68 @@
 var notes = [];
 var dragNote = null;
 var dragOffset = { x: 0, y: 0 };
-var zCounter = 0;
+
+// ── IndexedDB ──
+var DB_NAME = 'MediaToolsStickyNotes';
+var DB_VERSION = 1;
+var STORE_NAME = 'notes';
+
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error); };
+  });
+}
+
+function idbGetAll() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(STORE_NAME, 'readonly');
+      var store = tx.objectStore(STORE_NAME);
+      var req = store.getAll();
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+
+function idbSaveAll(items) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(STORE_NAME, 'readwrite');
+      var store = tx.objectStore(STORE_NAME);
+      store.clear();
+      for (var i = 0; i < items.length; i++) {
+        store.put(items[i]);
+      }
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { reject(tx.error); };
+    });
+  });
+}
+
+var zCounter = 100;
 
 function loadNotes() {
-  try {
-    var s = localStorage.getItem('sticky-notes');
-    notes = s ? JSON.parse(s) : [];
+  idbGetAll().then(function(items) {
+    notes = items || [];
     for (var i = 0; i < notes.length; i++) {
       if (notes[i].zIndex > zCounter) zCounter = notes[i].zIndex;
       if (notes[i].zIndex == null) notes[i].zIndex = ++zCounter;
     }
-  } catch(e) { notes = []; }
-  renderNotes();
+    renderNotes();
+  }).catch(function() { notes = []; renderNotes(); });
 }
 
 function saveNotes() {
-  localStorage.setItem('sticky-notes', JSON.stringify(notes));
+  idbSaveAll(notes).catch(function() {});
 }
 
 function renderNotes() {
@@ -238,7 +284,6 @@ function renderNotes() {
   }
 }
 
-var zCounter = 100;
 function bringToFront(el) {
   var id = parseInt(el.dataset.id);
   var n = notes.find(function(x) { return x.id === id; });
@@ -363,16 +408,6 @@ function addNote() {
   });
   saveNotes();
   renderNotes();
-}
-
-var currentNoteId = null;
-
-function showColorPicker(el) {
-  var picker = document.getElementById('colorPicker');
-  var rect = el.getBoundingClientRect();
-  picker.style.top = (rect.bottom + 8) + 'px';
-  picker.style.left = rect.left + 'px';
-  picker.style.display = 'flex';
 }
 
 document.getElementById('colorPicker').onclick = function(e) {
