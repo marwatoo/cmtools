@@ -52,12 +52,6 @@
     .deck-refresh-status.refreshing { color: var(--accent); opacity: 1; }
     .deck-refresh-status.error { color: #e05; opacity: 1; }
 
-    /* Countdown ring */
-    .refresh-ring {
-      display: inline-flex; align-items: center; gap: 4px;
-    }
-    .refresh-ring svg { vertical-align: middle; }
-
     /* ════════════════════════════════════════
        MOBILE — TAB-BASED SINGLE COLUMN VIEW
     ════════════════════════════════════════ */
@@ -192,7 +186,7 @@
     ];
 
     const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
-    const CACHE_KEY = 'le360deck_cache_v2'; // bumped version to avoid stale schema
+    const CACHE_KEY = 'le360deck_cache_v2';
 
     const sources = {
       FR:       'https://fr.le360.ma/arc/outboundfeeds/google-news-feed/',
@@ -206,13 +200,36 @@
     const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
 
     // Per-column state: last fetched timestamp + last article list
-    const colState = {}; // key → { fetchedAt: number, articles: [] }
+    // Only lightweight fields are cached (no full content/contentImages)
+    const colState = {};
+
+    // Interval IDs for cleanup
+    const intervalIds = {};
 
     // ── Persist / restore ─────────────────────────────────────────────────
     function saveCache() {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), cols: colState }));
-      } catch(e) {}
+        // Strip heavy fields before caching to avoid localStorage quota issues
+        const slim = {};
+        Object.entries(colState).forEach(([key, state]) => {
+          if (!state) return;
+          slim[key] = {
+            fetchedAt: state.fetchedAt,
+            articles: (state.articles || []).map(a => ({
+              title:       a.title,
+              link:        a.link,
+              img:         a.img,
+              date:        a.date,
+              description: a.description,
+              _isRtl:      a._isRtl,
+              // content and contentImages are intentionally omitted
+            }))
+          };
+        });
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), cols: slim }));
+      } catch(e) {
+        // Quota exceeded or private mode — silently ignore
+      }
     }
 
     function loadCache() {
@@ -220,13 +237,49 @@
         const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return;
         const data = JSON.parse(raw);
-        Object.assign(colState, data.cols || {});
+        Object.entries(data.cols || {}).forEach(([key, state]) => {
+          // Restore slim cache; missing heavy fields will re-fetch on modal open
+          colState[key] = {
+            fetchedAt: state.fetchedAt,
+            articles: (state.articles || []).map(a => ({
+              ...a,
+              content:       a.description || '<p>No content.</p>',
+              contentImages: [],
+            }))
+          };
+        });
       } catch(e) {}
+    }
+
+    // ── Clipboard helper (with execCommand fallback) ───────────────────────
+    function copyToClipboard(text, btn) {
+      const finish = () => {
+        btn.classList.add('copied');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1200);
+      };
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(finish).catch(() => fallbackCopy(text, finish));
+      } else {
+        fallbackCopy(text, finish);
+      }
+    }
+
+    function fallbackCopy(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); cb(); } catch(e) {}
+      document.body.removeChild(ta);
     }
 
     // ── Fetch helpers ─────────────────────────────────────────────────────
     async function fetchWithProxy(url) {
-      // Add cache-bust param so proxies don't serve stale responses
       const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Math.floor(Date.now() / 60000);
       const results = PROXIES.map((proxy, i) =>
         new Promise((resolve, reject) => {
@@ -256,16 +309,23 @@
     async function fetchArticles(key, url) {
       const text = await fetchWithProxy(url);
       const doc  = new DOMParser().parseFromString(text, 'text/xml');
-      // Check for parse error
       if (doc.querySelector('parsererror')) throw new Error('XML parse error');
+
       return [...doc.querySelectorAll('item')].slice(0, 12).map(item => {
         let content = '';
         try {
           const nodes = item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/', 'encoded');
           if (nodes.length) content = nodes[0].textContent;
         } catch(e) {}
+
         const desc = item.querySelector('description')?.textContent || '';
-        const media = item.querySelector('media\\:content, content');
+
+        // FIX: use getElementsByTagNameNS for media:content (more reliable in XML docs)
+        let mediaUrl = '';
+        try {
+          const mediaNodes = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content');
+          if (mediaNodes.length) mediaUrl = mediaNodes[0].getAttribute('url') || '';
+        } catch(e) {}
 
         let link = '';
         for (const node of item.childNodes) {
@@ -280,14 +340,14 @@
         }
 
         return {
-          title: item.querySelector('title')?.textContent || '',
+          title:         item.querySelector('title')?.textContent || '',
           link,
-          img:   media?.getAttribute('url') || imgFromDescription(desc) || '',
-          date:  item.querySelector('pubDate')?.textContent || '',
-          content: content || desc || '<p>No content.</p>',
-          description: desc,
+          img:           mediaUrl || imgFromDescription(desc) || '',
+          date:          item.querySelector('pubDate')?.textContent || '',
+          content:       content || desc || '<p>No content.</p>',
+          description:   desc,
           contentImages: extractImagesFromHTML(content),
-          _isRtl: key === 'AR' || key === 'Sport_AR'
+          _isRtl:        key === 'AR' || key === 'Sport_AR'
         };
       });
     }
@@ -295,16 +355,6 @@
     function formatDate(ds) {
       try { return new Date(ds).toLocaleString('fr-FR', { hour12: false }); }
       catch(e) { return ds; }
-    }
-
-    // ── Copy helper ────────────────────────────────────────────────────────
-    function copyToClipboard(text, btn) {
-      navigator.clipboard.writeText(text).then(() => {
-        btn.classList.add('copied');
-        const orig = btn.textContent;
-        btn.textContent = '✓ Copied';
-        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1200);
-      });
     }
 
     function extractYouTubeLink(html) {
@@ -317,10 +367,11 @@
 
     // ── Render card ────────────────────────────────────────────────────────
     function createCard(article, eager = false) {
-      const card = document.createElement('div');
-      card.className = 'deck-card';
       const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
       const hasCarousel = article.contentImages.length > 1;
+
+      const card = document.createElement('div');
+      card.className = 'deck-card';
 
       const img = document.createElement('img');
       img.className = 'deck-card-img';
@@ -328,7 +379,8 @@
       img.loading = eager ? 'eager' : 'lazy';
       img.fetchPriority = eager ? 'high' : 'auto';
       img.alt = '';
-      img.onerror = `this.src='${fallback}'`;
+      // FIX: onerror must be a function, not a string
+      img.onerror = () => { img.src = fallback; img.onerror = null; };
       card.appendChild(img);
 
       const h3 = document.createElement('h3');
@@ -346,20 +398,16 @@
       const copyLink = document.createElement('button');
       copyLink.className = 'deck-btn copy-link';
       copyLink.textContent = 'Copy Link';
-      copyLink.dataset.link = article.link;
       btns.appendChild(copyLink);
 
       const copyTitle = document.createElement('button');
       copyTitle.className = 'deck-btn copy-title';
       copyTitle.textContent = 'Copy Title';
-      copyTitle.dataset.title = article.title;
       btns.appendChild(copyTitle);
 
       const copyBoth = document.createElement('button');
       copyBoth.className = 'deck-btn copy-both';
       copyBoth.textContent = 'Copy Title + Link';
-      copyBoth.dataset.title = article.title;
-      copyBoth.dataset.link = article.link;
       btns.appendChild(copyBoth);
 
       const ytLink = extractYouTubeLink(article.content);
@@ -367,8 +415,10 @@
         const copyTitleYt = document.createElement('button');
         copyTitleYt.className = 'deck-btn copy-title-yt';
         copyTitleYt.textContent = 'Copy Title + YT Link';
-        copyTitleYt.dataset.title = article.title;
-        copyTitleYt.dataset.ytlink = ytLink;
+        copyTitleYt.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(`${article.title}\n${ytLink}`, copyTitleYt);
+        });
         btns.appendChild(copyTitleYt);
       }
 
@@ -381,37 +431,24 @@
 
       card.appendChild(btns);
 
+      // Events
       card.addEventListener('click', e => {
         if (e.target.closest('.deck-card-btns')) return;
         openModal(article);
       });
-
-      copyLink.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(copyLink.dataset.link, copyLink); });
-      copyTitle.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(copyTitle.dataset.title, copyTitle); });
-      copyBoth.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth); });
-
-      const copyTitleYt = card.querySelector('.copy-title-yt');
-      if (copyTitleYt) {
-        copyTitleYt.addEventListener('click', e => {
-          e.stopPropagation();
-          copyToClipboard(`${copyTitleYt.dataset.title}\n${copyTitleYt.dataset.ytlink}`, copyTitleYt);
-        });
-      }
+      copyLink.addEventListener('click',  e => { e.stopPropagation(); copyToClipboard(article.link, copyLink); });
+      copyTitle.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(article.title, copyTitle); });
+      copyBoth.addEventListener('click',  e => { e.stopPropagation(); copyToClipboard(`${article.title}\n${article.link}`, copyBoth); });
 
       return card;
     }
 
-    // ── Render full feed (replace strategy) ──────────────────────────────
-    // Instead of prepending unknowns, we REPLACE the feed with the latest
-    // full list from the RSS. This ensures order and freshness are always accurate.
+    // ── Render full feed ──────────────────────────────────────────────────
     function renderFeed(key, articles) {
       const feed = document.getElementById(`feed-${key}`);
       if (!feed) return;
 
-      // Preserve scroll position only if user has scrolled down
       const scrollTop = feed.scrollTop;
-
-      // Clear everything
       feed.innerHTML = '';
 
       if (!articles || !articles.length) {
@@ -426,7 +463,6 @@
       articles.forEach((a, i) => frag.appendChild(createCard(a, i === 0)));
       feed.appendChild(frag);
 
-      // Restore scroll if user was browsing
       if (scrollTop > 80) feed.scrollTop = scrollTop;
     }
 
@@ -445,7 +481,6 @@
         const articles = await fetchArticles(key, url);
         if (!articles.length) throw new Error('empty feed');
 
-        // Save to state
         colState[key] = { fetchedAt: Date.now(), articles };
         saveCache();
 
@@ -459,7 +494,6 @@
         }
         setStatus(key, 'error', '⚠ failed');
 
-        // Show retry button inside feed only if it's empty
         const feed = document.getElementById(`feed-${key}`);
         if (feed && !feed.querySelector('.deck-card')) {
           feed.innerHTML = '';
@@ -471,7 +505,7 @@
           const btn = document.createElement('button');
           btn.textContent = '↺ Retry';
           btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
-          btn.onclick = () => { wrap.textContent = 'Retrying…'; refreshColumn(key, url, false); };
+          btn.onclick = () => { wrap.innerHTML = ''; wrap.textContent = 'Retrying…'; refreshColumn(key, url, false); };
           wrap.appendChild(msg);
           wrap.appendChild(btn);
           feed.appendChild(wrap);
@@ -490,7 +524,6 @@
       col.innerHTML = `
         <div class="deck-col-header">
           <h2>${labels[key]}</h2>
-         
           <span class="deck-refresh-status" id="status-${key}"></span>
         </div>
         <div class="deck-col-feed" id="feed-${key}">
@@ -502,7 +535,6 @@
     // ── Boot: load cache → render immediately → then fetch fresh ──────────
     loadCache();
 
-    // Render cached articles instantly for all columns
     Object.keys(sources).forEach(key => {
       const state = colState[key];
       if (state && state.articles && state.articles.length) {
@@ -517,14 +549,12 @@
       setTimeout(() => refreshColumn(key, url), i * 400);
     });
 
-    // ── 5-minute refresh loop ─────────────────────────────────────────────
-    // Each column refreshes independently so a slow proxy on one doesn't block others
+    // ── 5-minute refresh loop (store IDs for potential cleanup) ───────────
     Object.entries(sources).forEach(([key, url]) => {
-      setInterval(() => refreshColumn(key, url), REFRESH_INTERVAL);
+      intervalIds[key] = setInterval(() => refreshColumn(key, url), REFRESH_INTERVAL);
     });
 
     // ── Visibility-based refresh ──────────────────────────────────────────
-    // When the tab regains focus after being hidden, refresh columns that are stale (>5min old)
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) return;
       Object.entries(sources).forEach(([key, url]) => {
