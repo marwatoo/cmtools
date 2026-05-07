@@ -38,6 +38,26 @@
     .deck-column.rtl .deck-card h3 { text-align: right; }
     .deck-column.rtl .deck-card-date { text-align: right; }
 
+    /* Refresh indicator */
+    .deck-col-header { position: relative; }
+    .deck-refresh-status {
+      font-size: 0.62rem;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 400;
+      margin-left: auto;
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+    .deck-refresh-status.refreshing { color: var(--accent); opacity: 1; }
+    .deck-refresh-status.error { color: #e05; opacity: 1; }
+
+    /* Countdown ring */
+    .refresh-ring {
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .refresh-ring svg { vertical-align: middle; }
+
     /* ════════════════════════════════════════
        MOBILE — TAB-BASED SINGLE COLUMN VIEW
     ════════════════════════════════════════ */
@@ -95,8 +115,6 @@
     .deck-column.slide-from-left  { animation: slideInFromLeft  0.22s cubic-bezier(0.4,0,0.2,1) forwards; }
 
     @media (max-width: 700px) {
-
-      /* Kill the fadeUp re-trigger when columns are shown/hidden via mobile-active */
       .deck-column {
         animation: none !important;
         opacity: 1 !important;
@@ -127,12 +145,10 @@
       .deck-column.mobile-active { display: flex; }
       .deck-col-feed { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-      /* Cards: compact on mobile */
       .deck-card { padding: 10px; }
       .deck-card-img { aspect-ratio: 16/9; }
       .deck-btn { font-size: 0.64rem; padding: 3px 7px; }
 
-      /* Modal: bottom sheet */
       .modal-overlay { padding: 0 !important; align-items: flex-end !important; }
       .modal-box {
         max-width: 100% !important; width: 100% !important;
@@ -155,13 +171,9 @@
     </div>
   </nav>
 
-  <!-- Deck columns container -->
   <div class="deck-container" id="deckContainer"></div>
-
-  <!-- Mobile tab bar -->
   <div class="mobile-tab-bar" id="mobileTabBar"></div>
 
-  <!-- Article Modal -->
   <div class="modal-overlay hidden" id="modalOverlay">
     <div class="modal-box" id="modalBox">
       <button class="modal-close" id="modalClose">×</button>
@@ -170,7 +182,7 @@
   </div>
 
   <script>
-    // ── CORS proxies (raced in parallel) ──────────────────────────────────
+    // ── CORS proxies ──────────────────────────────────────────────────────
     const PROXIES = [
       url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
       url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -178,6 +190,9 @@
       url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
       url => `https://proxy.cors.sh/${url}`,
     ];
+
+    const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    const CACHE_KEY = 'le360deck_cache_v2'; // bumped version to avoid stale schema
 
     const sources = {
       FR:       'https://fr.le360.ma/arc/outboundfeeds/google-news-feed/',
@@ -189,82 +204,38 @@
     };
 
     const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
-    const cache  = {};
-    const articleMap = {}; // key → array of full article objects for cache persistence
-    const CACHE_KEY = 'le360deck_cache';
-    const CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+    // Per-column state: last fetched timestamp + last article list
+    const colState = {}; // key → { fetchedAt: number, articles: [] }
+
+    // ── Persist / restore ─────────────────────────────────────────────────
+    function saveCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), cols: colState }));
+      } catch(e) {}
+    }
 
     function loadCache() {
       try {
         const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return;
         const data = JSON.parse(raw);
-        // Always render whatever we have — even if stale — so user sees content immediately.
-        // Fresh fetch will update cards in the background.
-        Object.entries(data.feeds || {}).forEach(([k, articles]) => {
-          if (!articles.length) return;
-          cache[k] = new Set(articles.map(a => a.link));
-          articleMap[k] = articles;
-          const feed = document.getElementById(`feed-${k}`);
-          if (feed) {
-            const loader = feed.querySelector('.deck-loading');
-            if (loader) loader.remove();
-            const frag = document.createDocumentFragment();
-            articles.forEach((a, i) => {
-              a.contentImages = a.contentImages || [];
-              a._isRtl = a._isRtl || (k === 'AR' || k === 'Sport_AR');
-              frag.appendChild(createCard(a, i === 0));
-            });
-            feed.appendChild(frag);
-          }
-        });
+        Object.assign(colState, data.cols || {});
       } catch(e) {}
     }
 
-    function saveCache() {
-      try {
-        const data = { ts: Date.now(), feeds: {} };
-        Object.entries(cache).forEach(([k, links]) => {
-          const feed = document.getElementById(`feed-${k}`);
-          if (feed) {
-            // Store full article objects from the in-memory articleMap
-            data.feeds[k] = (articleMap[k] || []).slice(0, 12);
-          }
-        });
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-      } catch(e) {}
-    }
-
-    // ── Build columns ──────────────────────────────────────────────────────
-    const container = document.getElementById('deckContainer');
-
-    Object.keys(sources).forEach(key => {
-      const col = document.createElement('div');
-      col.className = 'deck-column' + (key === 'AR' || key === 'Sport_AR' ? ' rtl' : '');
-      col.id = `col-${key}`;
-      col.innerHTML = `
-        <div class="deck-col-header">
-          <h2>${labels[key]}</h2>
-          <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
-        </div>
-        <div class="deck-col-feed" id="feed-${key}">
-          <div class="deck-loading">Loading…</div>
-        </div>`;
-      container.appendChild(col);
-    });
-
-    // ── Fetch with proxy race (fastest wins) ──────────────────────────────
+    // ── Fetch helpers ─────────────────────────────────────────────────────
     async function fetchWithProxy(url) {
-      // No cache-busting — allows CDN caching and reduces load
+      // Add cache-bust param so proxies don't serve stale responses
+      const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Math.floor(Date.now() / 60000);
       const results = PROXIES.map((proxy, i) =>
         new Promise((resolve, reject) => {
-          // Stagger proxy attempts slightly so the best proxy wins without hammering all at once
           setTimeout(() => {
-            fetch(proxy(url), { signal: AbortSignal.timeout(10000) })
+            fetch(proxy(bustUrl), { signal: AbortSignal.timeout(12000) })
               .then(res => { if (!res.ok) throw new Error('not ok'); return res.text(); })
               .then(text => { if (!text || text.length < 100) throw new Error('empty'); resolve(text); })
               .catch(reject);
-          }, i * 150);
+          }, i * 200);
         })
       );
       return Promise.any(results);
@@ -285,6 +256,8 @@
     async function fetchArticles(key, url) {
       const text = await fetchWithProxy(url);
       const doc  = new DOMParser().parseFromString(text, 'text/xml');
+      // Check for parse error
+      if (doc.querySelector('parsererror')) throw new Error('XML parse error');
       return [...doc.querySelectorAll('item')].slice(0, 12).map(item => {
         let content = '';
         try {
@@ -294,8 +267,6 @@
         const desc = item.querySelector('description')?.textContent || '';
         const media = item.querySelector('media\\:content, content');
 
-        // RSS <link> is a text node sibling of atom:link — querySelector('link') often returns ''
-        // Walk child nodes to find the real text value
         let link = '';
         for (const node of item.childNodes) {
           if (node.nodeName === 'link') {
@@ -303,7 +274,6 @@
             if (link) break;
           }
         }
-        // Fallback: guid if it looks like a URL
         if (!link) {
           const guid = item.querySelector('guid')?.textContent?.trim() || '';
           if (guid.startsWith('http')) link = guid;
@@ -411,26 +381,14 @@
 
       card.appendChild(btns);
 
-      // Open modal on card click (not buttons)
       card.addEventListener('click', e => {
         if (e.target.closest('.deck-card-btns')) return;
         openModal(article);
       });
 
-      copyLink.addEventListener('click', e => {
-        e.stopPropagation();
-        copyToClipboard(copyLink.dataset.link, copyLink);
-      });
-
-      copyTitle.addEventListener('click', e => {
-        e.stopPropagation();
-        copyToClipboard(copyTitle.dataset.title, copyTitle);
-      });
-      
-      copyBoth.addEventListener('click', e => {
-        e.stopPropagation();
-        copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth);
-      });
+      copyLink.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(copyLink.dataset.link, copyLink); });
+      copyTitle.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(copyTitle.dataset.title, copyTitle); });
+      copyBoth.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(`${copyBoth.dataset.title}\n${copyBoth.dataset.link}`, copyBoth); });
 
       const copyTitleYt = card.querySelector('.copy-title-yt');
       if (copyTitleYt) {
@@ -443,69 +401,138 @@
       return card;
     }
 
-    // ── Update loop ────────────────────────────────────────────────────────
-    async function updateColumn(key, url, isRetry = false) {
+    // ── Render full feed (replace strategy) ──────────────────────────────
+    // Instead of prepending unknowns, we REPLACE the feed with the latest
+    // full list from the RSS. This ensures order and freshness are always accurate.
+    function renderFeed(key, articles) {
       const feed = document.getElementById(`feed-${key}`);
-      if (!cache[key]) cache[key] = new Set();
-      if (!articleMap[key]) articleMap[key] = [];
+      if (!feed) return;
 
+      // Preserve scroll position only if user has scrolled down
+      const scrollTop = feed.scrollTop;
+
+      // Clear everything
+      feed.innerHTML = '';
+
+      if (!articles || !articles.length) {
+        const msg = document.createElement('div');
+        msg.className = 'deck-loading';
+        msg.textContent = 'No articles found.';
+        feed.appendChild(msg);
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      articles.forEach((a, i) => frag.appendChild(createCard(a, i === 0)));
+      feed.appendChild(frag);
+
+      // Restore scroll if user was browsing
+      if (scrollTop > 80) feed.scrollTop = scrollTop;
+    }
+
+    // ── Status label per column ───────────────────────────────────────────
+    function setStatus(key, state, text) {
+      const el = document.getElementById(`status-${key}`);
+      if (!el) return;
+      el.className = 'deck-refresh-status' + (state ? ` ${state}` : '');
+      el.textContent = text;
+    }
+
+    // ── Per-column fetch + render ─────────────────────────────────────────
+    async function refreshColumn(key, url, isRetry = false) {
+      setStatus(key, 'refreshing', '↻ fetching…');
       try {
         const articles = await fetchArticles(key, url);
-        const fresh = articles.filter(a => a.link && !cache[key].has(a.link));
-        if (!fresh.length) return;
+        if (!articles.length) throw new Error('empty feed');
 
-        // Remove loading placeholder if present
-        const loader = feed.querySelector('.deck-loading');
-        if (loader) loader.remove();
+        // Save to state
+        colState[key] = { fetchedAt: Date.now(), articles };
+        saveCache();
 
-        const frag = document.createDocumentFragment();
-        fresh.forEach((a, i) => {
-          frag.appendChild(createCard(a, i === 0 && !feed.querySelector('.deck-card')));
-          cache[key].add(a.link);
-          articleMap[key].unshift(a);
-        });
-        // Keep articleMap trimmed to 12 items
-        articleMap[key] = articleMap[key].slice(0, 12);
-        feed.insertBefore(frag, feed.firstChild);
-        saveCache(); // persist immediately so closing tab before all columns load still saves progress
+        renderFeed(key, articles);
+        setStatus(key, '', 'updated ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
       } catch(e) {
-        // Silent retry once before showing error
         if (!isRetry) {
-          setTimeout(() => updateColumn(key, url, true), 3000);
+          setStatus(key, '', 'retrying…');
+          setTimeout(() => refreshColumn(key, url, true), 4000);
           return;
         }
-        const loader = feed.querySelector('.deck-loading');
-        if (loader) {
-          loader.innerHTML = '';
+        setStatus(key, 'error', '⚠ failed');
+
+        // Show retry button inside feed only if it's empty
+        const feed = document.getElementById(`feed-${key}`);
+        if (feed && !feed.querySelector('.deck-card')) {
+          feed.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'deck-loading';
           const msg = document.createElement('div');
           msg.textContent = '⚠ Failed to load';
           msg.style.cssText = 'margin-bottom:8px;font-size:0.8rem;color:var(--text3);';
           const btn = document.createElement('button');
           btn.textContent = '↺ Retry';
           btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
-          btn.onclick = () => { loader.textContent = 'Retrying…'; updateColumn(key, url, false); };
-          loader.appendChild(msg);
-          loader.appendChild(btn);
+          btn.onclick = () => { wrap.textContent = 'Retrying…'; refreshColumn(key, url, false); };
+          wrap.appendChild(msg);
+          wrap.appendChild(btn);
+          feed.appendChild(wrap);
         }
         console.warn('Feed error', key, e);
       }
     }
 
-    async function updateLoop() {
-      await Promise.allSettled(Object.entries(sources).map(([k, u]) => updateColumn(k, u)));
-      saveCache();
-      setTimeout(updateLoop, 60000); // Increased to 60s to reduce proxy hammering
-    }
+    // ── Build columns ──────────────────────────────────────────────────────
+    const container = document.getElementById('deckContainer');
 
-    // Load from cache immediately, then fetch all columns in parallel
+    Object.keys(sources).forEach(key => {
+      const col = document.createElement('div');
+      col.className = 'deck-column' + (key === 'AR' || key === 'Sport_AR' ? ' rtl' : '');
+      col.id = `col-${key}`;
+      col.innerHTML = `
+        <div class="deck-col-header">
+          <h2>${labels[key]}</h2>
+          <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+          <span class="deck-refresh-status" id="status-${key}"></span>
+        </div>
+        <div class="deck-col-feed" id="feed-${key}">
+          <div class="deck-loading">Loading…</div>
+        </div>`;
+      container.appendChild(col);
+    });
+
+    // ── Boot: load cache → render immediately → then fetch fresh ──────────
     loadCache();
-    setTimeout(() => {
-      // Fetch all columns at once in parallel — no need to stagger since proxies are already raced
-      Promise.allSettled(
-        Object.entries(sources).map(([key, url]) => updateColumn(key, url))
-      ).then(saveCache);
-      setTimeout(updateLoop, 65000);
-    }, 200);
+
+    // Render cached articles instantly for all columns
+    Object.keys(sources).forEach(key => {
+      const state = colState[key];
+      if (state && state.articles && state.articles.length) {
+        renderFeed(key, state.articles);
+        const age = Math.round((Date.now() - state.fetchedAt) / 60000);
+        setStatus(key, '', `cached ${age}m ago`);
+      }
+    });
+
+    // Stagger initial fetches slightly to avoid hammering proxies all at once
+    Object.entries(sources).forEach(([key, url], i) => {
+      setTimeout(() => refreshColumn(key, url), i * 400);
+    });
+
+    // ── 5-minute refresh loop ─────────────────────────────────────────────
+    // Each column refreshes independently so a slow proxy on one doesn't block others
+    Object.entries(sources).forEach(([key, url]) => {
+      setInterval(() => refreshColumn(key, url), REFRESH_INTERVAL);
+    });
+
+    // ── Visibility-based refresh ──────────────────────────────────────────
+    // When the tab regains focus after being hidden, refresh columns that are stale (>5min old)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      Object.entries(sources).forEach(([key, url]) => {
+        const state = colState[key];
+        const age = state ? Date.now() - state.fetchedAt : Infinity;
+        if (age >= REFRESH_INTERVAL) refreshColumn(key, url);
+      });
+    });
 
     // ── Modal ──────────────────────────────────────────────────────────────
     function openModal(article) {
@@ -543,7 +570,6 @@
       overlay.classList.remove('hidden');
       body.closest('.modal-box').classList.toggle('rtl', isRTL);
 
-      // Load Twitter widgets on-demand
       if (!window.twttr?.widgets) {
         const s = document.createElement('script');
         s.src = 'https://platform.twitter.com/widgets.js';
@@ -554,7 +580,6 @@
         twttr.widgets.load(body);
       }
 
-      // Slider
       const slides = body.querySelectorAll('.slide');
       if (slides.length > 1) {
         let cur = 0;
@@ -573,7 +598,8 @@
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
     });
-    // ── Mobile tab bar ────────────────────────────────────────────────────
+
+    // ── Mobile tab bar ─────────────────────────────────────────────────────
     const COLS_LIST = Object.keys(sources);
     const IS_MOBILE = () => window.innerWidth <= 700;
     let mobileActiveIndex = 0;
@@ -630,7 +656,6 @@
       });
     }
 
-    // Touch swipe
     (function initSwipe() {
       const container = document.getElementById('deckContainer');
       let tx = 0, ty = 0, swiping = false;
