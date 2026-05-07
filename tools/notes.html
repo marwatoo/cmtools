@@ -472,6 +472,41 @@
     }
     .save-indicator.saved { color: #28c840; }
 
+    /* ── Format toolbar ── */
+    .format-toolbar {
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .fmt-btn {
+      width: 28px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: var(--text2);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.12s;
+      padding: 0;
+      font-family: inherit;
+    }
+    .fmt-btn:hover { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+    .fmt-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .fmt-sep {
+      width: 1px; height: 16px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+    .fmt-btn b { font-weight: 700; }
+    .fmt-btn i { font-style: italic; }
+    .fmt-btn u { text-decoration: underline; }
+    .fmt-btn s { text-decoration: line-through; }
+    .fmt-btn { font-family: 'DM Mono', monospace; }
+
     /* editor body */
     .editor-body {
       flex: 1;
@@ -479,7 +514,7 @@
       display: flex;
       flex-direction: column;
     }
-    .note-textarea {
+    .note-editor {
       flex: 1;
       width: 100%;
       padding: 20px;
@@ -489,12 +524,25 @@
       font-family: 'DM Sans', sans-serif;
       font-size: 1rem;
       line-height: 1.7;
-      resize: none;
+      overflow-y: auto;
       outline: none;
       box-sizing: border-box;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
-    .note-textarea[dir="rtl"] { text-align: right; }
-    .note-textarea::placeholder { color: var(--text3); }
+    .note-editor[dir="rtl"] { text-align: right; }
+    .note-editor:empty::before {
+      content: attr(data-placeholder);
+      color: var(--text3);
+      pointer-events: none;
+    }
+    .note-editor b, .note-editor strong { font-weight: 700; }
+    .note-editor i, .note-editor em { font-style: italic; }
+    .note-editor u { text-decoration: underline; }
+    .note-editor s, .note-editor strike { text-decoration: line-through; }
+    .note-editor ol { padding-left: 24px; margin: 6px 0; }
+    .note-editor ul { padding-left: 24px; margin: 6px 0; list-style-type: disc; }
+    .note-editor li { margin-bottom: 3px; }
 
     /* stats bar */
     .editor-stats {
@@ -847,7 +895,16 @@
       </div>
 
       <div class="editor-body" id="editorBody" style="display:none;">
-        <textarea class="note-textarea" id="noteTextarea" placeholder="Start writing…"></textarea>
+        <div class="format-toolbar" id="formatToolbar">
+          <button class="fmt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+          <button class="fmt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+          <button class="fmt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+          <button class="fmt-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+          <span class="fmt-sep"></span>
+          <button class="fmt-btn" data-cmd="insertOrderedList" title="Ordered List">1.</button>
+          <button class="fmt-btn" data-cmd="insertUnorderedList" title="Bullet List">•</button>
+        </div>
+        <div class="note-editor" id="noteEditor" contenteditable="true" data-placeholder="Start writing…"></div>
         <div class="editor-stats" id="editorStats">
           <span class="editor-stat">Words: <span id="statWords">0</span></span>
           <span class="editor-stat">Chars: <span id="statChars">0</span></span>
@@ -1147,10 +1204,10 @@ function openNote(id) {
   document.getElementById('editorBody').style.display    = 'flex';
 
   document.getElementById('noteNameInput').value = note.name;
-  var ta = document.getElementById('noteTextarea');
-  ta.value = note.text;
-  ta.setAttribute('dir', note.rtl?'rtl':'ltr');
-  ta.style.textAlign = note.rtl?'right':'left';
+  var ed = document.getElementById('noteEditor');
+  ed.innerHTML = note.text || '';
+  ed.setAttribute('dir', note.rtl?'rtl':'ltr');
+  ed.style.textAlign = note.rtl?'right':'left';
   document.getElementById('rtlToggle').classList.toggle('active',!!note.rtl);
 
   updateColorSwatch(note.color||null);
@@ -1213,7 +1270,7 @@ function scheduleSave() {
       note.name = uniqueName(raw, note.id);
       document.getElementById('noteNameInput').value = note.name;
     }
-    note.text = document.getElementById('noteTextarea').value;
+    note.text = document.getElementById('noteEditor').innerHTML;
     note.updatedAt = Date.now();
     saveNotes();
     ind.textContent = 'saved'; ind.classList.add('saved');
@@ -1227,7 +1284,7 @@ function scheduleSave() {
    STATS
 ═══════════════════════════════════════════ */
 function updateStats() {
-  var t = document.getElementById('noteTextarea').value;
+  var t = document.getElementById('noteEditor').textContent;
   document.getElementById('statWords').textContent = t.trim()===''?0:t.trim().split(/\s+/).length;
   document.getElementById('statChars').textContent = t.length;
   document.getElementById('statLines').textContent = t===''?0:t.split('\n').length;
@@ -1434,30 +1491,52 @@ document.querySelectorAll('.sort-btn').forEach(function(btn){
 /* ═══════════════════════════════════════════
    EDITOR WIRING
 ═══════════════════════════════════════════ */
+
+// Format toolbar
+document.getElementById('formatToolbar').addEventListener('click', function(e){
+  var btn = e.target.closest('.fmt-btn');
+  if (!btn) return;
+  e.preventDefault();
+  document.execCommand(btn.dataset.cmd, false, null);
+  document.getElementById('noteEditor').focus();
+  scheduleSave();
+});
+
+// Track cursor position to toggle active state of format buttons
+function updateFormatState() {
+  ['bold','italic','underline','strikeThrough','insertOrderedList','insertUnorderedList'].forEach(function(cmd){
+    var el = document.querySelector('.fmt-btn[data-cmd="'+cmd+'"]');
+    if (el) el.classList.toggle('active', document.queryCommandState(cmd));
+  });
+}
+document.getElementById('noteEditor').addEventListener('mouseup', updateFormatState);
+document.getElementById('noteEditor').addEventListener('keyup', updateFormatState);
+
 document.getElementById('rtlToggle').addEventListener('click', function(){
   var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
   note.rtl=!note.rtl;
-  var ta=document.getElementById('noteTextarea');
-  ta.setAttribute('dir',note.rtl?'rtl':'ltr'); ta.style.textAlign=note.rtl?'right':'left';
+  var ed=document.getElementById('noteEditor');
+  ed.setAttribute('dir',note.rtl?'rtl':'ltr'); ed.style.textAlign=note.rtl?'right':'left';
   document.getElementById('rtlToggle').classList.toggle('active',note.rtl);
   scheduleSave();
 });
 
 document.getElementById('copyContentBtn').addEventListener('click', function(){
   var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
-  copyToClipboard(note.text, document.getElementById('copyContentBtn'), 'Copy');
+  copyToClipboard(document.getElementById('noteEditor').textContent, document.getElementById('copyContentBtn'), 'Copy');
 });
 
 document.getElementById('cleanWsBtn').addEventListener('click', function(){
   var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
-  var ta=document.getElementById('noteTextarea');
-  var cleaned = ta.value
+  var ed=document.getElementById('noteEditor');
+  var text = ed.textContent;
+  var cleaned = text
     .replace(/[ \t]+/g,' ')
     .replace(/\n{2,}/g,'\n')
     .replace(/[ \t]+$/gm,'')
     .trim();
-  if (cleaned !== ta.value) {
-    ta.value = cleaned;
+  if (cleaned !== text) {
+    ed.textContent = cleaned;
     scheduleSave();
     updateStats();
     var btn=document.getElementById('cleanWsBtn');
@@ -1469,14 +1548,14 @@ document.getElementById('cleanWsBtn').addEventListener('click', function(){
 document.getElementById('newNoteBtn').addEventListener('click', newNote);
 document.getElementById('selectModeBtn').addEventListener('click', toggleSelectMode);
 document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
-document.getElementById('noteTextarea').addEventListener('input', function(){ scheduleSave(); updateStats(); });
+document.getElementById('noteEditor').addEventListener('input', function(){ scheduleSave(); updateStats(); });
 document.getElementById('searchInput').addEventListener('input', function(){ searchQuery=this.value.trim(); renderNotesList(); });
 
 /* ═══════════════════════════════════════════
    FONT SIZE
    ═══════════════════════════════════════════ */
 function applyFontSize(size) {
-  document.getElementById('noteTextarea').style.fontSize = size;
+  document.getElementById('noteEditor').style.fontSize = size;
   document.getElementById('fontSizeSelect').value = size;
   idbSetMeta(FONT_SIZE_KEY, size).catch(function(){});
   currentFontSize = size;
@@ -1499,7 +1578,7 @@ document.addEventListener('keydown', function(e){
     var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
     var raw=document.getElementById('noteNameInput').value.trim()||'Untitled';
     if (raw!==note.name){ note.name=uniqueName(raw,note.id); document.getElementById('noteNameInput').value=note.name; }
-    note.text=document.getElementById('noteTextarea').value; note.updatedAt=Date.now(); saveNotes();
+    note.text=document.getElementById('noteEditor').innerHTML; note.updatedAt=Date.now(); saveNotes();
     var ind=document.getElementById('saveIndicator'); ind.textContent='saved'; ind.classList.add('saved');
     setTimeout(function(){ind.textContent='';},1500); renderNotesList();
   }
