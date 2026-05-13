@@ -1529,20 +1529,41 @@ document.getElementById('copyContentBtn').addEventListener('click', function(){
 document.getElementById('cleanWsBtn').addEventListener('click', function(){
   var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
   var ed=document.getElementById('noteEditor');
-  var text = ed.textContent;
+
+  // 1. Convert HTML → plain text, treating block-level tags as newlines
+  var text = ed.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<[^>]+>/g, '')        // strip all remaining tags (removes all formatting)
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  // 2. Clean whitespace — works for both Arabic and Latin text
   var cleaned = text
-    .replace(/[ \t]+/g,' ')
-    .replace(/\n{2,}/g,'\n')
-    .replace(/[ \t]+$/gm,'')
+    .replace(/[ \t\u00a0]+/g, ' ')  // collapse 2+ spaces/tabs (any script)
+    .replace(/\n{3,}/g, '\n\n')     // max 2 consecutive newlines between paragraphs
+    .replace(/[ \t]+$/gm, '')       // strip trailing spaces on each line
     .trim();
-  if (cleaned !== text) {
-    ed.textContent = cleaned;
-    scheduleSave();
-    updateStats();
-    var btn=document.getElementById('cleanWsBtn');
-    btn.textContent='✓ Done'; btn.classList.add('flash');
-    setTimeout(function(){btn.textContent='Clean WS';btn.classList.remove('flash');},1200);
-  }
+
+  // 3. Re-encode as safe HTML and restore line breaks as <br>
+  var htmlOut = cleaned
+    .split('\n')
+    .map(function(l){ return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); })
+    .join('<br>');
+
+  ed.innerHTML = htmlOut;
+  scheduleSave();
+  updateStats();
+  var btn=document.getElementById('cleanWsBtn');
+  btn.textContent='✓ Done'; btn.classList.add('flash');
+  setTimeout(function(){btn.textContent='Clean WS';btn.classList.remove('flash');},1200);
 });
 
 document.getElementById('newNoteBtn').addEventListener('click', newNote);
