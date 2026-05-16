@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator — MediaTools Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+  <link rel="stylesheet" href="../assets/global.css" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px; background: var(--bg); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px; color: var(--text2);
+      text-decoration: none; font-size: 0.85rem; font-weight: 500;
+      padding: 6px 12px; border: 1px solid var(--border2);
+      border-radius: var(--radius-xs); transition: all 0.2s;
+    }
+    .nav-back:hover { color: var(--text); border-color: var(--accent); }
+    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
+
+    .tool-page {
+      max-width: 780px; margin: 0 auto; padding: 32px 24px 80px;
+    }
+    .tool-header { margin-bottom: 28px; }
+    .tool-header h1 {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .tool-header p { color: var(--text2); font-size: 0.9rem; }
+
+    .qr-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 750px) {
+      .qr-layout { grid-template-columns: 1fr; }
+      .tool-page { padding: 20px 16px 60px; }
+    }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 0.8rem; font-weight: 500;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text2); margin-bottom: 7px;
+    }
+    .field textarea, .field input[type=text] {
+      width: 100%; padding: 12px 14px;
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field textarea:focus, .field input[type=text]:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 60px; font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+
+    .section-head {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--text3);
+      margin: 22px 0 10px; padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-head::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 12px; background: var(--accent);
+      border-radius: 2px; flex-shrink: 0;
+    }
+
+    .srow {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .srow label {
+      min-width: 70px; font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em; color: var(--text2);
+    }
+    .srow input[type=range] {
+      -webkit-appearance: none; appearance: none; flex: 1; min-width: 0;
+      height: 3px; border-radius: 100px; background: var(--border2); outline: none;
+      cursor: pointer;
+    }
+    .srow input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--accent); cursor: pointer; transition: transform 0.12s;
+    }
+    .srow input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+    .sval {
+      width: 36px; text-align: right;
+      font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text3);
+    }
+
+    .color-row {
+      display: flex; gap: 10px; margin-bottom: 10px;
+    }
+    .color-pick {
+      flex: 1;
+    }
+    .color-pick label {
+      display: block; font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3);
+      margin-bottom: 4px;
+    }
+    .color-pick input[type=color] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 36px;
+      border: 1px solid var(--border2); border-radius: var(--radius-xs);
+      background: transparent; cursor: pointer; padding: 2px;
+    }
+    .color-pick input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-pick input[type=color]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+    .preset-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 10px;
+    }
+    .preset-btn {
+      padding: 10px; background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); cursor: pointer; text-align: center;
+      font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.04em; color: var(--text2); transition: all 0.15s;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .preset-btn.active { background: var(--accent); color: var(--btn-text); border-color: var(--accent); }
+
+    .preview-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      position: sticky; top: 80px;
+    }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .preview-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem; }
+
+    .canvas-wrap {
+      background: repeating-conic-gradient(var(--bg3) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+      border-radius: var(--radius-xs); overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 300px;
+    }
+    #qrCanvas { max-width: 100%; display: block; }
+
+    .export-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 18px; border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; transition: all 0.2s; width: 100%;
+    }
+    .btn-primary { background: var(--btn-bg); color: var(--btn-text); }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .copy-feedback {
+      text-align: center; font-size: 0.78rem; color: var(--accent);
+      height: 18px; margin-top: 6px;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-header, .qr-editor, .preview-card {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .tool-header { animation-delay: 0.05s; }
+    .qr-editor { animation-delay: 0.1s; }
+    .preview-card { animation-delay: 0.15s; }
+
+    .type-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .type-badge {
+      font-size: 0.62rem; padding: 3px 8px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 100px; color: var(--text3);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← Back</a>
+  <span class="nav-title">QR Code Generator</span>
+  <button class="theme-toggle" id="themeToggle" aria-label="Switch between dark and light theme"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+</nav>
+
+<div class="tool-page">
+  <div class="tool-header">
+    <h1>QR Code Generator</h1>
+    <p>Generate QR codes for URLs, text, WiFi, vCard, and more. Download as PNG.</p>
+  </div>
+
+  <div class="qr-layout">
+    <div class="qr-editor">
+      <div class="field">
+        <label>Content</label>
+        <textarea id="qrInput" placeholder="Type or paste URL, text, or any content…">https://example.com</textarea>
+      </div>
+
+      <p class="section-head" style="margin-top:0;">Type Presets</p>
+      <div class="preset-grid">
+        <button class="preset-btn active" data-type="text" data-prefix="">Text / URL</button>
+        <button class="preset-btn" data-type="email" data-prefix="mailto:">Email</button>
+        <button class="preset-btn" data-type="tel" data-prefix="tel:">Phone</button>
+        <button class="preset-btn" data-type="sms" data-prefix="sms:">SMS</button>
+        <button class="preset-btn" data-type="wifi" data-prefix="WIFI:">WiFi</button>
+        <button class="preset-btn" data-type="vcard" data-prefix="BEGIN:VCARD">vCard</button>
+      </div>
+
+      <div id="wifiFields" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>SSID</label>
+          <input type="text" id="wifiSSID" placeholder="Network name" value="MyWiFi">
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Password</label>
+          <input type="text" id="wifiPass" placeholder="Password" value="">
+        </div>
+        <div class="preset-grid" style="grid-template-columns:repeat(3,1fr);">
+          <button class="preset-btn active" data-sec="WPA">WPA</button>
+          <button class="preset-btn" data-sec="WEP">WEP</button>
+          <button class="preset-btn" data-sec="nopass">Open</button>
+        </div>
+      </div>
+
+      <div id="vcardFields" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;">
+        <div class="field" style="margin-bottom:8px;">
+          <label>Full Name</label>
+          <input type="text" id="vcardFN" placeholder="John Doe" value="">
+        </div>
+        <div class="field" style="margin-bottom:8px;">
+          <label>Phone</label>
+          <input type="text" id="vcardTel" placeholder="+1234567890" value="">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Email</label>
+          <input type="text" id="vcardEmail" placeholder="john@example.com" value="">
+        </div>
+      </div>
+
+      <p class="section-head">Appearance</p>
+      <div class="srow">
+        <label>Size</label>
+        <input type="range" id="qrSize" min="150" max="600" value="300" step="10">
+        <span class="sval" id="sizeVal">300</span>
+      </div>
+      <div class="color-row">
+        <div class="color-pick">
+          <label>Foreground</label>
+          <input type="color" id="fgColor" value="#000000">
+        </div>
+        <div class="color-pick">
+          <label>Background</label>
+          <input type="color" id="bgColor" value="#ffffff">
+        </div>
+      </div>
+
+      <div class="copy-feedback" id="copyFeedback" aria-live="polite"></div>
+    </div>
+
+    <div class="preview-card">
+      <div class="preview-header">
+        <span class="preview-title">QR Code</span>
+        <span style="font-size:0.72rem;color:var(--text3);font-family:'DM Mono',monospace;" id="qrDataLen">0 chars</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="qrCanvas"></canvas>
+      </div>
+      <div class="export-btns">
+        <button class="btn btn-primary" id="downloadBtn">⬇ Download PNG</button>
+        <button class="btn btn-secondary" id="copyImgBtn">⧉ Copy Image</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script src="../assets/theme.js"></script>
+<script>
+  var qrType = 'text';
+  var wifiSec = 'WPA';
+
+  var els = {
+    input: document.getElementById('qrInput'),
+    canvas: document.getElementById('qrCanvas'),
+    fgColor: document.getElementById('fgColor'),
+    bgColor: document.getElementById('bgColor'),
+    qrSize: document.getElementById('qrSize'),
+    sizeVal: document.getElementById('sizeVal'),
+    feedback: document.getElementById('copyFeedback'),
+    dataLen: document.getElementById('qrDataLen'),
+    wifiFields: document.getElementById('wifiFields'),
+    vcardFields: document.getElementById('vcardFields'),
+    wifiSSID: document.getElementById('wifiSSID'),
+    wifiPass: document.getElementById('wifiPass'),
+    vcardFN: document.getElementById('vcardFN'),
+    vcardTel: document.getElementById('vcardTel'),
+    vcardEmail: document.getElementById('vcardEmail')
+  };
+
+  function getQRText() {
+    if (qrType === 'wifi') {
+      var ssid = els.wifiSSID.value || 'WiFi';
+      var pass = els.wifiPass.value || '';
+      if (wifiSec === 'nopass') return 'WIFI:T:nopass;S:' + escWifi(ssid) + ';;';
+      return 'WIFI:T:' + wifiSec + ';S:' + escWifi(ssid) + ';P:' + escWifi(pass) + ';;';
+    }
+    if (qrType === 'vcard') {
+      var fn = els.vcardFN.value || '';
+      var tel = els.vcardTel.value || '';
+      var email = els.vcardEmail.value || '';
+      var vc = 'BEGIN:VCARD\nVERSION:3.0\n';
+      if (fn) vc += 'FN:' + fn + '\nN:' + (fn.split(' ').reverse().join(';')) + ';\n';
+      if (tel) vc += 'TEL;TYPE=CELL:' + tel + '\n';
+      if (email) vc += 'EMAIL:' + email + '\n';
+      vc += 'END:VCARD';
+      return vc;
+    }
+    return els.input.value;
+  }
+
+  function escWifi(s) {
+    return s.replace(/([\\:;"])/g, '\\$1');
+  }
+
+  function generateQR() {
+    var text = getQRText();
+    var size = parseInt(els.qrSize.value, 10);
+    els.dataLen.textContent = text.length + ' chars';
+
+    if (!text.trim()) {
+      var ctx = els.canvas.getContext('2d');
+      els.canvas.width = size;
+      els.canvas.height = size;
+      ctx.fillStyle = els.bgColor.value;
+      ctx.fillRect(0, 0, size, size);
+      return;
+    }
+
+    try {
+      QRCode.toCanvas(els.canvas, text, {
+        width: size,
+        margin: 2,
+        color: {
+          dark: els.fgColor.value,
+          light: els.bgColor.value
+        }
+      });
+    } catch(e) {
+      showFeedback('⚠ Error: ' + e.message);
+    }
+  }
+
+  function showFeedback(msg) {
+    els.feedback.textContent = msg;
+    clearTimeout(els.feedback._t);
+    els.feedback._t = setTimeout(function() { els.feedback.textContent = ''; }, 2000);
+  }
+
+  /* ── Type presets ── */
+  document.querySelectorAll('.preset-btn[data-type]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.preset-btn[data-type]').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      qrType = btn.dataset.type;
+      els.wifiFields.style.display = qrType === 'wifi' ? 'block' : 'none';
+      els.vcardFields.style.display = qrType === 'vcard' ? 'block' : 'none';
+      els.input.style.display = (qrType === 'wifi' || qrType === 'vcard') ? 'none' : 'block';
+      if (qrType !== 'wifi' && qrType !== 'vcard') {
+        els.input.value = btn.dataset.prefix ? btn.dataset.prefix + els.input.value.replace(/^.*?:/, '') : els.input.value;
+      }
+      generateQR();
+    });
+  });
+
+  /* WiFi security */
+  document.querySelectorAll('[data-sec]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      btn.parentElement.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      wifiSec = btn.dataset.sec;
+      generateQR();
+    });
+  });
+
+  /* ── Input events ── */
+  els.input.addEventListener('input', generateQR);
+  els.wifiSSID.addEventListener('input', generateQR);
+  els.wifiPass.addEventListener('input', generateQR);
+  els.vcardFN.addEventListener('input', generateQR);
+  els.vcardTel.addEventListener('input', generateQR);
+  els.vcardEmail.addEventListener('input', generateQR);
+  els.fgColor.addEventListener('input', generateQR);
+  els.bgColor.addEventListener('input', generateQR);
+  els.qrSize.addEventListener('input', function() {
+    els.sizeVal.textContent = els.qrSize.value;
+    generateQR();
+  });
+
+  /* ── Download ── */
+  document.getElementById('downloadBtn').addEventListener('click', function() {
+    els.canvas.toBlob(function(blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qrcode.png';
+      a.click();
+    }, 'image/png');
+  });
+
+  /* ── Copy image ── */
+  document.getElementById('copyImgBtn').addEventListener('click', function() {
+    els.canvas.toBlob(function(blob) {
+      navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ]).then(function() {
+        showFeedback('✓ Image copied to clipboard!');
+      }).catch(function() {
+        showFeedback('⚠ Copy not supported in this browser');
+      });
+    }, 'image/png');
+  });
+
+  generateQR();
+</script>
+</body>
+</html>

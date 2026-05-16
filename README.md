@@ -1,6 +1,6 @@
 # MediaTools Studio
 
-A unified web app combining 44 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
+A unified web app combining 46 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
 
 ---
 
@@ -58,6 +58,8 @@ A unified web app combining 44 media production tools into one beautiful, respon
 | 41 | **Image Filters** | Apply filters and adjustments to images |
 | 42 | **URL Shortener** | Shorten URLs with history tracking |
 | 43 | **Tier List Maker** | Create tier lists with drag-and-drop |
+| 44 | **VCF Viewer** | Parse and view vCard (.vcf) contacts with Arabic RTL support |
+| 45 | **QR Code Generator** | Generate QR codes for URLs, text, WiFi, vCard, and more |
 
 ---
 
@@ -80,7 +82,7 @@ cmtools-dev/
 │
 ├── fonts/                      ← Required fonts (Cairo-Bold.ttf, DINCondensed-Bold.ttf)
 │
-└── tools/                      ← 44 tool pages (all standalone HTML files)
+└── tools/                      ← 46 tool pages (all standalone HTML files)
     ├── ytcover.html            ← YT Cover Creator
     ├── igcover.html            ← IG Sport Cover
     ├── le360deck.html          ← Le360 Deck
@@ -124,6 +126,8 @@ cmtools-dev/
     ├── imgfilter.html          ← Image Filters
     ├── shortlink.html          ← URL Shortener
     ├── tierlist.html           ← Tier List Maker
+    ├── vcfviewer.html          ← VCF Viewer
+    ├── qrcodegen.html          ← QR Code Generator
     └── snippets.html           ← Snippets Pad
 ```
 
