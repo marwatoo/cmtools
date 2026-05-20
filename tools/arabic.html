@@ -161,8 +161,23 @@
 
         .ornament-divider { text-align: center; color: var(--gold-soft); opacity: 0.5; font-size: 1.1rem; margin: 2.5rem 0; letter-spacing: 0.5em; }
 
+        /* ─── Delete buttons ─── */
+        .section-block { margin-bottom: 3rem; position: relative; }
+        .section-block:hover .delete-btn { opacity: 1; visibility: visible; }
+        .delete-btn {
+            position: absolute; top: 0.5rem; left: 0.5rem;
+            width: 32px; height: 32px;
+            background-color: var(--gold); color: white;
+            border: none; border-radius: 50%;
+            cursor: pointer; font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            opacity: 0; visibility: hidden;
+            z-index: 10;
+        }
+        .delete-btn:hover { background-color: #C43E1D; transform: scale(1.1); }
+
         /* Section: editable heading */
-        .section-block { margin-bottom: 3rem; }
 
         .editable-h1 {
             font-family: 'Aref Ruqaa Ink', serif;
@@ -290,28 +305,6 @@
 
     <main id="mainContent">
 
-        <div class="section-block">
-            <div class="editable-h1" contenteditable="true" spellcheck="false"></div>
-
-            <div class="editable-h3" contenteditable="true" spellcheck="false"></div>
-
-            <ul class="editable-list" id="list1">
-                <li contenteditable="true" spellcheck="false"></li>
-                <li contenteditable="true" spellcheck="false"></li>
-                <li contenteditable="true" spellcheck="false"></li>
-            </ul>
-
-            <div class="editable-p" contenteditable="true" spellcheck="false"></div>
-
-            <div class="highlight-box">
-                <div class="editable-p" contenteditable="true" spellcheck="false"></div>
-            </div>
-
-            <div class="editable-p" contenteditable="true" spellcheck="false"></div>
-        </div>
-
-        <div class="ornament-divider">✦ ✦ ✦</div>
-
         <!-- Toolbar to add new elements -->
         <div class="add-bar">
             <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;color:var(--ink-4);margin-left:0.5rem;align-self:center;">أضف:</span>
@@ -327,7 +320,7 @@
     </main>
 
     <footer>
-        <div class="footer-ornament">﷽</div>
+        <div class="footer-ornament">مروة بفيس</div>
         <p class="footer-text" id="footerDate"></p>
     </footer>
 
@@ -378,6 +371,18 @@
         function addSection(type) {
             const bar = main.querySelector('.add-bar');
             let el;
+            
+            // Create a section wrapper
+            const section = document.createElement('div');
+            section.className = 'section-block';
+            
+            // Create delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.title = 'حذف العنصر';
+            deleteBtn.onclick = (e) => { e.preventDefault(); section.remove(); };
+            
             if (type === 'h1') {
                 el = document.createElement('div');
                 el.className = 'editable-h1'; el.contentEditable = 'true'; el.spellcheck = false;
@@ -408,8 +413,11 @@
                 el = document.createElement('div');
                 el.className = 'ornament-divider'; el.textContent = '✦ ✦ ✦';
             }
+            
             if (el) {
-                main.insertBefore(el, bar);
+                section.appendChild(deleteBtn);
+                section.appendChild(el);
+                main.insertBefore(section, bar);
                 if (el.contentEditable === 'true') el.focus();
                 else if (el.querySelector('[contenteditable]')) el.querySelector('[contenteditable]').focus();
             }
@@ -423,6 +431,18 @@
                 li.contentEditable = 'true'; li.spellcheck = false;
                 e.target.closest('.editable-list').appendChild(li);
                 li.focus();
+            }
+            
+            // Delete key to remove section (when the section is empty and focused)
+            if (e.key === 'Delete' && e.ctrlKey) {
+                const editable = e.target.closest('[contenteditable]');
+                if (editable) {
+                    const section = editable.closest('.section-block');
+                    if (section && editable.textContent.trim() === '') {
+                        e.preventDefault();
+                        section.remove();
+                    }
+                }
             }
         });
 
