@@ -20,40 +20,10 @@
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      background: var(--bg); color: var(--text);
-      line-height: 1.6; min-height: 100vh;
-      transition: background 0.3s, color 0.3s;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .nav {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 24px; background: var(--bg); border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-    }
-    .nav-back {
-      display: flex; align-items: center; gap: 6px; color: var(--text2);
-      text-decoration: none; font-size: 0.85rem; font-weight: 500;
-      padding: 6px 12px; border: 1px solid var(--border2);
-      border-radius: var(--radius-xs); transition: all 0.2s;
-    }
-    .nav-back:hover { color: var(--text); border-color: var(--accent); }
-    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
-
     .tool-page {
       max-width: 780px; margin: 0 auto; padding: 32px 24px 80px;
     }
     .tool-header { margin-bottom: 28px; }
-    .tool-header h1 {
-      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem;
-      letter-spacing: -0.02em; margin-bottom: 6px;
-    }
-    .tool-header p { color: var(--text2); font-size: 0.9rem; }
 
     .qr-layout {
       display: grid;
@@ -67,12 +37,6 @@
       .tool-page { padding: 20px 16px 60px; }
     }
 
-    .field { margin-bottom: 16px; }
-    .field label {
-      display: block; font-size: 0.8rem; font-weight: 500;
-      letter-spacing: 0.04em; text-transform: uppercase;
-      color: var(--text2); margin-bottom: 7px;
-    }
     .field textarea, .field input[type=text] {
       width: 100%; padding: 12px 14px;
       background: var(--input-bg); border: 1px solid var(--border2);
@@ -82,19 +46,6 @@
     }
     .field textarea:focus, .field input[type=text]:focus { border-color: var(--accent); }
     .field textarea { resize: vertical; min-height: 60px; font-family: 'DM Mono', monospace; font-size: 0.85rem; }
-
-    .section-head {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
-      text-transform: uppercase; color: var(--text3);
-      margin: 22px 0 10px; padding-bottom: 7px;
-      border-bottom: 1px solid var(--border);
-    }
-    .section-head::before {
-      content: ''; display: inline-block;
-      width: 3px; height: 12px; background: var(--accent);
-      border-radius: 2px; flex-shrink: 0;
-    }
 
     .srow {
       display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
@@ -188,9 +139,6 @@
       height: 18px; margin-top: 6px;
     }
 
-    @keyframes fadeUp {
-      to { opacity: 1; transform: translateY(0); }
-    }
     .tool-header, .qr-editor, .preview-card {
       opacity: 0;
       transform: translateY(12px);
@@ -207,10 +155,6 @@
       border-radius: 100px; color: var(--text3);
     }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   </style>
 </head>
 <body>

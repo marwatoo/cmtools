@@ -20,38 +20,6 @@
   })();
 </script>
   <style>
-    /* Inlined global.css design tokens */
-    
-    
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'DM Sans', system-ui, sans-serif;
-      background: var(--bg); color: var(--text);
-      line-height: 1.6; min-height: 100vh;
-      transition: background 0.3s, color 0.3s;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* NAV */
-    .nav {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 24px;
-      background: var(--bg); border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-    }
-    .nav-back {
-      display: flex; align-items: center; gap: 6px;
-      color: var(--text2); text-decoration: none;
-      font-size: 0.85rem; font-weight: 500;
-      padding: 6px 12px; border: 1px solid var(--border2);
-      border-radius: var(--radius-xs); transition: all 0.2s;
-    }
-    .nav-back:hover { color: var(--text); border-color: var(--accent); }
-    .nav-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; flex: 1; }
-
     /* MODE TABS */
     .mode-tabs {
       display: flex; flex-wrap: wrap; gap: 4px;
@@ -69,20 +37,6 @@
     }
     .mode-tab:hover { color: var(--text); background: var(--bg3); }
     .mode-tab.active { background: var(--btn-bg); color: var(--btn-text); }
-
-    /* SECTION HEAD */
-    .section-head {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em;
-      text-transform: uppercase; color: var(--text3);
-      margin: 22px 0 10px; padding-bottom: 7px;
-      border-bottom: 1px solid var(--border);
-    }
-    .section-head::before {
-      content: ''; display: inline-block;
-      width: 3px; height: 12px; background: var(--accent);
-      border-radius: 2px; flex-shrink: 0;
-    }
 
     /* FIELD */
     .field { margin-bottom: 16px; }
@@ -227,9 +181,6 @@
       margin-top: 6px; height: 16px; transition: opacity 0.3s;
     }
 
-    @keyframes fadeUp {
-      to { opacity: 1; transform: translateY(0); }
-    }
     .tool-header, .editor-layout, .controls-card, .preview-card, .field, .check-grid {
       opacity: 0;
       transform: translateY(12px);
@@ -252,10 +203,7 @@
       .check-grid { grid-template-columns: 1fr 1fr; }
     }
 
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
   </style>
 </head>
 <body>
