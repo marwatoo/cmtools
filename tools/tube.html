@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreeTube - Privacy YouTube Client</title>
+  <!-- sql.js removed: FreeTube .db files are plain JSON/JSONL, not SQLite -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f5;
+      --bg3: #eeeeee;
+      --border: #e0e0e0;
+      --text: #212121;
+      --text2: #666666;
+      --text3: #999999;
+      --accent: #e74c3c;
+      --success: #27ae60;
+      --radius: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg: #121212;
+      --bg2: #1e1e1e;
+      --bg3: #2a2a2a;
+      --border: #333333;
+      --text: #ffffff;
+      --text2: #b0b0b0;
+      --text3: #777777;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background-color 0.3s, color 0.3s;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT ===== */
+    .container {
+      display: flex;
+      height: 100vh;
+      gap: 0;
+    }
+
+    .sidebar {
+      width: 320px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: var(--bg2);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: var(--text3);
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow);
+      height: 60px;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      padding: 8px;
+    }
+
+    .menu-toggle span {
+      width: 24px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 1px;
+      transition: all 0.3s;
+    }
+
+    .menu-toggle.active span:nth-child(1) {
+      transform: rotate(45deg) translateY(10px);
+    }
+
+    .menu-toggle.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .menu-toggle.active span:nth-child(3) {
+      transform: rotate(-45deg) translateY(-10px);
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      background: var(--bg);
+    }
+
+    .content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .content::-webkit-scrollbar-thumb:hover {
+      background: var(--text3);
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar-close {
+      display: none;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 24px;
+      color: var(--text);
+    }
+
+    .sidebar-section {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 12px 12px 8px;
+      letter-spacing: 0.8px;
+    }
+
+    .nav-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+      color: var(--text2);
+      font-size: 15px;
+      border-radius: 4px;
+      margin: 4px 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      background: var(--bg3);
+      color: var(--text);
+    }
+
+    .nav-item.active {
+      background: rgba(231, 76, 60, 0.1);
+      border-left-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .subscription-item {
+      padding: 11px 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 5px 4px;
+      font-size: 13px;
+      color: var(--text2);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .subscription-item:hover {
+      background: var(--bg3);
+      color: var(--text);
+    }
+
+    .subscription-item.active {
+      background: rgba(231, 76, 60, 0.1);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .sub-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* ===== BUTTONS ===== */
+    button, .btn {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: inherit;
+      min-height: 40px;
+      touch-action: manipulation;
+    }
+
+    button:hover, .btn:hover {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+
+    button:active, .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #c0392b;
+      border-color: #c0392b;
+    }
+
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 13px;
+      min-height: 36px;
+    }
+
+    /* ===== VIDEO GRID ===== */
+    .videos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .video-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid var(--border);
+    }
+
+    .video-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent);
+    }
+
+    .video-thumbnail {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--bg3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .video-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+
+    .video-card:hover .video-overlay {
+      opacity: 1;
+    }
+
+    .video-info {
+      padding: 14px;
+    }
+
+    .video-title {
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .video-channel {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .video-meta {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 12px;
+    }
+
+    .video-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .video-actions button {
+      flex: 1;
+      min-width: auto;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    /* ===== CHANNEL SECTION ===== */
+    .channel-section {
+      margin-bottom: 36px;
+    }
+
+    .channel-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .channel-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      flex-shrink: 0;
+      font-size: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .channel-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .channel-videos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--bg);
+      border-radius: var(--radius);
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: var(--bg3);
+      cursor: pointer;
+      border-radius: 50%;
+      font-size: 20px;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .video-player {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      height: 0;
+      background: #000;
+      margin-bottom: 24px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .video-player iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .modal-content {
+      padding: 28px;
+    }
+
+    .modal-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      line-height: 1.3;
+      padding-right: 40px;
+    }
+
+    .modal-channel {
+      font-size: 15px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .modal-meta {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text2);
+      flex-wrap: wrap;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text2);
+      margin-bottom: 24px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal-buttons button {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    /* ===== TABLE ===== */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: var(--bg3);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    th {
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s;
+    }
+
+    tbody tr:hover {
+      background: var(--bg3);
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== FORM ===== */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    input[type="text"],
+    input[type="file"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg3);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="file"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--bg);
+      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* ===== LOADING ===== */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      text-align: center;
+      padding: 60px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .spinner-text {
+      color: var(--text2);
+      font-size: 15px;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      color: var(--text2);
+    }
+
+    .empty-state-icon {
+      font-size: 56px;
+      margin-bottom: 20px;
+    }
+
+    .empty-state-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    .empty-state-text {
+      font-size: 15px;
+      color: var(--text3);
+    }
+
+    /* ===== THEME TOGGLE ===== */
+    .theme-toggle {
+      width: 52px;
+      height: 30px;
+      background: var(--bg3);
+      border-radius: 15px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      position: relative;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle.dark {
+      background: var(--accent);
+    }
+
+    .theme-toggle::after {
+      content: '';
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: white;
+      top: 1px;
+      left: 2px;
+      transition: left 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .theme-toggle.dark::after {
+      left: 24px;
+    }
+
+    /* ===== MESSAGES ===== */
+    .success-message {
+      background: rgba(39, 174, 96, 0.1);
+      color: var(--success);
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      border-left: 4px solid var(--success);
+      font-weight: 500;
+    }
+
+    .error-message {
+      background: rgba(231, 76, 60, 0.1);
+      color: var(--accent);
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      border-left: 4px solid var(--accent);
+      font-weight: 500;
+    }
+
+    /* ===== DESKTOP LAYOUT (1200px+) ===== */
+    @media (min-width: 1200px) {
+      .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      }
+
+      .channel-videos {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      }
+
+      .content {
+        padding: 36px 40px;
+      }
+    }
+
+    /* ===== TABLET LAYOUT (769px - 1199px) ===== */
+    @media (min-width: 769px) and (max-width: 1199px) {
+      .sidebar {
+        width: 280px;
+      }
+
+      .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .channel-videos {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px;
+      }
+    }
+
+    /* ===== MOBILE LAYOUT (max-width 768px) ===== */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .header {
+        padding: 12px 16px;
+        height: 56px;
+      }
+
+      .menu-toggle {
+        display: flex;
+      }
+
+      .header-title {
+        font-size: 20px;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        height: auto;
+        max-height: none;
+        border-right: 1px solid var(--border);
+        border-bottom: none;
+        overflow-y: auto;
+        z-index: 999;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-out;
+        box-shadow: var(--shadow-md);
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+
+      .sidebar-header {
+        padding: 16px;
+      }
+
+      .sidebar-close {
+        display: flex;
+      }
+
+      .sidebar-title {
+        font-size: 20px;
+      }
+
+      .sidebar-section {
+        padding: 12px 8px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .main-content {
+        flex: 1;
+      }
+
+      .content {
+        padding: 20px 16px;
+      }
+
+      .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+      }
+
+      .channel-section {
+        margin-bottom: 24px;
+      }
+
+      .channel-header {
+        gap: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+      }
+
+      .channel-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+      }
+
+      .channel-name {
+        font-size: 15px;
+      }
+
+      .channel-videos {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+      }
+
+      .video-info {
+        padding: 10px;
+      }
+
+      .video-title {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .video-channel {
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .video-meta {
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+
+      .video-actions {
+        gap: 6px;
+      }
+
+      .video-actions button {
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+
+      .modal-box {
+        border-radius: 16px 16px 0 0;
+        max-height: 95vh;
+      }
+
+      .modal-content {
+        padding: 20px;
+      }
+
+      .modal-title {
+        font-size: 20px;
+        padding-right: 32px;
+        margin-bottom: 10px;
+      }
+
+      .modal-channel {
+        font-size: 14px;
+      }
+
+      .modal-meta {
+        gap: 16px;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+      }
+
+      .modal-desc {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+
+      .modal-buttons {
+        gap: 10px;
+      }
+
+      .modal-buttons button {
+        flex: 1;
+        min-width: 100px;
+        font-size: 13px;
+        padding: 10px 12px;
+      }
+
+      .table-wrapper {
+        margin-bottom: 20px;
+      }
+
+      table {
+        font-size: 13px;
+      }
+
+      th {
+        padding: 12px 12px;
+        font-size: 12px;
+      }
+
+      td {
+        padding: 12px;
+      }
+
+      .table-actions {
+        gap: 6px;
+      }
+
+      .table-actions button {
+        min-width: 60px;
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      input[type="text"],
+      input[type="file"],
+      select,
+      textarea {
+        font-size: 16px;
+        padding: 12px;
+      }
+
+      .empty-state {
+        padding: 60px 20px;
+      }
+
+      .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+
+      .empty-state-title {
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+
+      .empty-state-text {
+        font-size: 14px;
+      }
+
+      .header-actions {
+        gap: 10px;
+      }
+
+      .btn-small {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .btn-primary {
+        width: 100%;
+      }
+    }
+
+    /* ===== SMALL MOBILE (max-width 480px) ===== */
+    @media (max-width: 480px) {
+      .videos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+      }
+
+      .channel-videos {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+      }
+
+      .content {
+        padding: 16px 12px;
+      }
+
+      .modal-content {
+        padding: 16px;
+      }
+
+      .modal-title {
+        font-size: 18px;
+      }
+
+      .empty-state {
+        padding: 40px 16px;
+      }
+    }
+
+    /* ===== SEARCH BAR ===== */
+    .search-bar-wrap {
+      flex: 1;
+      max-width: 460px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 9px 36px 9px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg3);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+      height: 38px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--bg);
+      box-shadow: 0 0 0 3px rgba(231,76,60,0.1);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: unset;
+      padding: 0;
+      color: var(--text2);
+    }
+
+    .search-clear:hover { background: var(--accent); color: white; }
+
+    /* ===== CHANNEL PAGE ===== */
+    .channel-page-header {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 24px 0 24px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    .channel-page-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 26px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(231,76,60,0.3);
+    }
+
+    .channel-page-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .channel-page-info { flex: 1; min-width: 0; }
+
+    .channel-page-name {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .channel-page-meta {
+      font-size: 13px;
+      color: var(--text3);
+    }
+
+    .channel-page-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text2);
+      font-size: 14px;
+      cursor: pointer;
+      background: none;
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-family: inherit;
+      min-height: 36px;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .channel-page-back:hover { background: var(--bg3); color: var(--text); }
+
+    /* ===== SKELETON LOADER ===== */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .skeleton-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .skeleton-thumb {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-info { padding: 14px; }
+
+    .skeleton-line {
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      margin-bottom: 10px;
+    }
+
+    .skeleton-line.short { width: 60%; }
+    .skeleton-line.xshort { width: 40%; }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ===== SEARCH RESULTS ===== */
+    .search-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text3);
+      margin: 24px 0 14px;
+    }
+
+    .channel-result-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: var(--bg2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .channel-result-item:hover {
+      border-color: var(--accent);
+      background: rgba(231,76,60,0.05);
+    }
+
+    .channel-result-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .channel-result-name { font-weight: 600; font-size: 15px; }
+    .channel-result-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+    /* ===== VIDEO DURATION BADGE ===== */
+    .duration-badge {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* ===== BACK BUTTON IN CHANNEL HEADER ===== */
+    .channel-back-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      .search-bar-wrap { max-width: none; }
+      .channel-page-name { font-size: 18px; }
+      .channel-page-avatar { width: 48px; height: 48px; font-size: 20px; }
+      .skeleton-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    }
+
+    /* ===== UTILITIES ===== */
+    .hidden { display: none !important; }
+    .mt-20 { margin-top: 20px; }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="container">
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">FreeTube</div>
+        <button class="sidebar-close" id="sidebarClose">✕</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Navigation</div>
+        <div class="nav-item active" data-page="latest">🏠 Latest Videos</div>
+        <div class="nav-item" data-page="history">📺 Watch History</div>
+        <div class="nav-item" data-page="playlists">📋 Playlists</div>
+        <div class="nav-item" data-page="settings">⚙️ Settings</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Subscriptions</div>
+        <div id="subscriptionsList"></div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="header">
+        <div class="header-left">
+          <button class="menu-toggle" id="menuToggle">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="header-title" id="pageTitle">Latest Videos</div>
+        </div>
+        <div class="search-bar-wrap" id="searchBarWrap">
+          <input type="text" id="globalSearch" class="search-input" placeholder="🔍 Search channels, videos…" autocomplete="off">
+          <button class="search-clear hidden" id="searchClear">✕</button>
+        </div>
+        <div class="header-actions">
+          <button class="btn-small" id="refreshBtn">🔄 Refresh</button>
+          <div class="theme-toggle" id="themeToggle"></div>
+        </div>
+      </div>
+
+      <div class="content" id="mainContent">
+        <!-- Content loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- VIDEO MODAL -->
+  <div class="modal-overlay" id="videoModal">
+    <div class="modal-box">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div class="modal-content" id="modalContent">
+        <!-- Modal content loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== DATABASE SETUP =====
+    const DB_NAME = 'FreeTube';
+    const DB_VERSION = 1;
+    let db;
+
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+
+          // Subscriptions store
+          if (!database.objectStoreNames.contains('subscriptions')) {
+            const subStore = database.createObjectStore('subscriptions', { keyPath: 'id' });
+            subStore.createIndex('name', 'name', { unique: false });
+          }
+
+          // Playlists store
+          if (!database.objectStoreNames.contains('playlists')) {
+            const playStore = database.createObjectStore('playlists', { keyPath: 'id' });
+            playStore.createIndex('name', 'name', { unique: false });
+          }
+
+          // Playlist items store
+          if (!database.objectStoreNames.contains('playlistItems')) {
+            database.createObjectStore('playlistItems', { keyPath: 'id' });
+          }
+
+          // Watch history store
+          if (!database.objectStoreNames.contains('watchHistory')) {
+            database.createObjectStore('watchHistory', { keyPath: 'videoId' });
+          }
+        };
+      });
+    }
+
+    // DB Operations
+    async function getAll(storeName) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const request = store.getAll();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+    }
+
+    async function addItem(storeName, item) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const request = store.add(item);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+    }
+
+    async function putItem(storeName, item) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const request = store.put(item);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+    }
+
+    async function deleteItem(storeName, key) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const request = store.delete(key);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
+    }
+
+    async function clearStore(storeName) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const request = store.clear();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
+    }
+
+    // ===== GLOBALS =====
+    const PROXIES = [
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    ];
+
+    let currentPage = 'latest';
+    let currentChannelId = null;
+
+    // Video registry: videoId → full video object (avoids quoting issues in onclick)
+    const videoRegistry = new Map();
+
+    // Channel feed cache: channelId → { videos, fetchedAt }
+    const feedCache = new Map();
+    const CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+    // ===== THEME =====
+    function initTheme() {
+      const theme = localStorage.getItem('theme') || 'light';
+      document.body.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+      updateThemeToggle(theme);
+    }
+
+    function toggleTheme() {
+      const current = document.body.getAttribute('data-theme');
+      const newTheme = current === 'light' ? 'dark' : 'light';
+      document.body.setAttribute('data-theme', newTheme);
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeToggle(newTheme);
+    }
+
+    function updateThemeToggle(theme) {
+      const toggle = document.getElementById('themeToggle');
+      toggle.classList.toggle('dark', theme === 'dark');
+    }
+
+    // ===== RSS FEED FETCHING =====
+    function getFeedUrl(channelId) {
+      return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+    }
+
+    async function fetchWithProxy(url) {
+      for (const proxyFn of PROXIES) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
+          const res = await fetch(proxyFn(url), { signal: controller.signal });
+          clearTimeout(timeout);
+          if (res.ok) return res.text();
+        } catch(e) { /* try next */ }
+      }
+      throw new Error('All proxies failed');
+    }
+
+    function isShort(video) {
+      const t = (video.title + ' ' + video.description).toLowerCase();
+      if (t.includes('#shorts') || t.includes('#short')) return true;
+      if (video.link && video.link.includes('/shorts/')) return true;
+      return false;
+    }
+
+    async function fetchFeed(subscription, maxEntries = 15) {
+      const cid = subscription.channelId || subscription.id;
+      const cached = feedCache.get(cid);
+      if (cached && (Date.now() - cached.fetchedAt) < CACHE_TTL) return cached.videos;
+
+      const feedUrl = getFeedUrl(cid);
+      const text = await fetchWithProxy(feedUrl);
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'application/xml');
+      if (xml.querySelector('parseerror') || xml.querySelector('parsererror')) throw new Error('Invalid XML');
+
+      const entries = Array.from(xml.querySelectorAll('entry')).slice(0, maxEntries);
+      const YT = 'http://www.youtube.com/xml/schemas/2015';
+      const MRSS = 'http://search.yahoo.com/mrss/';
+
+      const videos = entries.map(entry => {
+        const videoId = entry.getElementsByTagNameNS(YT, 'videoId')[0]?.textContent;
+        if (!videoId) return null;
+        const title = entry.querySelector('title')?.textContent || '';
+        const link = entry.querySelector('link[rel="alternate"]')?.getAttribute('href') || `https://www.youtube.com/watch?v=${videoId}`;
+        const published = entry.querySelector('published')?.textContent || '';
+        const author = entry.querySelector('author name')?.textContent || subscription.name;
+        const mediaGroup = entry.getElementsByTagNameNS(MRSS, 'group')[0];
+        const thumbnail = mediaGroup?.getElementsByTagNameNS(MRSS, 'thumbnail')[0]?.getAttribute('url')
+          || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        const description = (mediaGroup?.getElementsByTagNameNS(MRSS, 'description')[0]?.textContent || '').replace(/<[^>]*>/g, '').trim();
+        const stats = mediaGroup?.getElementsByTagNameNS(MRSS, 'community')[0];
+        const views = parseInt(stats?.getElementsByTagNameNS(MRSS, 'statistics')[0]?.getAttribute('views') || '0', 10);
+        const likes = parseInt(stats?.getElementsByTagNameNS(MRSS, 'starRating')[0]?.getAttribute('count') || '0', 10);
+        return { videoId, title, link, published, author, thumbnail, description, views, likes,
+                 subscriptionId: subscription.id, channelId: cid };
+      }).filter(Boolean).filter(v => !isShort(v));
+
+      videos.forEach(v => videoRegistry.set(v.videoId, v));
+      const result = videos.sort((a, b) => new Date(b.published) - new Date(a.published));
+      feedCache.set(cid, { videos: result, fetchedAt: Date.now() });
+      return result;
+    }
+
+    // ===== UTILITIES =====
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(typeof dateStr === 'number' ? dateStr * 1000 : dateStr);
+        if (isNaN(date)) return '';
+        const now = new Date();
+        const diff = (now - date) / 1000;
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+        if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+      } catch(e) { return String(dateStr); }
+    }
+
+    function formatCount(n) {
+      if (!n) return '0';
+      if (n >= 1e6) return (n/1e6).toFixed(1).replace('.0','') + 'M';
+      if (n >= 1e3) return (n/1e3).toFixed(1).replace('.0','') + 'K';
+      return String(n);
+    }
+
+    function formatSeconds(s) {
+      if (!s) return '';
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      return `${m}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function showMessage(text, type = 'success') {
+      const content = document.getElementById('mainContent');
+      const div = document.createElement('div');
+      div.className = `${type}-message`;
+      div.textContent = text;
+      content.insertBefore(div, content.firstChild);
+      setTimeout(() => div.remove(), 3000);
+    }
+
+    function skeletonGrid(count = 8) {
+      return `<div class="skeleton-grid">${Array.from({length:count}, () => `
+        <div class="skeleton-card">
+          <div class="skeleton-thumb"></div>
+          <div class="skeleton-info">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line xshort"></div>
+          </div>
+        </div>`).join('')}</div>`;
+    }
+
+    // ===== VIDEO CARD & MODAL =====
+    function createVideoCardHTML(video) {
+      videoRegistry.set(video.videoId, video);
+      const thumb = video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`;
+      const dur = video.lengthSeconds ? `<div class="duration-badge">${formatSeconds(video.lengthSeconds)}</div>` : '';
+      const safeTitle = video.title.replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      return `
+        <div class="video-card" data-vid="${video.videoId}" tabindex="0" role="button" aria-label="${safeTitle}">
+          <div class="video-thumbnail">
+            <img src="${thumb}" alt="" loading="lazy" onerror="this.src='https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg'">
+            <div class="video-overlay">▶</div>
+            ${dur}
+          </div>
+          <div class="video-info">
+            <div class="video-title">${video.title}</div>
+            <div class="video-channel">${video.author}</div>
+            <div class="video-meta">${formatDate(video.published)}${video.views ? ' · ' + formatCount(video.views) + ' views' : ''}</div>
+            <div class="video-actions">
+              <button class="btn-small play-btn" data-vid="${video.videoId}">▶ Play</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function openVideoModal(videoId) {
+      const video = videoRegistry.get(videoId);
+      if (!video) { console.warn('Video not found in registry:', videoId); return; }
+      const modal = document.getElementById('videoModal');
+      const modalContent = document.getElementById('modalContent');
+      modalContent.innerHTML = '';
+      modalContent.innerHTML = `
+        <div class="video-player">
+          <iframe src="https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&rel=0"
+            allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" loading="lazy"></iframe>
+        </div>
+        <div class="modal-title">${video.title}</div>
+        <div class="modal-channel">${video.author}</div>
+        <div class="modal-meta">
+          <span>${formatDate(video.published)}</span>
+          ${video.views ? `<span>👁 ${formatCount(video.views)}</span>` : ''}
+          ${video.likes ? `<span>👍 ${formatCount(video.likes)}</span>` : ''}
+        </div>
+        ${video.description ? `<div class="modal-desc">${video.description.substring(0,400)}${video.description.length>400?'…':''}</div>` : ''}
+        <div class="modal-buttons">
+          <button class="btn-primary" id="modalAddPlaylist" style="background:#2980b9;">📌 Add to Playlist</button>
+          <button class="btn-primary" id="modalCopyLink" style="background:#8e44ad;">🔗 Copy Link</button>
+          <button class="btn-primary" id="modalYT" style="background:#e74c3c;">▶ Open on YouTube</button>
+        </div>`;
+      modal.classList.add('active');
+      document.getElementById('modalAddPlaylist').onclick = () => addToPlaylist(video);
+      document.getElementById('modalCopyLink').onclick = () =>
+        navigator.clipboard.writeText(`https://youtu.be/${video.videoId}`).then(() => showMessage('Link copied!'));
+      document.getElementById('modalYT').onclick = () =>
+        window.open(`https://www.youtube.com/watch?v=${video.videoId}`, '_blank');
+      addToHistory(video);
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('videoModal');
+      modal.classList.remove('active');
+      const iframe = document.querySelector('#modalContent iframe');
+      if (iframe) iframe.src = '';
+    }
+
+    // Event delegation for video cards
+    function attachVideoListeners(container) {
+      const root = container || document.getElementById('mainContent');
+      // Remove previous listener to avoid duplicates
+      const clone = root.cloneNode(true);
+      root.parentNode && root.parentNode.replaceChild(clone, root);
+      clone.addEventListener('click', e => {
+        const btn = e.target.closest('.play-btn[data-vid]');
+        const card = e.target.closest('.video-card[data-vid]');
+        if (btn) { e.stopPropagation(); openVideoModal(btn.dataset.vid); return; }
+        if (card) openVideoModal(card.dataset.vid);
+      });
+      return clone;
+    }
+
+    // ===== PAGES =====
+    async function showLatestPage() {
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = 'Latest Videos';
+      currentChannelId = null;
+
+      const subscriptions = await getAll('subscriptions');
+      if (!subscriptions.length) {
+        content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📢</div>
+          <div class="empty-state-title">No Subscriptions</div>
+          <div class="empty-state-text">Import from FreeTube in Settings or add manually</div></div>`;
+        return;
+      }
+
+      // Show skeletons immediately
+      content.innerHTML = `<div id="latestGrid">${skeletonGrid(12)}</div>`;
+
+      // Fetch ALL channels in parallel
+      const results = await Promise.allSettled(
+        subscriptions.map(sub => fetchFeed(sub, 8).then(vids => ({ sub, vids })))
+      );
+
+      const allVids = [];
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.vids.length)
+          r.value.vids.forEach(v => allVids.push(v));
+      });
+
+      const grid = document.getElementById('latestGrid');
+      if (!grid) return;
+
+      if (!allVids.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div>
+          <div class="empty-state-title">No Videos</div>
+          <div class="empty-state-text">Could not load videos. Check your internet connection.</div></div>`;
+        return;
+      }
+
+      allVids.sort((a, b) => new Date(b.published) - new Date(a.published));
+
+      // Group by channel (max 4 per channel in latest view)
+      const byChannel = new Map();
+      allVids.forEach(v => {
+        if (!byChannel.has(v.author)) byChannel.set(v.author, { author: v.author, channelId: v.channelId, videos: [] });
+        const ch = byChannel.get(v.author);
+        if (ch.videos.length < 4) ch.videos.push(v);
+      });
+
+      let html = '';
+      byChannel.forEach(ch => {
+        const cid = ch.channelId || '';
+        const safeName = ch.author.replace(/'/g,"\'");
+        html += `<div class="channel-section">
+          <div class="channel-header" style="cursor:pointer" onclick="showChannelPage('${cid}','${safeName}')">
+            <div class="channel-avatar">${ch.author.charAt(0).toUpperCase()}</div>
+            <div class="channel-name">${ch.author}</div>
+            <span style="margin-left:auto;font-size:12px;color:var(--text3);">View all →</span>
+          </div>
+          <div class="channel-videos">${ch.videos.map(v => createVideoCardHTML(v)).join('')}</div>
+        </div>`;
+      });
+
+      grid.innerHTML = html;
+
+      // Re-attach listeners on the new grid content
+      grid.addEventListener('click', e => {
+        const btn = e.target.closest('.play-btn[data-vid]');
+        const card = e.target.closest('.video-card[data-vid]');
+        if (btn) { e.stopPropagation(); openVideoModal(btn.dataset.vid); return; }
+        if (card) openVideoModal(card.dataset.vid);
+      });
+    }
+
+    async function showChannelPage(channelId, channelName) {
+      const content = document.getElementById('mainContent');
+      currentChannelId = channelId;
+      document.getElementById('pageTitle').textContent = channelName;
+
+      const subs = await getAll('subscriptions');
+      const sub = subs.find(s => (s.channelId || s.id) === channelId)
+        || { channelId, id: channelId, name: channelName };
+
+      content.innerHTML = `
+        <div class="channel-page-header">
+          <button class="channel-page-back" onclick="navigateTo('latest')">← Back</button>
+          <div class="channel-page-avatar" id="chAvatar">${channelName.charAt(0).toUpperCase()}</div>
+          <div class="channel-page-info">
+            <div class="channel-page-name">${channelName}</div>
+            <div class="channel-page-meta" id="chMeta">Loading videos…</div>
+          </div>
+        </div>
+        <div id="channelVideoGrid">${skeletonGrid(12)}</div>`;
+
+      if (sub.thumbnail) {
+        const av = document.getElementById('chAvatar');
+        if (av) av.innerHTML = `<img src="${sub.thumbnail}" alt="" onerror="this.textContent='${channelName.charAt(0).toUpperCase()}'">`;
+      }
+
+      try {
+        const videos = await fetchFeed(sub, 15);
+        const grid = document.getElementById('channelVideoGrid');
+        const meta = document.getElementById('chMeta');
+        if (!grid) return;
+
+        if (!videos.length) {
+          grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div>
+            <div class="empty-state-title">No Videos</div>
+            <div class="empty-state-text">No recent videos found (shorts filtered)</div></div>`;
+          if (meta) meta.textContent = '0 videos';
+          return;
+        }
+
+        if (meta) meta.textContent = `${videos.length} recent videos · Shorts filtered`;
+        grid.innerHTML = `<div class="skeleton-grid">${videos.map(v => createVideoCardHTML(v)).join('')}</div>`;
+        grid.addEventListener('click', e => {
+          const btn = e.target.closest('.play-btn[data-vid]');
+          const card = e.target.closest('.video-card[data-vid]');
+          if (btn) { e.stopPropagation(); openVideoModal(btn.dataset.vid); return; }
+          if (card) openVideoModal(card.dataset.vid);
+        });
+      } catch(e) {
+        const grid = document.getElementById('channelVideoGrid');
+        if (grid) grid.innerHTML = `<div class="error-message">Failed to load: ${e.message}</div>`;
+      }
+    }
+
+    async function showHistoryPage() {
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = 'Watch History';
+      currentChannelId = null;
+
+      const history = await getAll('watchHistory');
+      if (!history.length) {
+        content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📜</div>
+          <div class="empty-state-title">No Watch History</div>
+          <div class="empty-state-text">Videos you watch will appear here</div></div>`;
+        return;
+      }
+
+      const sorted = [...history].sort((a, b) => {
+        const ta = a.timeWatched || (a.watchedAt ? new Date(a.watchedAt).getTime() : 0);
+        const tb = b.timeWatched || (b.watchedAt ? new Date(b.watchedAt).getTime() : 0);
+        return tb - ta;
+      });
+
+      // Register all history items in video registry
+      sorted.forEach(item => { if (item.videoId) videoRegistry.set(item.videoId, item); });
+
+      let html = `<div class="table-wrapper"><table>
+        <thead><tr><th>Video</th><th>Channel</th><th>Watched</th><th>Actions</th></tr></thead><tbody>`;
+
+      for (const item of sorted) {
+        const t = (item.title || 'Unknown').substring(0, 55);
+        const watchedAt = item.timeWatched
+          ? formatDate(new Date(item.timeWatched).toISOString())
+          : formatDate(item.watchedAt || '');
+        html += `<tr>
+          <td><div class="play-btn" data-vid="${item.videoId}" style="cursor:pointer;color:var(--accent);font-weight:600;">${t}${(item.title||'').length > 55 ? '…' : ''}</div></td>
+          <td>${item.author || ''}</td>
+          <td>${watchedAt}</td>
+          <td class="table-actions">
+            <button class="btn-small play-btn" data-vid="${item.videoId}">▶ Play</button>
+            <button class="btn-small" onclick="removeFromHistory('${item.videoId}')">✕</button>
+          </td></tr>`;
+      }
+
+      html += '</tbody></table></div>';
+      content.innerHTML = html;
+      content.addEventListener('click', e => {
+        const btn = e.target.closest('.play-btn[data-vid]');
+        if (btn) openVideoModal(btn.dataset.vid);
+      });
+    }
+    async function showPlaylistsPage() {
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = 'Playlists';
+      
+      const playlists = await getAll('playlists');
+      
+      let html = `
+        <div style="margin-bottom: 20px;">
+          <button class="btn-primary" onclick="showCreatePlaylistModal()">+ Create Playlist</button>
+        </div>
+      `;
+
+      if (!playlists.length) {
+        html += `
+          <div class="empty-state">
+            <div class="empty-state-icon">📂</div>
+            <div class="empty-state-title">No Playlists</div>
+            <div class="empty-state-text">Create your first playlist to organize videos</div>
+          </div>
+        `;
+        content.innerHTML = html;
+        return;
+      }
+
+      html += `
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Videos</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      for (const pl of playlists) {
+        const items = await getPlaylistItems(pl.id);
+        html += `
+          <tr>
+            <td>
+              <div style="cursor: pointer; color: var(--accent);" onclick="showPlaylistPage('${pl.id}', '${pl.name.replace(/'/g, "\\'")}')">${pl.name}</div>
+            </td>
+            <td>${items.length}</td>
+            <td>${formatDate(pl.createdAt)}</td>
+            <td class="table-actions">
+              <button class="btn-small" onclick="editPlaylistName('${pl.id}', '${pl.name.replace(/'/g, "\\'")}')"">Edit</button>
+              <button class="btn-small" onclick="deletePlaylist('${pl.id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      html += '</tbody></table></div>';
+      content.innerHTML = html;
+    }
+
+    async function showPlaylistPage(playlistId, playlistName) {
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = `${playlistName}`;
+      
+      const items = await getPlaylistItems(playlistId);
+      
+      if (!items.length) {
+        content.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🎬</div>
+            <div class="empty-state-title">Playlist Empty</div>
+            <div class="empty-state-text">Add videos from latest or history</div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <button class="btn" style="margin-bottom: 20px;" onclick="showPlaylistsPage()">← Back to Playlists</button>
+        <div class="videos-grid">
+      `;
+
+      for (const item of items) {
+        videoRegistry.set(item.videoId, item);
+        html += `
+          <div class="video-card" data-vid="${item.videoId}" tabindex="0" role="button">
+            <div class="video-thumbnail">
+              <img src="${item.thumbnail || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`}" alt="" loading="lazy">
+              <div class="video-overlay">▶</div>
+            </div>
+            <div class="video-info">
+              <div class="video-title">${item.title}</div>
+              <div class="video-channel">${item.author}</div>
+              <div class="video-meta">${formatDate(item.published)}</div>
+              <div class="video-actions">
+                <button class="btn-small play-btn" data-vid="${item.videoId}">▶ Play</button>
+                <button class="btn-small" onclick="removeFromPlaylist('${playlistId}', '${item.videoId}')">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      content.innerHTML = html;
+      content.addEventListener('click', e => {
+        const btn = e.target.closest('.play-btn[data-vid]');
+        const card = e.target.closest('.video-card[data-vid]');
+        if (btn) { e.stopPropagation(); openVideoModal(btn.dataset.vid); return; }
+        if (card && !e.target.closest('button')) openVideoModal(card.dataset.vid);
+      });
+    }
+
+
+    async function showSettingsPage() {
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = 'Settings';
+      
+      const subscriptions = await getAll('subscriptions');
+
+      let subList = '';
+      for (const sub of subscriptions) {
+        subList += `
+          <div style="padding: 12px 14px; background: var(--bg3); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; margin-bottom: 4px;">${sub.name}</div>
+              <div style="font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ID: ${sub.channelId}</div>
+            </div>
+            <button class="btn-small" onclick="removeSubscription('${sub.id}')" style="flex-shrink: 0; margin-left: 10px;">×</button>
+          </div>
+        `;
+      }
+
+      const html = `
+        <div style="max-width: 700px;">
+          <div class="form-group">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">📥 Import from FreeTube</h3>
+            <p style="font-size: 13px; color: var(--text2); margin-bottom: 16px;">Import your data from FreeTube database files (.db)</p>
+            
+            <div style="background: var(--bg2); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 12px;">
+              <label>Import Subscriptions</label>
+              <p style="font-size: 12px; color: var(--text3); margin-bottom: 10px;">File: <code style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">freetube-subscriptions-*.db</code></p>
+              <input type="file" id="importSubFile" accept=".db" style="margin-bottom: 10px;">
+              <button class="btn-primary" style="width: 100%;" onclick="importSubscriptionsDB()">📥 Import Subscriptions</button>
+            </div>
+
+            <div style="background: var(--bg2); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 12px;">
+              <label>Import Watch History</label>
+              <p style="font-size: 12px; color: var(--text3); margin-bottom: 10px;">File: <code style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">freetube-watch-history-*.db</code></p>
+              <input type="file" id="importHistFile" accept=".db" style="margin-bottom: 10px;">
+              <button class="btn-primary" style="width: 100%;" onclick="importHistoryDB()">📥 Import History</button>
+            </div>
+
+            <div style="background: var(--bg2); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
+              <label>Import Playlists</label>
+              <p style="font-size: 12px; color: var(--text3); margin-bottom: 10px;">File: <code style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">freetube-playlists-*.db</code></p>
+              <input type="file" id="importPlayFile" accept=".db" style="margin-bottom: 10px;">
+              <button class="btn-primary" style="width: 100%;" onclick="importPlaylistsDB()">📥 Import Playlists</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">📤 Export Your Data</h3>
+            <p style="font-size: 13px; color: var(--text2); margin-bottom: 16px;">Backup your data as JSON files</p>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+              <button class="btn-primary" onclick="exportSubscriptionsDB()">📤 Export Subscriptions (JSON)</button>
+              <button class="btn-primary" onclick="exportHistoryDB()">📤 Export Watch History (JSON)</button>
+              <button class="btn-primary" onclick="exportPlaylistsDB()">📤 Export Playlists (JSON)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">➕ Add Subscription Manually</h3>
+            <div style="background: var(--bg2); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
+              <label>Channel Name</label>
+              <input type="text" id="subName" placeholder="e.g., TechLab, BBC News, etc" style="margin-bottom: 10px;">
+              
+              <label style="margin-top: 12px;">YouTube Channel ID</label>
+              <input type="text" id="subChannelId" placeholder="e.g., UCxxxxxxxxxxxxxxx (find in channel URL)" style="margin-bottom: 10px;">
+              
+              <button class="btn-primary" style="width: 100%;" onclick="addSubscription()">Add Subscription</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">📋 Your Subscriptions (${subscriptions.length})</h3>
+            ${subList || '<div class="empty-state-text" style="text-align: center; padding: 20px;">No subscriptions yet. Import from FreeTube or add manually.</div>'}
+          </div>
+
+          <div class="form-group">
+            <h3 style="margin-bottom: 16px; font-size: 18px;">🗑️ Danger Zone</h3>
+            <button style="width: 100%; background: #c0392b; color: white; border-color: #c0392b; padding: 12px;" onclick="clearAllData()">🗑️ Clear All Data</button>
+            <p style="font-size: 12px; color: var(--text3); margin-top: 10px;">This will permanently delete all subscriptions, history, and playlists. This cannot be undone.</p>
+          </div>
+        </div>
+      `;
+
+      content.innerHTML = html;
+    }
+
+    // ===== SUBSCRIPTIONS =====
+    async function loadSubscriptions() {
+      const subscriptions = await getAll('subscriptions');
+      const list = document.getElementById('subscriptionsList');
+      
+      let html = '';
+      for (const sub of subscriptions) {
+        html += `
+          <div class="subscription-item" data-sub-id="${sub.id}" onclick="filterBySubscription('${sub.id}', '${sub.name.replace(/'/g, "\\'")}')" title="${sub.name}">
+            <div class="sub-avatar">${sub.name.charAt(0).toUpperCase()}</div>
+            <span>${sub.name}</span>
+          </div>
+        `;
+      }
+      
+      list.innerHTML = html || '<div style="padding: 0 16px; color: var(--text3); font-size: 12px;">No subscriptions</div>';
+    }
+
+    async function addSubscription() {
+      const name = document.getElementById('subName').value.trim();
+      const channelId = document.getElementById('subChannelId').value.trim();
+
+      if (!name || !channelId) {
+        showMessage('Please enter both name and channel ID', 'error');
+        return;
+      }
+
+      const sub = {
+        id: Date.now().toString(),
+        name,
+        channelId,
+        addedAt: new Date().toISOString(),
+      };
+
+      try {
+        await putItem('subscriptions', sub);
+        document.getElementById('subName').value = '';
+        document.getElementById('subChannelId').value = '';
+        showMessage(`Added ${name} to subscriptions`);
+        await loadSubscriptions();
+        await showSettingsPage();
+      } catch(e) {
+        showMessage('Failed to add subscription', 'error');
+      }
+    }
+
+    async function removeSubscription(subId) {
+      if (!confirm('Remove this subscription?')) return;
+      try {
+        await deleteItem('subscriptions', subId);
+        showMessage('Subscription removed');
+        await loadSubscriptions();
+        await showSettingsPage();
+      } catch(e) {
+        showMessage('Failed to remove subscription', 'error');
+      }
+    }
+
+    async function filterBySubscription(subId, subName) {
+      const subs = await getAll('subscriptions');
+      const sub = subs.find(s => s.id === subId);
+      if (sub) showChannelPage(sub.channelId || sub.id, sub.name);
+    }
+
+    // ===== PLAYLISTS =====
+    async function showCreatePlaylistModal() {
+      const name = prompt('Enter playlist name:');
+      if (!name) return;
+
+      const playlist = {
+        id: Date.now().toString(),
+        name,
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        await putItem('playlists', playlist);
+        showMessage(`Playlist "${name}" created`);
+        await showPlaylistsPage();
+      } catch(e) {
+        showMessage('Failed to create playlist', 'error');
+      }
+    }
+
+    async function editPlaylistName(playlistId, currentName) {
+      const newName = prompt('Enter new name:', currentName);
+      if (!newName || newName === currentName) return;
+
+      try {
+        const playlist = await getPlaylistById(playlistId);
+        playlist.name = newName;
+        await putItem('playlists', playlist);
+        showMessage('Playlist renamed');
+        await showPlaylistsPage();
+      } catch(e) {
+        showMessage('Failed to rename playlist', 'error');
+      }
+    }
+
+    async function deletePlaylist(playlistId) {
+      if (!confirm('Delete this playlist?')) return;
+
+      try {
+        await deleteItem('playlists', playlistId);
+        const items = await getPlaylistItems(playlistId);
+        for (const item of items) {
+          await deleteItem('playlistItems', item.id);
+        }
+        showMessage('Playlist deleted');
+        await showPlaylistsPage();
+      } catch(e) {
+        showMessage('Failed to delete playlist', 'error');
+      }
+    }
+
+    async function getPlaylistById(playlistId) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('playlists', 'readonly');
+        const store = tx.objectStore('playlists');
+        const request = store.get(playlistId);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      });
+    }
+
+    async function getPlaylistItems(playlistId) {
+      const all = await getAll('playlistItems');
+      return all.filter(item => item.playlistId === playlistId);
+    }
+
+    async function addToPlaylist(video) {
+      const playlists = await getAll('playlists');
+      if (!playlists.length) { showMessage('Create a playlist first', 'error'); return; }
+      const playlistId = playlists[0].id;
+      const item = {
+        id: `${video.videoId}-${playlistId}-${Date.now()}`,
+        playlistId,
+        videoId: video.videoId,
+        title: video.title,
+        thumbnail: video.thumbnail,
+        author: video.author,
+        published: video.published,
+        description: video.description || '',
+        addedAt: new Date().toISOString(),
+      };
+      try {
+        await putItem('playlistItems', item);
+        showMessage(`Added to ${playlists[0].name}`);
+      } catch(e) { showMessage('Failed to add to playlist', 'error'); }
+    }
+
+        async function removeFromPlaylist(playlistId, videoId) {
+      const items = await getPlaylistItems(playlistId);
+      const item = items.find(i => i.videoId === videoId);
+      if (item) {
+        try {
+          await deleteItem('playlistItems', item.id);
+          showMessage('Removed from playlist');
+          await showPlaylistPage(playlistId, (await getPlaylistById(playlistId)).name);
+        } catch(e) {
+          showMessage('Failed to remove', 'error');
+        }
+      }
+    }
+
+    // ===== WATCH HISTORY =====
+    async function removeFromHistory(videoId) {
+      if (!confirm('Remove from history?')) return;
+      try {
+        await deleteItem('watchHistory', videoId);
+        showMessage('Removed from history');
+        await showHistoryPage();
+      } catch(e) {
+        showMessage('Failed to remove', 'error');
+      }
+    }
+
+    async function addToHistory(video) {
+      if (!video || !video.videoId) return;
+      const item = {
+        videoId: video.videoId,
+        title: video.title || 'Unknown',
+        thumbnail: video.thumbnail || '',
+        author: video.author || '',
+        published: video.published || '',
+        description: video.description || '',
+        watchedAt: new Date().toISOString(),
+        timeWatched: Date.now(),
+      };
+      try { await putItem('watchHistory', item); } catch(e) { console.warn('Failed to add to history:', e); }
+    }
+
+    // ===== DATA IMPORT/EXPORT =====
+    // FreeTube .db files are plain-text JSON/JSONL — not SQLite.
+    // • freetube-subscriptions-*.db  → single JSON object
+    //     { _id, name, subscriptions: [{id, name, thumbnail}] }
+    // • freetube-watch-history-*.db  → JSONL (one JSON object per line)
+    //     { videoId, title, author, authorId, published, description,
+    //       viewCount, lengthSeconds, watchProgress, timeWatched, … }
+    // • freetube-playlists-*.db      → JSONL
+    //     { playlistName, videos: [{videoId, title, author, …}],
+    //       _id, createdAt, lastUpdatedAt, … }
+
+    /** Read a File object as UTF-8 text */
+    function readFileText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.readAsText(file, 'utf-8');
+      });
+    }
+
+    /** Parse JSONL (newline-delimited JSON). Skips blank/invalid lines. */
+    function parseJSONL(text) {
+      return text
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .map(l => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(Boolean);
+    }
+
+    async function importSubscriptionsDB() {
+      const file = document.getElementById('importSubFile').files[0];
+      if (!file) { showMessage('Please select a file', 'error'); return; }
+
+      try {
+        const text = await readFileText(file);
+        const data = JSON.parse(text); // single JSON object
+
+        // FreeTube format: { subscriptions: [{id, name, thumbnail}] }
+        const rawSubs = Array.isArray(data)
+          ? data                          // fallback: bare array
+          : (data.subscriptions || []);
+
+        if (!rawSubs.length) {
+          showMessage('No subscriptions found in file', 'error');
+          return;
+        }
+
+        let imported = 0;
+        for (const s of rawSubs) {
+          try {
+            await putItem('subscriptions', {
+              id:        s.id   || s._id || (Date.now().toString() + Math.random()),
+              name:      s.name || s.author || 'Unknown',
+              channelId: s.id   || s._id || '',
+              thumbnail: s.thumbnail || '',
+              addedAt:   s.addedAt || new Date().toISOString(),
+            });
+            imported++;
+          } catch(e) { console.warn('Failed to import subscription:', e); }
+        }
+
+        showMessage(`✅ Imported ${imported} subscriptions`);
+        await loadSubscriptions();
+        await showSettingsPage();
+        document.getElementById('importSubFile').value = '';
+      } catch(e) {
+        console.error('Import error:', e);
+        showMessage(`Failed to import subscriptions: ${e.message}`, 'error');
+      }
+    }
+
+    async function importHistoryDB() {
+      const file = document.getElementById('importHistFile').files[0];
+      if (!file) { showMessage('Please select a file', 'error'); return; }
+
+      try {
+        const text = await readFileText(file);
+        // Watch-history is JSONL
+        const records = parseJSONL(text);
+
+        if (!records.length) {
+          showMessage('No history found in file', 'error');
+          return;
+        }
+
+        let imported = 0;
+        for (const r of records) {
+          if (!r.videoId) continue;
+          try {
+            await putItem('watchHistory', {
+              videoId:      r.videoId,
+              title:        r.title       || 'Unknown',
+              author:       r.author      || 'Unknown',
+              authorId:     r.authorId    || '',
+              thumbnail:    r.videoThumbnails?.[0]?.url || r.thumbnail || '',
+              published:    r.published   || 0,
+              description:  r.description || '',
+              viewCount:    r.viewCount   || 0,
+              lengthSeconds:r.lengthSeconds || 0,
+              watchProgress:r.watchProgress || 0,
+              timeWatched:  r.timeWatched  || Date.now(),
+              isLive:       r.isLive       || false,
+              type:         r.type         || 'video',
+            });
+            imported++;
+          } catch(e) { console.warn('Failed to import history item:', e); }
+        }
+
+        showMessage(`✅ Imported ${imported} videos from history`);
+        await showHistoryPage();
+        document.getElementById('importHistFile').value = '';
+      } catch(e) {
+        console.error('Import error:', e);
+        showMessage(`Failed to import history: ${e.message}`, 'error');
+      }
+    }
+
+    async function importPlaylistsDB() {
+      const file = document.getElementById('importPlayFile').files[0];
+      if (!file) { showMessage('Please select a file', 'error'); return; }
+
+      try {
+        const text = await readFileText(file);
+        // Playlists are JSONL — each line is one playlist with embedded videos array
+        const records = parseJSONL(text);
+
+        if (!records.length) {
+          showMessage('No playlists found in file', 'error');
+          return;
+        }
+
+        let importedPlaylists = 0;
+        let importedItems = 0;
+
+        for (const pl of records) {
+          const playlistId = pl._id || pl.id || (Date.now().toString() + Math.random());
+          const playlistName = pl.playlistName || pl.name || 'Playlist';
+
+          // Skip the auto-generated "Watch Later" placeholder if empty
+          if (pl.protected && (!pl.videos || pl.videos.length === 0)) continue;
+
+          try {
+            await putItem('playlists', {
+              id:          playlistId,
+              name:        playlistName,
+              description: pl.description || '',
+              createdAt:   pl.createdAt   || new Date().toISOString(),
+              lastUpdatedAt: pl.lastUpdatedAt || new Date().toISOString(),
+            });
+            importedPlaylists++;
+          } catch(e) { console.warn('Failed to import playlist:', e); }
+
+          // Import each video in the playlist
+          const videos = pl.videos || [];
+          for (const v of videos) {
+            if (!v.videoId) continue;
+            try {
+              await putItem('playlistItems', {
+                id:          `${playlistId}-${v.videoId}`,
+                playlistId:  playlistId,
+                videoId:     v.videoId,
+                title:       v.title       || 'Unknown',
+                author:      v.author      || 'Unknown',
+                authorId:    v.authorId    || '',
+                thumbnail:   v.videoThumbnails?.[0]?.url || v.thumbnail || '',
+                published:   v.published   || 0,
+                description: v.description || '',
+                lengthSeconds: v.lengthSeconds || 0,
+                timeAdded:   v.timeAdded   || Date.now(),
+              });
+              importedItems++;
+            } catch(e) { console.warn('Failed to import playlist item:', e); }
+          }
+        }
+
+        showMessage(`✅ Imported ${importedPlaylists} playlists and ${importedItems} videos`);
+        await showPlaylistsPage();
+        document.getElementById('importPlayFile').value = '';
+      } catch(e) {
+        console.error('Import error:', e);
+        showMessage(`Failed to import playlists: ${e.message}`, 'error');
+      }
+    }
+
+    async function exportSubscriptionsDB() {
+      const subscriptions = await getAll('subscriptions');
+      const data = JSON.stringify(subscriptions, null, 2);
+      downloadJSON(data, 'freetube-subscriptions.json');
+    }
+
+    async function exportHistoryDB() {
+      const history = await getAll('watchHistory');
+      const data = JSON.stringify(history, null, 2);
+      downloadJSON(data, 'freetube-history.json');
+    }
+
+    async function exportPlaylistsDB() {
+      const playlists = await getAll('playlists');
+      const items = await getAll('playlistItems');
+      const data = JSON.stringify({ playlists, items }, null, 2);
+      downloadJSON(data, 'freetube-playlists.json');
+    }
+
+    function downloadJSON(data, filename) {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      showMessage(`Exported ${filename}`);
+    }
+
+    async function clearAllData() {
+      if (!confirm('This will delete ALL data. Are you sure?')) return;
+      if (!confirm('This cannot be undone!')) return;
+
+      try {
+        await clearStore('subscriptions');
+        await clearStore('playlists');
+        await clearStore('playlistItems');
+        await clearStore('watchHistory');
+        showMessage('All data cleared');
+        await loadSubscriptions();
+        await showSettingsPage();
+      } catch(e) {
+        showMessage('Failed to clear data', 'error');
+      }
+    }
+
+    // ===== GLOBAL SEARCH =====
+    let searchDebounce = null;
+
+    async function performSearch(query) {
+      query = query.trim().toLowerCase();
+      const content = document.getElementById('mainContent');
+      document.getElementById('pageTitle').textContent = query ? `Search: "${query}"` : 'Latest Videos';
+
+      if (!query) { await showLatestPage(); return; }
+
+      const subscriptions = await getAll('subscriptions');
+      const matchedChannels = subscriptions.filter(s => s.name.toLowerCase().includes(query));
+
+      // Search cached videos
+      const matchedVideos = [];
+      videoRegistry.forEach(v => {
+        if (v.title.toLowerCase().includes(query) || (v.author||'').toLowerCase().includes(query))
+          matchedVideos.push(v);
+      });
+
+      let html = '';
+
+      if (matchedChannels.length) {
+        html += `<div class="search-section-title">📺 Channels (${matchedChannels.length})</div>`;
+        matchedChannels.forEach(sub => {
+          const cid = sub.channelId || sub.id;
+          html += `<div class="channel-result-item" onclick="showChannelPage('${cid}','${sub.name.replace(/'/g,"\'")}')">
+            <div class="channel-result-avatar">${sub.name.charAt(0).toUpperCase()}</div>
+            <div>
+              <div class="channel-result-name">${sub.name}</div>
+              <div class="channel-result-sub">Subscribed</div>
+            </div>
+          </div>`;
+        });
+      }
+
+      if (matchedVideos.length) {
+        html += `<div class="search-section-title">🎬 Videos (${matchedVideos.length})</div>
+          <div class="videos-grid">${matchedVideos.map(v => createVideoCardHTML(v)).join('')}</div>`;
+      }
+
+      if (!html) {
+        html = `<div class="empty-state"><div class="empty-state-icon">🔍</div>
+          <div class="empty-state-title">No Results</div>
+          <div class="empty-state-text">Nothing matched "${query}"</div></div>`;
+      }
+
+      content.innerHTML = html;
+      content.addEventListener('click', e => {
+        const btn = e.target.closest('.play-btn[data-vid]');
+        const card = e.target.closest('.video-card[data-vid]');
+        if (btn) { e.stopPropagation(); openVideoModal(btn.dataset.vid); return; }
+        if (card) openVideoModal(card.dataset.vid);
+      });
+    }
+
+    function initSearch() {
+      const input = document.getElementById('globalSearch');
+      const clearBtn = document.getElementById('searchClear');
+      if (!input) return;
+
+      input.addEventListener('input', () => {
+        const q = input.value;
+        clearBtn.classList.toggle('hidden', !q);
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => performSearch(q), 260);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.classList.add('hidden');
+        performSearch('');
+        input.focus();
+      });
+    }
+
+
+    // ===== NAVIGATION =====
+    async function navigateTo(page) {
+      currentPage = page;
+      
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === page) {
+          item.classList.add('active');
+        }
+      });
+
+      switch(page) {
+        case 'latest':
+          await showLatestPage();
+          break;
+        case 'history':
+          await showHistoryPage();
+          break;
+        case 'playlists':
+          await showPlaylistsPage();
+          break;
+        case 'settings':
+          await showSettingsPage();
+          break;
+      }
+    }
+
+    // ===== INITIALIZATION =====
+    async function init() {
+      try {
+        await initDB();
+        initTheme();
+        initSearch();
+        
+        // FreeTube .db files are JSON/JSONL — no SQL.js needed
+        
+        await loadSubscriptions();
+        await navigateTo('latest');
+
+        // Sidebar and menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        menuToggle.addEventListener('click', () => {
+          menuToggle.classList.toggle('active');
+          sidebar.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+          menuToggle.classList.remove('active');
+          sidebar.classList.remove('active');
+        });
+
+        // Close sidebar when clicking on nav items on mobile
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+              menuToggle.classList.remove('active');
+              sidebar.classList.remove('active');
+            }
+          });
+        });
+
+        // Close sidebar when clicking outside
+        document.addEventListener('click', (e) => {
+          const isClickInsideSidebar = sidebar.contains(e.target);
+          const isClickOnMenuToggle = menuToggle.contains(e.target);
+          
+          if (!isClickInsideSidebar && !isClickOnMenuToggle && window.innerWidth <= 768) {
+            menuToggle.classList.remove('active');
+            sidebar.classList.remove('active');
+          }
+        });
+
+        // Event listeners
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.addEventListener('click', () => navigateTo(item.dataset.page));
+        });
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        document.getElementById('modalClose').addEventListener('click', closeModal);
+        document.getElementById('videoModal').addEventListener('click', (e) => {
+          if (e.target.id === 'videoModal') closeModal();
+        });
+        // Keyboard close
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape') closeModal();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => navigateTo(currentPage));
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+          if (window.innerWidth > 768) {
+            menuToggle.classList.remove('active');
+            sidebar.classList.remove('active');
+          }
+        });
+      } catch(e) {
+        console.error('Initialization failed:', e);
+        document.getElementById('mainContent').innerHTML = `
+          <div class="error-message">Failed to initialize app: ${e.message}</div>
+        `;
+      }
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
