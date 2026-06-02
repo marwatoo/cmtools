@@ -52,6 +52,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .topbar-actions{display:flex;gap:8px;margin-left:auto}
 .icon-btn{width:36px;height:36px;border:1px solid var(--border2);border-radius:50%;background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sidebar-toggle{display:none}
 [data-theme="light"] .icon-moon{display:flex!important}[data-theme="light"] .icon-sun{display:none!important}
 .icon-moon{display:none}
 
@@ -174,8 +175,8 @@ textarea.import-box:focus{border-color:var(--accent)}
 .modal-overlay.open{display:flex}
 .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);width:100%;max-width:900px;max-height:92vh;overflow-y:auto;position:relative;animation:modalIn .2s ease}
 @keyframes modalIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
-.modal-close-btn{position:absolute;top:12px;right:12px;z-index:10;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
-.modal-close-btn:hover{border-color:var(--accent3);color:var(--accent3)}
+.modal-close-btn2{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-xs);background:var(--accent3);color:#fff;border:none;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s,transform .15s;white-space:nowrap}
+.modal-close-btn2:hover{opacity:.88;transform:translateY(-1px)}
 .modal-video-wrap{width:100%;aspect-ratio:16/9;background:#000;flex-shrink:0}
 .modal-video-wrap iframe{width:100%;height:100%;border:none;display:block}
 .modal-title{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;margin:16px 20px 6px;line-height:1.4}
@@ -200,8 +201,11 @@ textarea.import-box:focus{border-color:var(--accent)}
 
 /* ── Responsive ── */
 @media(max-width:700px){
-  :root{--sidebar:0px}
-  .sidebar{display:none}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:280px;z-index:100;display:flex;transform:translateX(-100%);transition:transform .3s ease;border-right:1px solid var(--border);box-shadow:var(--shadow);background:var(--bg2)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(3px);display:none}
+  .sidebar-overlay.open{display:block}
+  .sidebar-toggle{display:flex!important}
   .view{padding:16px 14px 60px}
   .videos-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
   .history-thumb{width:100px;height:58px}
@@ -218,6 +222,9 @@ textarea.import-box:focus{border-color:var(--accent)}
 
 <!-- ══ TOP BAR ══ -->
 <div class="topbar">
+  <button class="icon-btn sidebar-toggle" id="sidebarToggle" title="Toggle menu">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <div class="topbar-logo">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 3H8"/><path d="m10 11 5 3-5 3V11Z" fill="currentColor" stroke="none"/></svg>
     <span>Tube</span>
@@ -260,6 +267,7 @@ textarea.import-box:focus{border-color:var(--accent)}
     </div>
     <div class="subs-list" id="subsList"></div>
   </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- ── MAIN ── -->
   <main class="main">
@@ -389,12 +397,10 @@ textarea.import-box:focus{border-color:var(--accent)}
 <!-- ══ VIDEO MODAL ══ -->
 <div class="modal-overlay" id="videoModal">
   <div class="modal-box">
-    <button class="modal-close-btn" id="modalClose">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
     <div class="modal-video-wrap" id="modalVideoWrap"></div>
     <div class="modal-title" id="modalTitle"></div>
     <div class="modal-channel" id="modalChannel"></div>
+    <button class="modal-close-btn2" id="modalClose" style="margin:0 20px 8px">Close</button>
     <div class="modal-stats" id="modalStats"></div>
     <div class="modal-desc" id="modalDesc"></div>
     <div class="modal-footer">
@@ -1481,6 +1487,24 @@ function formatCount(n) {
 function isArabic(text) {
   return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 }
+
+// ═══════════════════════════════════════
+//  MOBILE SIDEBAR TOGGLE
+// ═══════════════════════════════════════
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', () => {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+});
+document.querySelector('.sidebar').addEventListener('click', e => {
+  if (window.innerWidth <= 700 && e.target.closest('.nav-item, .sub-item')) {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+});
 
 // ═══════════════════════════════════════
 //  INIT
