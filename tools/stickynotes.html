@@ -247,7 +247,7 @@ function renderNotes() {
     };
     el.querySelectorAll('.sticky-font-btn').forEach(function(btn) {
       btn.onclick = function(e) {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
         var action = this.dataset.action;
         var n = notes.find(function(x) { return x.id === note.id; });
         if (n) {
@@ -423,7 +423,7 @@ document.addEventListener('click', function(e) {
   }
 });
 document.addEventListener('touchend', function(e) {
-  if (!e.target.classList.contains('sticky-color')) {
+  if (!e.target.closest('#colorPicker') && !e.target.classList.contains('sticky-color')) {
     document.getElementById('colorPicker').style.display = 'none';
   }
 });
