@@ -161,6 +161,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .manage-del:hover{color:var(--accent3)}
 textarea.import-box{width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);padding:10px;font-family:'DM Sans',sans-serif;font-size:.82rem;resize:vertical;outline:none;transition:border-color .2s;margin-top:8px}
 textarea.import-box:focus{border-color:var(--accent)}
+.add-channel-row{display:flex;gap:10px;align-items:center}
+.add-channel-row input{flex:1;padding:9px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+.add-channel-row input:focus{border-color:var(--accent)}
+.add-channel-row input::placeholder{color:var(--text3)}
 
 /* ── Notification dot ── */
 .notif-dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);flex-shrink:0}
@@ -348,6 +352,19 @@ textarea.import-box:focus{border-color:var(--accent)}
             Clear All
           </button>
         </div>
+      </div>
+
+      <!-- Add Channel -->
+      <div class="settings-section">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Add Channel
+        </h3>
+        <div class="add-channel-row">
+          <input type="text" id="addChannelInput" placeholder="@handle or UC channel ID" autocomplete="off">
+          <button class="btn" id="addChannelBtn">Add</button>
+        </div>
+        <div id="addChannelStatus" style="margin-top:8px;font-size:.82rem;color:var(--text3)"></div>
       </div>
 
       <!-- Import from clipboard -->
@@ -1296,6 +1313,121 @@ document.getElementById('clearHistoryBtn').addEventListener('click', () => {
   history = [];
   save(); renderHistory();
 });
+
+// ═══════════════════════════════════════
+//  ADD CHANNEL
+// ═══════════════════════════════════════
+document.getElementById('addChannelBtn').addEventListener('click', addChannel);
+document.getElementById('addChannelInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addChannel();
+});
+
+async function addChannel() {
+  const input = document.getElementById('addChannelInput');
+  const status = document.getElementById('addChannelStatus');
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  function extractName(html) {
+    // 1) og:title meta tag (most reliable for page title)
+    const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    if (og) return og[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    // 2) <title> tag (strip " - YouTube")
+    const titleTag = html.match(/<title>([^<]+?)<\/title>/i);
+    if (titleTag) return titleTag[1].replace(/\s*[-–|]\s*YouTube\s*$/i, '').trim();
+    // 3) JSON "title" property as last resort
+    const json = html.match(/"title":"([^"]{1,100}?)"/);
+    return json ? json[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/') : '';
+  }
+
+  let channelId = '';
+  let channelName = '';
+  let avatarUrl = '';
+
+  // Direct UC channel ID
+  const ucMatch = raw.match(/^(UC[\w-]{22,})$/);
+  if (ucMatch) {
+    channelId = ucMatch[1];
+    status.textContent = 'Fetching channel info…';
+    try {
+      const html = await fetchWithProxy(`https://www.youtube.com/channel/${channelId}`);
+      channelName = extractName(html) || channelId;
+
+      const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
+      if (avatarBlock) {
+        const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
+        if (thumbs && thumbs.length) {
+          avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+        }
+      }
+      avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    } catch {
+      channelName = channelId;
+    }
+  } else {
+    // @handle lookup (ytchannelid style)
+    let handle = raw;
+    if (handle.startsWith('@')) handle = handle.slice(1);
+    if (handle.includes('youtube.com')) {
+      const m = handle.match(/@([^/?&#]+)/);
+      if (m) handle = m[1];
+    }
+
+    status.textContent = 'Looking up channel…';
+    try {
+      const url = 'https://www.youtube.com/@' + handle;
+      const html = await fetchWithProxy(url);
+
+      const idMatch = html.match(/channel_id=([^"&]+)/) || html.match(/"channelId":"([^"]+)"/);
+      if (!idMatch) throw new Error('Could not find channel ID');
+      channelId = idMatch[1];
+
+      channelName = extractName(html) || '@' + handle;
+
+      const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
+      if (avatarBlock) {
+        const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
+        if (thumbs && thumbs.length) {
+          avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+        }
+      }
+      avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    } catch (e) {
+      status.textContent = '⚠ ' + (e.message || 'Could not find channel');
+      return;
+    }
+  }
+
+  if (!channelId) {
+    status.textContent = '⚠ Could not resolve channel ID';
+    return;
+  }
+
+  if (subscriptions.some(s => s.id === channelId)) {
+    status.textContent = '⚠ Already subscribed to this channel.';
+    return;
+  }
+
+  subscriptions.push({
+    name: channelName,
+    id: channelId,
+    url: `https://www.youtube.com/channel/${channelId}`,
+    thumbnail: avatarUrl
+  });
+  save();
+
+  if (avatarUrl) {
+    avatarCache[channelId] = avatarUrl;
+    saveAvatarCache();
+  }
+
+  status.style.color = 'var(--accent)';
+  status.textContent = `✓ Added "${channelName}"`;
+  input.value = '';
+  renderSidebar();
+  renderManageSubs();
+}
 
 // ═══════════════════════════════════════
 //  GLOBAL SEARCH
