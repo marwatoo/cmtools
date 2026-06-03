@@ -1549,7 +1549,7 @@ document.getElementById('cleanWsBtn').addEventListener('click', function(){
   // 2. Clean whitespace — works for both Arabic and Latin text
   var cleaned = text
     .replace(/[ \t\u00a0]+/g, ' ')  // collapse 2+ spaces/tabs (any script)
-    .replace(/\n{3,}/g, '\n\n')     // max 2 consecutive newlines between paragraphs
+    .replace(/\n+/g, '\n\n')        // any run of newlines → exactly 2 (paragraph separator)
     .replace(/[ \t]+$/gm, '')       // strip trailing spaces on each line
     .trim();
 
