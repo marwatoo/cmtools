@@ -1,480 +1,551 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arabic Notes — MediaTools Studio</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@300;400;600;700;900&family=Aref+Ruqaa+Ink:wght@400;700&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
-  <link rel="stylesheet" href="../assets/global.css" />
-  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <style>
-    :root {
-      --bg:           #FAF7F2;
-      --bg-alt:       #F2EDE4;
-      --bg-card:      #EEEAE0;
-      --ink:          #241A10;
-      --ink-2:        #4A3928;
-      --ink-3:        #7A6552;
-      --ink-4:        #A08C78;
-      --gold:         #9C6B2E;
-      --gold-soft:    #C49A56;
-      --border:       #D8CEBC;
-      --border-light: #EAE3D4;
-      --tag-bg:       #EDE4D2;
-      --tag-text:     #7A5020;
-      --text:         var(--ink);
-      --text2:        var(--ink-2);
-      --text3:        var(--ink-3);
-      --accent:       var(--gold);
-      --accent2:      var(--gold-soft);
-      --btn-bg:       var(--gold);
-      --btn-text:     #ffffff;
-      --input-bg:     var(--bg-alt);
-      --card-bg:      var(--bg-card);
-      --card-hover:   var(--bg-alt);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ملاحظة جديدة</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@300;400;600;700;900&family=Aref+Ruqaa+Ink:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    [data-theme="dark"] {
-      --bg:           #0F0D0A;
-      --bg-alt:       #171410;
-      --bg-card:      #1F1B14;
-      --ink:          #EDE5D5;
-      --ink-2:        #C8B89A;
-      --ink-3:        #8A7660;
-      --ink-4:        #5A4E40;
-      --gold:         #C9924A;
-      --gold-soft:    #A0723A;
-      --border:       #2E2820;
-      --border-light: #252018;
-      --tag-bg:       #2A2010;
-      --tag-text:     #C9924A;
-      --text:         var(--ink);
-      --text2:        var(--ink-2);
-      --text3:        var(--ink-3);
-      --accent:       var(--gold);
-      --accent2:      var(--gold-soft);
-      --btn-bg:       var(--gold);
-      --btn-text:     #0a0a0f;
-      --card-hover:   var(--bg-alt);
-    }
+        :root {
+            --bg:           #FAF7F2;
+            --bg-alt:       #F2EDE4;
+            --bg-card:      #EEEAE0;
+            --ink:          #241A10;
+            --ink-2:        #4A3928;
+            --ink-3:        #7A6552;
+            --ink-4:        #A08C78;
+            --gold:         #9C6B2E;
+            --gold-soft:    #C49A56;
+            --border:       #D8CEBC;
+            --border-light: #EAE3D4;
+            --tag-bg:       #EDE4D2;
+            --tag-text:     #7A5020;
+        }
 
-    body {
-      font-family: 'Amiri', Georgia, serif;
-      background-color: var(--bg);
-      color: var(--ink-2);
-      line-height: 2;
-      font-size: 1.05rem;
-    }
+        [data-theme="dark"] {
+            --bg:           #0F0D0A;
+            --bg-alt:       #171410;
+            --bg-card:      #1F1B14;
+            --ink:          #EDE5D5;
+            --ink-2:        #C8B89A;
+            --ink-3:        #8A7660;
+            --ink-4:        #5A4E40;
+            --gold:         #C9924A;
+            --gold-soft:    #A0723A;
+            --border:       #2E2820;
+            --border-light: #252018;
+            --tag-bg:       #2A2010;
+            --tag-text:     #C9924A;
+        }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.5;
-    }
+        html { scroll-behavior: smooth; }
 
-    .notes-page {
-      position: relative;
-      z-index: 1;
-    }
+        body {
+            font-family: 'Amiri', Georgia, serif;
+            background-color: var(--bg);
+            color: var(--ink-2);
+            line-height: 2;
+            transition: background-color 0.4s, color 0.4s;
+            font-size: 1.05rem;
+            min-height: 100vh;
+        }
 
-    .hero {
-      border-bottom: 1px solid var(--border);
-      padding: 3rem 2rem 2.5rem;
-      text-align: center;
-      background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
-      animation: fadeUp 0.7s ease both;
-    }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.5;
+        }
 
-    .hero-ornament {
-      font-family: 'Aref Ruqaa Ink', serif; font-size: 2.4rem;
-      color: var(--gold); opacity: 0.6; margin-bottom: 1.2rem;
-    }
+        /* ─── Header ─── */
+        header {
+            position: sticky; top: 0; z-index: 100;
+            border-bottom: 1px solid var(--border);
+            background-color: color-mix(in srgb, var(--bg) 90%, transparent);
+            backdrop-filter: blur(16px);
+            transition: background-color 0.4s, border-color 0.4s;
+        }
 
-    .hero-title {
-      font-family: 'Aref Ruqaa Ink', serif;
-      font-size: clamp(2rem, 5vw, 3.2rem);
-      font-weight: 700; color: var(--ink); line-height: 1.3;
-      margin-bottom: 0.6rem;
-      outline: none; cursor: text;
-      min-width: 200px; display: inline-block;
-    }
-    .hero-title:empty::before {
-      content: 'عنوان الملاحظة';
-      color: var(--ink-4); font-style: italic;
-    }
-    .hero-title:focus { outline: 2px dashed var(--gold-soft); border-radius: 4px; padding: 0 0.3rem; }
+        .header-inner {
+            max-width: 820px; margin: 0 auto;
+            padding: 1.1rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
 
-    .hero-subtitle {
-      font-family: 'Cairo', sans-serif; font-size: 0.85rem;
-      color: var(--ink-4); letter-spacing: 0.05em; margin-bottom: 1.6rem;
-      outline: none; cursor: text; display: inline-block;
-    }
-    .hero-subtitle:empty::before { content: 'المرجع · التاريخ'; color: var(--ink-4); }
-    .hero-subtitle:focus { outline: 2px dashed var(--gold-soft); border-radius: 4px; }
+        .header-brand { display: flex; flex-direction: column; gap: 0.1rem; }
+        .header-kicker {
+            font-family: 'Cairo', sans-serif; font-size: 0.65rem;
+            font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+            color: var(--gold); line-height: 1;
+        }
+        .header-title {
+            font-family: 'Aref Ruqaa Ink', serif; font-size: 1.1rem;
+            font-weight: 400; color: var(--ink);
+        }
 
-    .hero-tags { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
-    .tag {
-      font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
-      padding: 0.3rem 0.85rem; border-radius: 100px;
-      background-color: var(--tag-bg); color: var(--tag-text);
-      border: 1px solid var(--border); cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tag:hover { background-color: var(--gold); color: white; border-color: var(--gold); }
-    .tag-add {
-      font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
-      padding: 0.3rem 0.85rem; border-radius: 100px;
-      background-color: transparent; color: var(--ink-4);
-      border: 1px dashed var(--border); cursor: pointer; transition: all 0.2s;
-    }
-    .tag-add:hover { border-color: var(--gold); color: var(--gold); }
+        .toggle-btn {
+            display: flex; align-items: center; gap: 0.45rem;
+            padding: 0.5rem 1rem; border-radius: 100px;
+            border: 1px solid var(--border); background-color: var(--bg-alt);
+            cursor: pointer; transition: all 0.25s;
+            font-family: 'Cairo', sans-serif; font-size: 0.78rem;
+            font-weight: 600; color: var(--ink-3);
+        }
+        .toggle-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .toggle-icon { width: 16px; height: 16px; }
 
-    .hero-actions {
-      display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1.2rem;
-    }
-    .action-btn {
-      font-family: 'Cairo', sans-serif; font-size: 0.78rem; font-weight: 600;
-      padding: 0.5rem 1.1rem; border-radius: 100px;
-      border: 1px solid var(--border); background: var(--bg-alt);
-      color: var(--ink-3); cursor: pointer; transition: all 0.2s;
-      display: inline-flex; align-items: center; gap: 0.4rem;
-    }
-    .action-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--bg-card); }
-    .action-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+        /* ─── Hero ─── */
+        .hero {
+            border-bottom: 1px solid var(--border);
+            padding: 4rem 2rem 3rem;
+            text-align: center;
+            background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
+            animation: fadeUp 0.7s ease both;
+        }
 
-    main { max-width: 820px; margin: 0 auto; padding: 3.5rem 2rem 5rem; animation: fadeUp 0.8s 0.1s ease both; }
+        .hero-ornament {
+            font-family: 'Aref Ruqaa Ink', serif; font-size: 2.4rem;
+            color: var(--gold); opacity: 0.6; margin-bottom: 1.2rem;
+        }
 
-    .ornament-divider { text-align: center; color: var(--gold-soft); opacity: 0.5; font-size: 1.1rem; margin: 2.5rem 0; letter-spacing: 0.5em; }
+        /* Editable title */
+        .hero-title {
+            font-family: 'Aref Ruqaa Ink', serif;
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700; color: var(--ink); line-height: 1.3;
+            margin-bottom: 0.6rem;
+            outline: none; cursor: text;
+            min-width: 200px; display: inline-block;
+        }
+        .hero-title:empty::before {
+            content: 'عنوان الملاحظة';
+            color: var(--ink-4); font-style: italic;
+        }
+        .hero-title:focus { outline: 2px dashed var(--gold-soft); border-radius: 4px; padding: 0 0.3rem; }
 
-    .section-block { margin-bottom: 3rem; position: relative; }
-    .section-block:hover .delete-btn { opacity: 1; visibility: visible; }
-    .delete-btn {
-      position: absolute; top: 0.5rem; left: 0.5rem;
-      width: 32px; height: 32px;
-      background-color: var(--gold); color: white;
-      border: none; border-radius: 50%;
-      cursor: pointer; font-size: 0.75rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
-      opacity: 0; visibility: hidden;
-      z-index: 10;
-    }
-    .delete-btn:hover { background-color: #C43E1D; transform: scale(1.1); }
+        .hero-subtitle {
+            font-family: 'Cairo', sans-serif; font-size: 0.85rem;
+            color: var(--ink-4); letter-spacing: 0.05em; margin-bottom: 1.6rem;
+            outline: none; cursor: text; display: inline-block;
+        }
+        .hero-subtitle:empty::before { content: 'المرجع · التاريخ'; color: var(--ink-4); }
+        .hero-subtitle:focus { outline: 2px dashed var(--gold-soft); border-radius: 4px; }
 
-    .editable-h1 {
-      font-family: 'Aref Ruqaa Ink', serif;
-      font-size: clamp(1.7rem, 3vw, 2.2rem);
-      font-weight: 700; color: var(--ink); line-height: 1.3;
-      margin-bottom: 1rem; padding-bottom: 0.5rem;
-      border-bottom: 2px solid var(--border);
-      position: relative; outline: none; cursor: text;
-    }
-    .editable-h1::after { content: ''; position: absolute; bottom: -2px; right: 0; width: 3rem; height: 2px; background-color: var(--gold); }
-    .editable-h1:empty::before { content: 'العنوان الرئيسي'; color: var(--ink-4); font-style: italic; }
-    .editable-h1:focus { outline: none; }
-    .editable-h1:focus::before { display: none; }
+        /* Tags */
+        .hero-tags { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .tag {
+            font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 0.3rem 0.85rem; border-radius: 100px;
+            background-color: var(--tag-bg); color: var(--tag-text);
+            border: 1px solid var(--border); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tag:hover { background-color: var(--gold); color: white; border-color: var(--gold); }
+        .tag-add {
+            font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 0.3rem 0.85rem; border-radius: 100px;
+            background-color: transparent; color: var(--ink-4);
+            border: 1px dashed var(--border); cursor: pointer; transition: all 0.2s;
+        }
+        .tag-add:hover { border-color: var(--gold); color: var(--gold); }
 
-    .editable-h2 {
-      font-family: 'Aref Ruqaa Ink', serif;
-      font-size: 1.5rem; font-weight: 400; color: var(--ink);
-      margin: 2rem 0 0.7rem; outline: none; cursor: text;
-    }
-    .editable-h2:empty::before { content: 'العنوان الفرعي'; color: var(--ink-4); font-style: italic; }
+        /* ─── Main ─── */
+        main { max-width: 820px; margin: 0 auto; padding: 3.5rem 2rem 5rem; animation: fadeUp 0.8s 0.1s ease both; }
 
-    .editable-h3 {
-      font-family: 'Cairo', sans-serif; font-size: 1.05rem;
-      font-weight: 700; color: var(--ink); margin: 1.8rem 0 0.6rem;
-      display: flex; align-items: center; gap: 0.7rem; outline: none; cursor: text;
-    }
-    .editable-h3::before { content: ''; display: inline-block; width: 4px; height: 1.1em; background-color: var(--gold); border-radius: 2px; flex-shrink: 0; }
-    .editable-h3:empty::after { content: 'عنوان القسم'; color: var(--ink-4); font-style: italic; }
+        .ornament-divider { text-align: center; color: var(--gold-soft); opacity: 0.5; font-size: 1.1rem; margin: 2.5rem 0; letter-spacing: 0.5em; }
 
-    .editable-p {
-      color: var(--ink-2); margin-bottom: 1.4rem; line-height: 2.1;
-      font-size: 1.05rem; outline: none; cursor: text;
-      min-height: 2.1em;
-    }
-    .editable-p:empty::before { content: 'اكتب ملاحظتك هنا…'; color: var(--ink-4); font-style: italic; }
+        /* ─── Delete buttons ─── */
+        .section-block { margin-bottom: 3rem; position: relative; }
+        .section-block:hover .delete-btn { opacity: 1; visibility: visible; }
+        .delete-btn {
+            position: absolute; top: 0.5rem; left: 0.5rem;
+            width: 32px; height: 32px;
+            background-color: var(--gold); color: white;
+            border: none; border-radius: 50%;
+            cursor: pointer; font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            opacity: 0; visibility: hidden;
+            z-index: 10;
+        }
+        .delete-btn:hover { background-color: #C43E1D; transform: scale(1.1); }
 
-    .editable-list {
-      background-color: var(--bg-alt); border: 1px solid var(--border-light);
-      border-radius: 12px; padding: 1.4rem 1.8rem 1.4rem 1.2rem;
-      margin: 1.2rem 0 1.8rem; list-style: none;
-    }
-    .editable-list li {
-      position: relative; padding-right: 1.4rem;
-      margin-bottom: 0.65rem; color: var(--ink-2); line-height: 1.95;
-      outline: none; cursor: text; min-height: 1.8em;
-    }
-    .editable-list li::before { content: '◆'; position: absolute; right: 0; top: 0.5em; font-size: 0.45em; color: var(--gold); line-height: 1; }
-    .editable-list li:empty::after { content: 'نقطة…'; color: var(--ink-4); font-style: italic; }
+        /* Section: editable heading */
 
-    .add-bar {
-      display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 2rem;
-      padding: 0.8rem 1rem; background: var(--bg-alt); border-radius: 10px;
-      border: 1px dashed var(--border);
-    }
-    .add-btn {
-      font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
-      padding: 0.35rem 0.9rem; border-radius: 8px;
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--ink-3); cursor: pointer; transition: all 0.2s;
-    }
-    .add-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--bg-card); }
+        .editable-h1 {
+            font-family: 'Aref Ruqaa Ink', serif;
+            font-size: clamp(1.7rem, 3vw, 2.2rem);
+            font-weight: 700; color: var(--ink); line-height: 1.3;
+            margin-bottom: 1rem; padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            position: relative; outline: none; cursor: text;
+        }
+        .editable-h1::after { content: ''; position: absolute; bottom: -2px; right: 0; width: 3rem; height: 2px; background-color: var(--gold); }
+        .editable-h1:empty::before { content: 'العنوان الرئيسي'; color: var(--ink-4); font-style: italic; }
+        .editable-h1:focus { outline: none; }
+        .editable-h1:focus::before { display: none; }
 
-    .highlight-box {
-      background-color: var(--bg-alt); border-right: 3px solid var(--gold);
-      padding: 1.2rem 1.6rem; margin: 1.5rem 0; border-radius: 0 10px 10px 0;
-    }
-    .highlight-box .editable-p { margin: 0; }
-    .highlight-box .editable-p:empty::before { content: 'فكرة مميزة أو اقتباس…'; }
+        .editable-h2 {
+            font-family: 'Aref Ruqaa Ink', serif;
+            font-size: 1.5rem; font-weight: 400; color: var(--ink);
+            margin: 2rem 0 0.7rem; outline: none; cursor: text;
+        }
+        .editable-h2:empty::before { content: 'العنوان الفرعي'; color: var(--ink-4); font-style: italic; }
 
-    .notes-footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; }
-    .footer-ornament { font-family: 'Aref Ruqaa Ink', serif; font-size: 1.8rem; color: var(--gold); opacity: 0.4; margin-bottom: 0.5rem; }
-    .footer-text { font-family: 'Cairo', sans-serif; font-size: 0.78rem; color: var(--ink-4); }
+        .editable-h3 {
+            font-family: 'Cairo', sans-serif; font-size: 1.05rem;
+            font-weight: 700; color: var(--ink); margin: 1.8rem 0 0.6rem;
+            display: flex; align-items: center; gap: 0.7rem; outline: none; cursor: text;
+        }
+        .editable-h3::before { content: ''; display: inline-block; width: 4px; height: 1.1em; background-color: var(--gold); border-radius: 2px; flex-shrink: 0; }
+        .editable-h3:empty::after { content: 'عنوان القسم'; color: var(--ink-4); font-style: italic; }
 
-    [contenteditable="true"] { caret-color: var(--gold); }
+        /* Editable paragraph */
+        .editable-p {
+            color: var(--ink-2); margin-bottom: 1.4rem; line-height: 2.1;
+            font-size: 1.05rem; outline: none; cursor: text;
+            min-height: 2.1em;
+        }
+        .editable-p:empty::before { content: 'اكتب ملاحظتك هنا…'; color: var(--ink-4); font-style: italic; }
 
-    @media (max-width: 768px) {
-      main { padding: 2rem 1.2rem 3rem; }
-      .hero { padding: 2rem 1.2rem 1.8rem; }
-    }
-  </style>
+        /* Editable bullet list */
+        .editable-list {
+            background-color: var(--bg-alt); border: 1px solid var(--border-light);
+            border-radius: 12px; padding: 1.4rem 1.8rem 1.4rem 1.2rem;
+            margin: 1.2rem 0 1.8rem; list-style: none;
+        }
+        .editable-list li {
+            position: relative; padding-right: 1.4rem;
+            margin-bottom: 0.65rem; color: var(--ink-2); line-height: 1.95;
+            outline: none; cursor: text; min-height: 1.8em;
+        }
+        .editable-list li::before { content: '◆'; position: absolute; right: 0; top: 0.5em; font-size: 0.45em; color: var(--gold); line-height: 1; }
+        .editable-list li:empty::after { content: 'نقطة…'; color: var(--ink-4); font-style: italic; }
+
+        /* Add element buttons */
+        .add-bar {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 2rem;
+            padding: 0.8rem 1rem; background: var(--bg-alt); border-radius: 10px;
+            border: 1px dashed var(--border);
+        }
+        .add-btn {
+            font-family: 'Cairo', sans-serif; font-size: 0.75rem; font-weight: 600;
+            padding: 0.35rem 0.9rem; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--bg);
+            color: var(--ink-3); cursor: pointer; transition: all 0.2s;
+        }
+        .add-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--bg-card); }
+
+        /* Highlight box */
+        .highlight-box {
+            background-color: var(--bg-alt); border-right: 3px solid var(--gold);
+            padding: 1.2rem 1.6rem; margin: 1.5rem 0; border-radius: 0 10px 10px 0;
+        }
+        .highlight-box .editable-p { margin: 0; }
+        .highlight-box .editable-p:empty::before { content: 'فكرة مميزة أو اقتباس…'; }
+
+        /* Footer */
+        footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; }
+        .footer-ornament { font-family: 'Aref Ruqaa Ink', serif; font-size: 1.8rem; color: var(--gold); opacity: 0.4; margin-bottom: 0.5rem; }
+        .footer-text { font-family: 'Cairo', sans-serif; font-size: 0.78rem; color: var(--ink-4); }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) {
+            main { padding: 2rem 1.2rem 3rem; }
+            .hero { padding: 3rem 1.2rem 2.5rem; }
+            .header-inner { padding: 1rem 1.2rem; }
+        }
+
+        /* Focus ring suppression on non-button elements */
+        [contenteditable="true"] { caret-color: var(--gold); }
+    </style>
 </head>
 <body>
 
-  <nav class="nav">
-    <span class="nav-title">Arabic Notes</span>
-    <span class="nav-num">#46</span>
-    <button class="theme-toggle" id="themeToggle" aria-label="Switch between dark and light theme"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
-  </nav>
-
-  <div class="notes-page">
+    <header>
+        <div class="header-inner">
+            <div class="header-brand">
+                <span class="header-title" id="headerTitle">ملاحظة جديدة</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="toggle-btn" id="saveBtn" title="حفظ الملاحظة">
+                    <span class="toggle-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    </span>
+                    <span>حفظ</span>
+                </button>
+                <button class="toggle-btn" id="markdownBtn" title="تصدير ماركداون">
+                    <span class="toggle-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </span>
+                    <span>MD</span>
+                </button>
+                <button class="toggle-btn" id="themeToggle">
+                    <span class="toggle-icon" id="themeIcon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </span>
+                    <span id="toggleLabel">ليلي</span>
+                </button>
+            </div>
+        </div>
+    </header>
 
     <div class="hero">
-      <div class="hero-ornament">❧</div>
-      <div class="hero-title" contenteditable="true" id="docTitle" spellcheck="false"></div>
-      <br>
-      <div class="hero-subtitle" contenteditable="true" spellcheck="false"></div>
-      <br>
-      <div class="hero-tags" id="tagsContainer">
-        <button class="tag-add" onclick="addTag()">+ وسم</button>
-      </div>
-      <div class="hero-actions">
-        <button class="action-btn" id="saveBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          حفظ
-        </button>
-        <button class="action-btn" id="markdownBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          MD
-        </button>
-      </div>
+        <div class="hero-ornament">❧</div>
+        <div class="hero-title" contenteditable="true" id="docTitle" spellcheck="false"></div>
+        <br>
+        <div class="hero-subtitle" contenteditable="true" spellcheck="false"></div>
+        <br>
+        <div class="hero-tags" id="tagsContainer">
+            
+            <button class="tag-add" onclick="addTag()">+ وسم</button>
+        </div>
     </div>
 
     <main id="mainContent">
-      <div class="add-bar">
-        <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;color:var(--ink-4);margin-left:0.5rem;align-self:center;">أضف:</span>
-        <button class="add-btn" onclick="addSection('h1')">عنوان رئيسي</button>
-        <button class="add-btn" onclick="addSection('h2')">عنوان فرعي</button>
-        <button class="add-btn" onclick="addSection('h3')">قسم</button>
-        <button class="add-btn" onclick="addSection('p')">فقرة</button>
-        <button class="add-btn" onclick="addSection('ul')">قائمة</button>
-        <button class="add-btn" onclick="addSection('highlight')">تمييز</button>
-        <button class="add-btn" onclick="addSection('divider')">فاصل</button>
-      </div>
+
+        <!-- Toolbar to add new elements -->
+        <div class="add-bar">
+            <span style="font-family:'Cairo',sans-serif;font-size:0.75rem;color:var(--ink-4);margin-left:0.5rem;align-self:center;">أضف:</span>
+            <button class="add-btn" onclick="addSection('h1')">عنوان رئيسي</button>
+            <button class="add-btn" onclick="addSection('h2')">عنوان فرعي</button>
+            <button class="add-btn" onclick="addSection('h3')">قسم</button>
+            <button class="add-btn" onclick="addSection('p')">فقرة</button>
+            <button class="add-btn" onclick="addSection('ul')">قائمة</button>
+            <button class="add-btn" onclick="addSection('highlight')">تمييز</button>
+            <button class="add-btn" onclick="addSection('divider')">فاصل</button>
+        </div>
+
     </main>
 
-    <div class="notes-footer">
-      <div class="footer-ornament">مروة بفيس</div>
-      <p class="footer-text" id="footerDate"></p>
-    </div>
+    <footer>
+        <div class="footer-ornament">مروة بفيس</div>
+        <p class="footer-text" id="footerDate"></p>
+    </footer>
 
-  </div>
-
-  <script src="../assets/theme.js"></script>
-  <script>
-    var now = new Date();
-    document.getElementById('footerDate').textContent =
-      now.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    document.getElementById('docTitle').addEventListener('input', function(e) {
-      var title = e.target.textContent.trim() || 'Arabic Notes';
-      document.title = title + ' — MediaTools Studio';
-    });
-
-    function removeTag(el) {
-      if (document.querySelectorAll('#tagsContainer .tag').length > 1) el.remove();
-    }
-    function addTag() {
-      var label = prompt('اسم الوسم:');
-      if (!label) return;
-      var btn = document.querySelector('.tag-add');
-      var tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = label;
-      tag.onclick = function() { removeTag(tag); };
-      document.getElementById('tagsContainer').insertBefore(tag, btn);
-    }
-
-    var mainEl = document.getElementById('mainContent');
-    function addSection(type) {
-      var bar = mainEl.querySelector('.add-bar');
-      var el;
-      var section = document.createElement('div');
-      section.className = 'section-block';
-      var deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.innerHTML = '✕';
-      deleteBtn.title = 'حذف العنصر';
-      deleteBtn.onclick = function(e) { e.preventDefault(); section.remove(); };
-
-      if (type === 'h1') {
-        el = document.createElement('div');
-        el.className = 'editable-h1'; el.contentEditable = 'true'; el.spellcheck = false;
-      } else if (type === 'h2') {
-        el = document.createElement('div');
-        el.className = 'editable-h2'; el.contentEditable = 'true'; el.spellcheck = false;
-      } else if (type === 'h3') {
-        el = document.createElement('div');
-        el.className = 'editable-h3'; el.contentEditable = 'true'; el.spellcheck = false;
-      } else if (type === 'p') {
-        el = document.createElement('div');
-        el.className = 'editable-p'; el.contentEditable = 'true'; el.spellcheck = false;
-      } else if (type === 'ul') {
-        el = document.createElement('ul');
-        el.className = 'editable-list';
-        var li = document.createElement('li');
-        li.contentEditable = 'true'; li.spellcheck = false;
-        el.appendChild(li);
-      } else if (type === 'highlight') {
-        el = document.createElement('div');
-        el.className = 'highlight-box';
-        var p = document.createElement('div');
-        p.className = 'editable-p'; p.contentEditable = 'true'; p.spellcheck = false;
-        el.appendChild(p);
-      } else if (type === 'divider') {
-        el = document.createElement('div');
-        el.className = 'ornament-divider'; el.textContent = '✦ ✦ ✦';
-      }
-
-      if (el) {
-        section.appendChild(deleteBtn);
-        section.appendChild(el);
-        mainEl.insertBefore(section, bar);
-        if (el.contentEditable === 'true') el.focus();
-        else if (el.querySelector('[contenteditable]')) el.querySelector('[contenteditable]').focus();
-      }
-    }
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && e.target.closest('.editable-list')) {
-        e.preventDefault();
-        var li = document.createElement('li');
-        li.contentEditable = 'true'; li.spellcheck = false;
-        e.target.closest('.editable-list').appendChild(li);
-        li.focus();
-      }
-      if (e.key === 'Delete' && e.ctrlKey) {
-        var editable = e.target.closest('[contenteditable]');
-        if (editable) {
-          var section = editable.closest('.section-block');
-          if (section && editable.textContent.trim() === '') {
-            e.preventDefault();
-            section.remove();
-          }
+    <script>
+        // ─── Theme ───
+        const html = document.documentElement;
+        const toggleBtn = document.getElementById('themeToggle');
+        const moonSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+        const sunSVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+        function setTheme(t) {
+            html.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+            document.getElementById('themeIcon').innerHTML = t === 'dark' ? sunSVG : moonSVG;
+            document.getElementById('toggleLabel').textContent = t === 'dark' ? 'نهاري' : 'ليلي';
         }
-      }
-    });
+        setTheme(localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+        toggleBtn.addEventListener('click', () => setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
 
-    document.getElementById('saveBtn').addEventListener('click', function() {
-      var clone = document.documentElement.cloneNode(true);
-      clone.querySelectorAll('[contenteditable]').forEach(function(el) {
-        el.removeAttribute('contenteditable');
-      });
-      clone.querySelectorAll('[onclick]').forEach(function(el) {
-        el.removeAttribute('onclick');
-      });
-      var addBar = clone.querySelector('.add-bar');
-      if (addBar) addBar.style.display = 'none';
-      var saveBtn = clone.querySelector('#saveBtn');
-      if (saveBtn) saveBtn.style.display = 'none';
-      var title = document.getElementById('docTitle').textContent.trim() || 'ملاحظة';
-      var htmlContent = '<!DOCTYPE html>\n' + clone.outerHTML;
-      var blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      var now = new Date();
-      var dateStr = now.toLocaleDateString('ar-MA').replace(/\//g, '-');
-      a.href = url;
-      a.download = title + '_' + dateStr + '.html';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
+        // ─── Date ───
+        const now = new Date();
+        document.getElementById('footerDate').textContent =
+            now.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    document.getElementById('markdownBtn').addEventListener('click', function() {
-      var title = document.getElementById('docTitle').textContent.trim() || 'ملاحظة';
-      var subtitleEl = document.querySelector('.hero-subtitle');
-      var subtitle = subtitleEl ? subtitleEl.textContent.trim() : '';
-      var tags = Array.from(document.querySelectorAll('#tagsContainer .tag')).map(function(t) { return t.textContent.trim(); });
-      var sections = mainEl.querySelectorAll('.section-block');
-      var md = '# ' + title + '\n\n';
-      if (subtitle) md += '*' + subtitle + '*\n\n';
-      if (tags.length) md += 'الوسوم: ' + tags.join(' · ') + '\n\n';
-      sections.forEach(function(section) {
-        var h1 = section.querySelector('.editable-h1');
-        var h2 = section.querySelector('.editable-h2');
-        var h3 = section.querySelector('.editable-h3');
-        var p = section.querySelector('.editable-p');
-        var list = section.querySelector('.editable-list');
-        var divider = section.querySelector('.ornament-divider');
-        var highlight = section.querySelector('.highlight-box');
-        if (h1) md += '# ' + h1.textContent.trim() + '\n\n';
-        else if (h2) md += '## ' + h2.textContent.trim() + '\n\n';
-        else if (h3) md += '### ' + h3.textContent.trim() + '\n\n';
-        else if (p && !highlight) md += p.textContent.trim() + '\n\n';
-        else if (list) {
-          list.querySelectorAll('li').forEach(function(li) {
-            var text = li.textContent.trim();
-            if (text) md += '- ' + text + '\n';
-          });
-          md += '\n';
-        } else if (divider) md += '---\n\n';
-        else if (highlight) {
-          var hp = highlight.querySelector('.editable-p');
-          if (hp) md += '> ' + hp.textContent.trim() + '\n\n';
+        // ─── Document title sync ───
+        document.getElementById('docTitle').addEventListener('input', e => {
+            const title = e.target.textContent.trim() || 'ملاحظة جديدة';
+            document.title = title;
+            document.getElementById('headerTitle').textContent = title;
+        });
+
+        // ─── Tags ───
+        function removeTag(el) {
+            if (document.querySelectorAll('#tagsContainer .tag').length > 1) el.remove();
         }
-      });
-      var blob = new Blob([md], { type: 'text/markdown; charset=utf-8' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      var now = new Date();
-      var dateStr = now.toLocaleDateString('ar-MA').replace(/\//g, '-');
-      a.href = url;
-      a.download = title + '_' + dateStr + '.md';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-  </script>
+        function addTag() {
+            const label = prompt('اسم الوسم:');
+            if (!label) return;
+            const btn = document.querySelector('.tag-add');
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = label;
+            tag.onclick = () => removeTag(tag);
+            document.getElementById('tagsContainer').insertBefore(tag, btn);
+        }
+
+        // ─── Add section ───
+        const main = document.getElementById('mainContent');
+        function addSection(type) {
+            const bar = main.querySelector('.add-bar');
+            let el;
+            
+            // Create a section wrapper
+            const section = document.createElement('div');
+            section.className = 'section-block';
+            
+            // Create delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.title = 'حذف العنصر';
+            deleteBtn.onclick = (e) => { e.preventDefault(); section.remove(); };
+            
+            if (type === 'h1') {
+                el = document.createElement('div');
+                el.className = 'editable-h1'; el.contentEditable = 'true'; el.spellcheck = false;
+            } else if (type === 'h2') {
+                el = document.createElement('div');
+                el.className = 'editable-h2'; el.contentEditable = 'true'; el.spellcheck = false;
+            } else if (type === 'h3') {
+                el = document.createElement('div');
+                el.className = 'editable-h3'; el.contentEditable = 'true'; el.spellcheck = false;
+            } else if (type === 'p') {
+                el = document.createElement('div');
+                el.className = 'editable-p'; el.contentEditable = 'true'; el.spellcheck = false;
+            } else if (type === 'ul') {
+                el = document.createElement('ul');
+                el.className = 'editable-list';
+                const li = document.createElement('li');
+                li.contentEditable = 'true'; li.spellcheck = false;
+                el.appendChild(li);
+            } else if (type === 'highlight') {
+                el = document.createElement('div');
+                el.className = 'highlight-box';
+                const p = document.createElement('div');
+                p.className = 'editable-p'; p.contentEditable = 'true'; p.spellcheck = false;
+                el.appendChild(p);
+            } else if (type === 'divider') {
+                el = document.createElement('div');
+                el.className = 'ornament-divider'; el.textContent = '✦ ✦ ✦';
+            }
+            
+            if (el) {
+                section.appendChild(deleteBtn);
+                section.appendChild(el);
+                main.insertBefore(section, bar);
+                if (el.contentEditable === 'true') el.focus();
+                else if (el.querySelector('[contenteditable]')) el.querySelector('[contenteditable]').focus();
+            }
+        }
+
+        // ─── Enter in list items adds new item ───
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.closest('.editable-list')) {
+                e.preventDefault();
+                const li = document.createElement('li');
+                li.contentEditable = 'true'; li.spellcheck = false;
+                e.target.closest('.editable-list').appendChild(li);
+                li.focus();
+            }
+            
+            // Delete key to remove section (when the section is empty and focused)
+            if (e.key === 'Delete' && e.ctrlKey) {
+                const editable = e.target.closest('[contenteditable]');
+                if (editable) {
+                    const section = editable.closest('.section-block');
+                    if (section && editable.textContent.trim() === '') {
+                        e.preventDefault();
+                        section.remove();
+                    }
+                }
+            }
+        });
+
+        // ─── Save functionality ───
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            // Clone the entire document
+            const clone = document.documentElement.cloneNode(true);
+            
+            // Remove contenteditable attributes
+            clone.querySelectorAll('[contenteditable]').forEach(el => {
+                el.removeAttribute('contenteditable');
+            });
+            
+            // Remove onclick handlers from tags and buttons
+            clone.querySelectorAll('[onclick]').forEach(el => {
+                el.removeAttribute('onclick');
+            });
+            
+            // Hide the add-bar and save button
+            const addBar = clone.querySelector('.add-bar');
+            if (addBar) addBar.style.display = 'none';
+            
+            const saveBtn = clone.querySelector('#saveBtn');
+            if (saveBtn) saveBtn.style.display = 'none';
+            
+            // Get the document title for filename
+            const title = document.getElementById('docTitle').textContent.trim() || 'ملاحظة';
+            
+            // Create HTML string
+            let htmlContent = '<!DOCTYPE html>\n' + clone.outerHTML;
+            
+            // Create a blob and download it
+            const blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            // Generate filename using title
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ar-MA').replace(/\//g, '-');
+            const filename = `${title}_${dateStr}.html`;
+            
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // ─── Export to Markdown ───
+        document.getElementById('markdownBtn').addEventListener('click', () => {
+            const title = document.getElementById('docTitle').textContent.trim() || 'ملاحظة';
+            const subtitleEl = document.querySelector('.hero-subtitle');
+            const subtitle = subtitleEl ? subtitleEl.textContent.trim() : '';
+            const tags = [...document.querySelectorAll('#tagsContainer .tag')].map(t => t.textContent.trim());
+            const sections = main.querySelectorAll('.section-block');
+            
+            let md = `# ${title}\n\n`;
+            if (subtitle) md += `*${subtitle}*\n\n`;
+            if (tags.length) md += `الوسوم: ${tags.join(' · ')}\n\n`;
+            
+            sections.forEach(section => {
+                const h1 = section.querySelector('.editable-h1');
+                const h2 = section.querySelector('.editable-h2');
+                const h3 = section.querySelector('.editable-h3');
+                const p = section.querySelector('.editable-p');
+                const list = section.querySelector('.editable-list');
+                const divider = section.querySelector('.ornament-divider');
+                const highlight = section.querySelector('.highlight-box');
+                
+                if (h1) md += `# ${h1.textContent.trim()}\n\n`;
+                else if (h2) md += `## ${h2.textContent.trim()}\n\n`;
+                else if (h3) md += `### ${h3.textContent.trim()}\n\n`;
+                else if (p && !highlight) md += `${p.textContent.trim()}\n\n`;
+                else if (list) {
+                    list.querySelectorAll('li').forEach(li => {
+                        const text = li.textContent.trim();
+                        if (text) md += `- ${text}\n`;
+                    });
+                    md += '\n';
+                } else if (divider) md += `---\n\n`;
+                else if (highlight) {
+                    const hp = highlight.querySelector('.editable-p');
+                    if (hp) md += `> ${hp.textContent.trim()}\n\n`;
+                }
+            });
+            
+            const blob = new Blob([md], { type: 'text/markdown; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ar-MA').replace(/\//g, '-');
+            a.href = url;
+            a.download = `${title}_${dateStr}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    </script>
 </body>
 </html>
