@@ -517,7 +517,11 @@
       if (tab) setMode(tab.dataset.mode);
     });
 
-    dropzone.addEventListener('click',    () => upload.click());
+    let touchFilePick = false;
+    dropzone.addEventListener('click', function(e) {
+      if (touchFilePick) { touchFilePick = false; return; }
+      upload.click();
+    });
     dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop',     e  => {
@@ -527,7 +531,8 @@
     });
     dropzone.addEventListener('touchend', function(e) {
       if (currentFile) return;
-      e.preventDefault(); // prevent synthetic 'click' from also firing on mobile
+      touchFilePick = true;
+      e.preventDefault();
       upload.click();
     });
     upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
