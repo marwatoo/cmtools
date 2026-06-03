@@ -33,8 +33,6 @@
     .tool-header{margin-bottom:28px}
     .tool-header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.02em;margin-bottom:6px}
     .tool-header p{color:var(--text2);font-size:.9rem}
-    .section-head{display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
-    .section-head::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
 
     /* Layout */
     .editor-layout{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start}
@@ -117,8 +115,6 @@
 
     /* Buttons */
     .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;width:100%;margin-bottom:8px}
-    .btn-primary{background:var(--btn-bg);color:var(--btn-text)}
-    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
     .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}
     .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
     .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
@@ -139,7 +135,6 @@
 </head>
 <body>
 <nav class="nav">
-  <a href="../index.html" class="nav-back">← Back</a>
   <span class="nav-title">Image Resizer</span>
   <button class="theme-toggle" id="themeToggle" aria-label="Switch between dark and light theme"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
 </nav>
