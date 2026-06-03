@@ -517,10 +517,21 @@
       if (tab) setMode(tab.dataset.mode);
     });
 
-    let touchFilePick = false;
-    dropzone.addEventListener('click', function(e) {
-      if (touchFilePick) { touchFilePick = false; return; }
+    // Android browsers fire both touchend AND click on the same tap, opening the
+    // file picker twice. Fix: track the timestamp of the last programmatic
+    // upload.click() and suppress any click event that arrives within 600 ms of it.
+    let lastPickTs = 0;
+
+    function openPicker() {
+      lastPickTs = Date.now();
       upload.click();
+    }
+
+    dropzone.addEventListener('click', function(e) {
+      // If a touch just triggered openPicker(), this click is the synthetic
+      // duplicate — drop it.
+      if (Date.now() - lastPickTs < 600) return;
+      openPicker();
     });
     dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
@@ -530,10 +541,8 @@
       if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
     });
     dropzone.addEventListener('touchend', function(e) {
-      if (currentFile) return;
-      touchFilePick = true;
-      e.preventDefault();
-      upload.click();
+      e.preventDefault(); // prevent the follow-up synthetic click
+      openPicker();
     });
     upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
 
