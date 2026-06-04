@@ -1440,16 +1440,32 @@ async function addChannel() {
 // ═══════════════════════════════════════
 document.getElementById('globalSearch').addEventListener('input', function() {
   const q = this.value.trim().toLowerCase();
+
   if (!q) {
-    // Reset
+    // Reset each view to its normal state
     if (activeView === 'home') renderHomeVideos();
+    if (activeView === 'channel' && activeChannelId) {
+      const grid = document.getElementById('channelGrid');
+      if (grid) {
+        const videos = getCachedChannelVideos(activeChannelId);
+        grid.innerHTML = videos.length
+          ? videos.map(v => videoCard(v)).join('')
+          : `<div class="empty-state" style="grid-column:1/-1"><p style="font-size:.85rem;color:var(--text3)">No videos cached for this channel.</p></div>`;
+        bindVideoCards(grid);
+      }
+    }
+    if (activeView === 'home' || activeView === 'channel') {
+      // Restore full sidebar subs list
+      renderSidebar();
+    }
     return;
   }
-  // Search across cached videos and subs
-  const results = getAllCachedVideos().filter(v =>
-    v.title?.toLowerCase().includes(q) || v.channel?.toLowerCase().includes(q)
-  );
+
+  // ── Home view: search all cached videos ──
   if (activeView === 'home') {
+    const results = getAllCachedVideos().filter(v =>
+      v.title?.toLowerCase().includes(q) || v.channel?.toLowerCase().includes(q)
+    );
     const grid = document.getElementById('homeGrid');
     if (!results.length) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>No results for "<strong>${escHtml(q)}</strong>"</p></div>`;
@@ -1459,6 +1475,24 @@ document.getElementById('globalSearch').addEventListener('input', function() {
     }
     document.getElementById('homeCount').textContent = `${results.length} results`;
   }
+
+  // ── Channel view: filter that channel's cached videos by title ──
+  if (activeView === 'channel' && activeChannelId) {
+    const videos = getCachedChannelVideos(activeChannelId);
+    const results = videos.filter(v =>
+      v.title?.toLowerCase().includes(q)
+    );
+    const grid = document.getElementById('channelGrid');
+    if (grid) {
+      if (!results.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>No videos matching "<strong>${escHtml(q)}</strong>"</p></div>`;
+      } else {
+        grid.innerHTML = results.map(v => videoCard(v)).join('');
+        bindVideoCards(grid);
+      }
+    }
+  }
+
 });
 
 // ═══════════════════════════════════════
