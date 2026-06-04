@@ -389,6 +389,26 @@ textarea.import-box:focus{border-color:var(--accent)}
         <div id="importStatus" style="margin-top:8px;font-size:.82rem;color:var(--text3)"></div>
       </div>
 
+      <!-- Auto-refresh -->
+      <div class="settings-section">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.29-5.77"/></svg>
+          Auto-Refresh
+        </h3>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">RSS refresh interval</div>
+            <div class="settings-hint">How often feeds are automatically reloaded</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="rssIntervalInput" min="1" max="1440" style="width:64px;padding:6px 10px;background:var(--input-bg);border:1px solid var(--border2);border-radius:var(--radius-xs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;text-align:center" />
+            <span style="font-size:.85rem;color:var(--text2)">min</span>
+            <button class="btn" id="saveIntervalBtn" style="padding:6px 14px;font-size:.8rem">Save</button>
+          </div>
+        </div>
+        <div id="intervalStatus" style="margin-top:6px;font-size:.78rem;color:var(--text3)"></div>
+      </div>
+
     </div>
 
   </main>
@@ -819,6 +839,10 @@ function openChannel(channelId, channelName) {
         <p>${escHtml(channelId)}</p>
         ${sub?.url ? `<a class="channel-url" href="${escHtml(sub.url)}" target="_blank">${escHtml(sub.url)}</a>` : ''}
       </div>
+      <button id="channelRefreshBtn" title="Refresh feed" style="margin-left:auto;background:none;border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:var(--radius-xs);font-size:.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.29-5.77"/></svg>
+        Refresh
+      </button>
     </div>
     <div class="section-head">Videos</div>
     <div id="channelGrid" class="videos-grid">
@@ -833,6 +857,14 @@ function openChannel(channelId, channelName) {
     const subForAvatar = sub || { id: channelId, name: channelName, thumbnail: '' };
     fetchAndApplyAvatar(subForAvatar);
   }
+
+  // Wire up channel refresh button
+  document.getElementById('channelRefreshBtn').addEventListener('click', () => {
+    const cache = getRssCache();
+    delete cache[channelId];
+    try { localStorage.setItem(RSS_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    openChannel(channelId, channelName);
+  });
 
   // Show locally cached videos instantly, then fetch fresh from RSS
   const localCached = getCachedChannelVideos(channelId);
@@ -928,6 +960,13 @@ function renderHistory() {
 function showSettings() {
   switchView('settings');
   renderManageSubs();
+  // Populate interval input with current value
+  try {
+    const saved = parseInt(localStorage.getItem(RSS_INTERVAL_KEY), 10);
+    document.getElementById('rssIntervalInput').value = saved > 0 ? saved : RSS_INTERVAL_DEFAULT;
+  } catch {
+    document.getElementById('rssIntervalInput').value = RSS_INTERVAL_DEFAULT;
+  }
 }
 
 function renderManageSubs() {
@@ -1077,7 +1116,30 @@ async function fetchWithProxy(url) {
 }
 
 const RSS_CACHE_KEY = 'tube_rss_cache_v1';
-const RSS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const RSS_INTERVAL_KEY = 'tube_rss_interval_v1';
+const RSS_INTERVAL_DEFAULT = 15; // minutes
+
+function getRssIntervalMs() {
+  try {
+    const v = parseInt(localStorage.getItem(RSS_INTERVAL_KEY), 10);
+    return (v > 0 ? v : RSS_INTERVAL_DEFAULT) * 60 * 1000;
+  } catch { return RSS_INTERVAL_DEFAULT * 60 * 1000; }
+}
+
+let autoRefreshTimer = null;
+
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  const ms = getRssIntervalMs();
+  autoRefreshTimer = setInterval(() => {
+    try { localStorage.removeItem(RSS_CACHE_KEY); } catch {}
+    if (activeView === 'home') renderHomeVideos();
+    if (activeView === 'channel' && activeChannelId) {
+      const sub = subscriptions.find(s => s.id === activeChannelId);
+      if (sub) openChannel(activeChannelId, sub.name);
+    }
+  }, ms);
+}
 
 function getRssCache() {
   try {
@@ -1095,7 +1157,7 @@ function getRssCache() {
 function getCachedRss(channelId) {
   const cache = getRssCache();
   const entry = cache[channelId];
-  if (entry && Date.now() - entry.ts < RSS_CACHE_TTL) return entry.videos;
+  if (entry && Date.now() - entry.ts < getRssIntervalMs()) return entry.videos;
   return null;
 }
 
@@ -1440,9 +1502,7 @@ async function addChannel() {
 // ═══════════════════════════════════════
 document.getElementById('globalSearch').addEventListener('input', function() {
   const q = this.value.trim().toLowerCase();
-
   if (!q) {
-    // Reset each view to its normal state
     if (activeView === 'home') renderHomeVideos();
     if (activeView === 'channel' && activeChannelId) {
       const grid = document.getElementById('channelGrid');
@@ -1454,14 +1514,10 @@ document.getElementById('globalSearch').addEventListener('input', function() {
         bindVideoCards(grid);
       }
     }
-    if (activeView === 'home' || activeView === 'channel') {
-      // Restore full sidebar subs list
-      renderSidebar();
-    }
     return;
   }
 
-  // ── Home view: search all cached videos ──
+  // ── Home: search all cached videos ──
   if (activeView === 'home') {
     const results = getAllCachedVideos().filter(v =>
       v.title?.toLowerCase().includes(q) || v.channel?.toLowerCase().includes(q)
@@ -1476,10 +1532,9 @@ document.getElementById('globalSearch').addEventListener('input', function() {
     document.getElementById('homeCount').textContent = `${results.length} results`;
   }
 
-  // ── Channel view: filter that channel's cached videos by title ──
+  // ── Channel: filter that channel's videos by title ──
   if (activeView === 'channel' && activeChannelId) {
-    const videos = getCachedChannelVideos(activeChannelId);
-    const results = videos.filter(v =>
+    const results = getCachedChannelVideos(activeChannelId).filter(v =>
       v.title?.toLowerCase().includes(q)
     );
     const grid = document.getElementById('channelGrid');
@@ -1492,7 +1547,6 @@ document.getElementById('globalSearch').addEventListener('input', function() {
       }
     }
   }
-
 });
 
 // ═══════════════════════════════════════
@@ -1546,6 +1600,21 @@ document.querySelector('.sidebar').addEventListener('click', e => {
 load();
 renderSidebar();
 showHome();
+scheduleAutoRefresh();
+
+document.getElementById('saveIntervalBtn').addEventListener('click', () => {
+  const val = parseInt(document.getElementById('rssIntervalInput').value, 10);
+  const status = document.getElementById('intervalStatus');
+  if (!val || val < 1 || val > 1440) {
+    status.style.color = 'var(--accent3)';
+    status.textContent = '⚠ Enter a value between 1 and 1440 minutes.';
+    return;
+  }
+  localStorage.setItem(RSS_INTERVAL_KEY, val);
+  scheduleAutoRefresh();
+  status.style.color = 'var(--accent)';
+  status.textContent = `✓ Feeds will refresh every ${val} minute${val === 1 ? '' : 's'}.`;
+});
 </script>
 </body>
 </html>
