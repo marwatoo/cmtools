@@ -1,6 +1,6 @@
 # MediaTools Studio
 
-A unified web app combining 46 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
+A unified web app combining 49 media production tools into one beautiful, responsive interface — hostable for free on **GitHub Pages**.
 
 ---
 
@@ -32,34 +32,38 @@ A unified web app combining 46 media production tools into one beautiful, respon
 | 15 | **Image Resizer** | Resize with fit modes (fill/contain/cover), logo overlay, position sliders |
 | 16 | **Video Thumbnail Extractor** | Grab YouTube frame timestamps as images |
 | 17 | **Watermark Tool** | Add text or logo watermarks to images |
-| 18 | **Image Editor** | Edit images with filters and adjustments |
-| 19 | **Markdown Viewer** | Write/paste markdown, live preview, load files |
-| 20 | **OG Card Preview** | Preview link cards for X, Facebook, LinkedIn |
-| 21 | **Character Counter** | Check limits for Twitter, LinkedIn, Instagram |
-| 22 | **Color Converter** | Convert HEX, RGB, HSL with sliders + palettes |
-| 23 | **Le360 Brandbook** | Figma-embedded brand guidelines |
-| 24 | **Text Sorter** | Sort lines A-Z/Z-A, remove duplicates |
-| 25 | **TweetDown** | Download tweets as images |
-| 26 | **X Post Image** | Generate X/Twitter post images |
-| 27 | **Sticky Notes** | Quick notes board |
-| 28 | **MD Notes** | Markdown notes editor |
-| 29 | **WiFi Card** | Generate WiFi QR code cards |
-| 30 | **Quote Card** | Create shareable quote images |
-| 31 | **Collage** | Create image collages |
-| 32 | **YT Deck** | YouTube channel feed dashboard — multi-column live RSS feeds with avatars |
-| 33 | **Aspect Ratio** | Visual aspect ratio calculator |
-| 34 | **WikiFlag** | Search Wikipedia for country flags in HD |
-| 35 | **YT Channel ID Finder** | Get channel ID, RSS feed, and info from @username |
-| 36 | **Mockup Frames** | Frame screenshots in phone, laptop, browser mockups |
-| 37 | **Screenshot Showcase** | Arrange screenshots in beautiful layouts |
-| 38 | **Screenshot Annotator** | Add arrows, shapes, blur, and labels to screenshots |
-| 39 | **Image Compressor** | Reduce image file size with quality control |
-| 40 | **Notes Editor** | Write and save notes with Arabic RTL support |
-| 41 | **Image Filters** | Apply filters and adjustments to images |
-| 42 | **URL Shortener** | Shorten URLs with history tracking |
-| 43 | **Tier List Maker** | Create tier lists with drag-and-drop |
+| 18 | **Image Editor** | Lightroom-style photo editing with presets and adjustments |
+| 19 | **Image Filters** | Apply filters and adjustments to images |
+| 20 | **Markdown Viewer** | Write/paste markdown, live preview, load files |
+| 21 | **OG Card Preview** | Preview link cards for X, Facebook, LinkedIn |
+| 22 | **Character Counter** | Check limits for Twitter, LinkedIn, Instagram |
+| 23 | **Color Converter** | Convert HEX, RGB, HSL with sliders + palettes |
+| 24 | **Le360 Brandbook** | Figma-embedded brand guidelines |
+| 25 | **Text Sorter** | Sort lines A-Z/Z-A, remove duplicates |
+| 26 | **TweetDown** | Download tweets as images |
+| 27 | **X Post Image** | Generate X/Twitter post images |
+| 28 | **Sticky Notes** | Quick notes board |
+| 29 | **MD Notes** | Markdown notes editor |
+| 30 | **WiFi Card** | Generate WiFi QR code cards |
+| 31 | **Quote Card** | Create shareable quote images |
+| 32 | **Collage** | Create image collages |
+| 33 | **YT Deck** | YouTube channel feed dashboard — multi-column live RSS feeds with avatars |
+| 34 | **Aspect Ratio** | Visual aspect ratio calculator |
+| 35 | **WikiFlag** | Search Wikipedia for country flags in HD |
+| 36 | **YT Channel ID Finder** | Get channel ID, RSS feed, and info from @username |
+| 37 | **Tube Subscription Viewer** | Browse YouTube subscriptions in a multi-column feed |
+| 38 | **Mockup Frames** | Frame screenshots in phone, laptop, browser mockups |
+| 39 | **Screenshot Showcase** | Arrange screenshots in beautiful layouts |
+| 40 | **Screenshot Annotator** | Add arrows, shapes, blur, and labels to screenshots |
+| 41 | **Image Compressor** | Reduce image file size with quality control |
+| 42 | **Notes Editor** | Write and save notes with Arabic RTL support |
+| 43 | **Sport Post** | Generate 1080×1350 Instagram sport posts in three modes |
 | 44 | **VCF Viewer** | Parse and view vCard (.vcf) contacts with Arabic RTL support |
-| 45 | **QR Code Generator** | Generate QR codes for URLs, text, WiFi, vCard, and more |
+| 45 | **Tier List Maker** | Create tier lists with drag-and-drop |
+| 46 | **QR Code Generator** | Generate QR codes for URLs, text, WiFi, vCard, and more |
+| 47 | **URL Shortener** | Shorten URLs with history tracking |
+| 48 | **Arabic Notes** | RTL notes editor with editable titles, headings, and tags |
+| — | **Snippets Pad** | Quick snippets & copy pad — always accessible from the hub |
 
 ---
 
@@ -80,55 +84,58 @@ cmtools-dev/
 │   │   └── branding.png       ← Instagram branding overlay
 │   └── overlays/              ← Overlay images (ar.png, fr.png, etc.)
 │
-├── fonts/                      ← Required fonts (Cairo-Bold.ttf, DINCondensed-Bold.ttf)
+├── fonts/                      ← Required fonts (Cairo-Bold.ttf, DINCondensed-Bold.ttf, LamaSans-ExtraBold.ttf, MADEOkineSans-Black.otf, Somar-Bold.otf)
 │
-└── tools/                      ← 46 tool pages (all standalone HTML files)
-    ├── ytcover.html            ← YT Cover Creator
-    ├── igcover.html            ← IG Sport Cover
-    ├── le360deck.html          ← Le360 Deck
-    ├── diapo.html              ← Diapo Overlay
-    ├── instapost.html          ← Le360 Post
-    ├── zflags.html             ← Dual Flag Generator
-    ├── flagig.html             ← IG Flag Post
-    ├── xdeck.html              ← X Deck
-    ├── igdeck.html             ← IG Deck
-    ├── iframe.html             ← iFrame Generator
-    ├── text.html               ← Text Transformer
-    ├── password.html           ← Password Generator
-    ├── colors.html             ← Color Palette Generator
-    ├── imgconv.html            ← Image Converter
-    ├── imgres.html             ← Image Resizer
-    ├── ytthumbnail.html        ← Video Thumbnail Extractor
-    ├── water.html              ← Watermark Tool
-    ├── imageeditor.html        ← Image Editor
-    ├── mark.html               ← Markdown Viewer
-    ├── ogcard.html             ← OG Card Preview
-    ├── charcount.html          ← Character Counter
-    ├── color.html              ← Color Converter
-    ├── brandbook.html          ← Le360 Brandbook
-    ├── sort.html               ← Text Sorter
-    ├── tweetdown.html          ← TweetDown
-    ├── xpostimage.html         ← X Post Image Generator
-    ├── stickynotes.html        ← Sticky Notes
-    ├── mdnotes.html            ← Markdown Notes
-    ├── wificard.html           ← WiFi Card
-    ├── quotecard.html          ← Quote Card
-    ├── collage.html            ← Collage Maker
-    ├── ytdeck.html             ← YT Deck
-    ├── aspectratio.html        ← Aspect Ratio Calculator
-    ├── wikiflag.html           ← WikiFlag
-    ├── ytchannelid.html        ← YT Channel ID Finder
-    ├── mockup.html             ← Mockup Frames
-    ├── showcase.html           ← Screenshot Showcase
+└── tools/                      ← 49 tool pages (all standalone HTML files)
     ├── annotator.html          ← Screenshot Annotator
+    ├── arabic.html             ← Arabic Notes
+    ├── aspectratio.html        ← Aspect Ratio Calculator
+    ├── brandbook.html          ← Le360 Brandbook
+    ├── charcount.html          ← Character Counter
+    ├── collage.html            ← Collage Maker
+    ├── color.html              ← Color Converter
+    ├── colors.html             ← Color Palette Generator
+    ├── diapo.html              ← Diapo Overlay
+    ├── flagig.html             ← IG Flag Post
+    ├── iframe.html             ← iFrame Generator
+    ├── igcover.html            ← IG Sport Cover
+    ├── igdeck.html             ← IG Deck
+    ├── imageeditor.html        ← Image Editor
     ├── imgcompress.html        ← Image Compressor
-    ├── notes.html              ← Notes Editor
+    ├── imgconv.html            ← Image Converter
     ├── imgfilter.html          ← Image Filters
-    ├── shortlink.html          ← URL Shortener
-    ├── tierlist.html           ← Tier List Maker
-    ├── vcfviewer.html          ← VCF Viewer
+    ├── imgres.html             ← Image Resizer
+    ├── instapost.html          ← Le360 Post
+    ├── le360deck.html          ← Le360 Deck
+    ├── mark.html               ← Markdown Viewer
+    ├── mdnotes.html            ← Markdown Notes
+    ├── mockup.html             ← Mockup Frames
+    ├── notes.html              ← Notes Editor
+    ├── ogcard.html             ← OG Card Preview
+    ├── password.html           ← Password Generator
     ├── qrcodegen.html          ← QR Code Generator
-    └── snippets.html           ← Snippets Pad
+    ├── quotecard.html          ← Quote Card
+    ├── shortlink.html          ← URL Shortener
+    ├── showcase.html           ← Screenshot Showcase
+    ├── snippets.html           ← Snippets Pad
+    ├── sort.html               ← Text Sorter
+    ├── sportp.html             ← Sport Post
+    ├── stickynotes.html        ← Sticky Notes
+    ├── text.html               ← Text Transformer
+    ├── tierlist.html           ← Tier List Maker
+    ├── tube.html               ← Tube Subscription Viewer
+    ├── tweetdown.html          ← TweetDown
+    ├── vcfviewer.html          ← VCF Viewer
+    ├── water.html              ← Watermark Tool
+    ├── wificard.html           ← WiFi Card
+    ├── wikiflag.html           ← WikiFlag
+    ├── xdeck.html              ← X Deck
+    ├── xpostimage.html         ← X Post Image Generator
+    ├── ytchannelid.html        ← YT Channel ID Finder
+    ├── ytcover.html            ← YT Cover Creator
+    ├── ytdeck.html             ← YT Deck
+    ├── ytthumbnail.html        ← Video Thumbnail Extractor
+    └── zflags.html             ← Dual Flag Generator
 ```
 
 ---
