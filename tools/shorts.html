@@ -316,6 +316,7 @@
             <div class="toolbar-info">
                 <div class="toolbar-title">Shorts — last 7 days</div>
                 <div class="toolbar-subtitle" id="toolbarSubtitle">Loading…</div>
+                <div class="toolbar-subtitle" id="toolbarPeriod"></div>
             </div>
             <button class="toolbar-btn" id="refreshBtn">↺ Refresh</button>
             <button class="toolbar-btn primary" id="downloadBtn" disabled>⬇ Download Sheet</button>
@@ -368,6 +369,30 @@
         const CUTOFF_MS = DAYS * 24 * 60 * 60 * 1000;
 
         let allResults = {}; // key -> array of rows
+
+        // ═══════════════════════════════════════════
+        //  TIME PERIOD (window covered by the report)
+        // ═══════════════════════════════════════════
+        function getPeriod() {
+            // 7 full days, excluding today: yesterday and the 6 days before it.
+            const end = new Date();
+            end.setHours(0, 0, 0, 0);
+            end.setDate(end.getDate() - 1); // yesterday
+            const start = new Date(end);
+            start.setDate(start.getDate() - (DAYS - 1)); // 6 days before "end"
+            return { start, end };
+        }
+
+        function formatPeriodLabel(fmt = 'display') {
+            const { start, end } = getPeriod();
+            const opts = { day: '2-digit', month: 'short', year: 'numeric' };
+            if (fmt === 'display') {
+                return `${start.toLocaleDateString('en-GB', opts)} – ${end.toLocaleDateString('en-GB', opts)}`;
+            }
+            // 'iso' -> for CSV, unambiguous YYYY-MM-DD
+            const iso = d => d.toISOString().slice(0, 10);
+            return `${iso(start)} to ${iso(end)}`;
+        }
 
         // ═══════════════════════════════════════════
         //  DATA FETCHING — RSS only, filter by /shorts/ link
@@ -565,6 +590,7 @@
         function loadAll() {
             container.innerHTML = '';
             allResults = {};
+            document.getElementById('toolbarPeriod').textContent = `Period: ${formatPeriodLabel('display')}`;
             CHANNELS.forEach((col, i) => {
                 container.appendChild(buildChannelSection(col));
             });
@@ -585,12 +611,14 @@
 
         function buildCsv() {
             const rows = Object.values(allResults).flat().sort((a, b) => new Date(b.published) - new Date(a.published));
-            const header = ['Channel', 'Title', 'Views', 'Published Date', 'Link'];
-            const lines = [header.map(csvEscape).join(',')];
+            const periodLabel = formatPeriodLabel('iso');
+            const lines = [];
+            const header = ['Channel', 'Title', 'Views', 'Published Date', 'Period', 'Link'];
+            lines.push(header.map(csvEscape).join(','));
             rows.forEach(r => {
                 const dateIso = r.published ? new Date(r.published).toISOString().slice(0, 16).replace('T', ' ') : '';
                 const link = r.link || `https://www.youtube.com/shorts/${r.videoId}`;
-                lines.push([r.channelLabel, r.title, r.views, dateIso, link].map(csvEscape).join(','));
+                lines.push([r.channelLabel, r.title, r.views, dateIso, periodLabel, link].map(csvEscape).join(','));
             });
             return '\uFEFF' + lines.join('\r\n');
         }
