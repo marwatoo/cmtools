@@ -231,7 +231,7 @@ textarea.import-box:focus{border-color:var(--accent)}
   </div>
   <div class="topbar-search">
     <svg class="topbar-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="text" id="globalSearch" placeholder="Search subscriptions & videos…" autocomplete="off">
+    <input type="text" id="globalSearch" placeholder="Search subscriptions & videos, or paste a YouTube link…" autocomplete="off">
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="themeToggle" title="Toggle theme">
@@ -1498,10 +1498,74 @@ async function addChannel() {
 }
 
 // ═══════════════════════════════════════
+//  PASTE-A-LINK → PLAY DIRECTLY
+// ═══════════════════════════════════════
+function extractYouTubeVideoId(text) {
+  if (!text) return null;
+  const m = text.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?[^#]*\bv=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  return m ? m[1] : null;
+}
+
+let searchLinkLoading = false;
+
+async function tryPlayFromSearchLink(raw) {
+  const vid = extractYouTubeVideoId(raw);
+  if (!vid || searchLinkLoading) return !!vid;
+  searchLinkLoading = true;
+
+  // Use whatever we already know about this video (cache/history) as a fallback
+  const known = videoCache[vid] || history.find(h => h.videoId === vid);
+  let meta = null;
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + vid)}&format=json`;
+    let text;
+    try {
+      const res = await fetch(oembedUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error('oembed http error');
+      text = await res.text();
+    } catch {
+      text = await fetchWithProxy(oembedUrl);
+    }
+    meta = JSON.parse(text);
+  } catch (e) {}
+
+  searchLinkLoading = false;
+
+  // If the user has since cleared/changed the search box, don't pop up a stale video
+  const input = document.getElementById('globalSearch');
+  if (extractYouTubeVideoId(input.value.trim()) !== vid) return true;
+
+  openVideoModal({
+    videoId: vid,
+    title: meta?.title || known?.title || 'YouTube video',
+    channel: meta?.author_name || known?.channel || '',
+    channelId: known?.channelId || '',
+    thumb: meta?.thumbnail_url || known?.thumbnail || known?.thumb || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`,
+    duration: known?.duration || '',
+    views: known?.views || 0,
+    likes: known?.likes || 0,
+    published: known?.published || '',
+    description: known?.description || '',
+  });
+
+  input.value = '';
+  input.blur();
+  return true;
+}
+
+// ═══════════════════════════════════════
 //  GLOBAL SEARCH
 // ═══════════════════════════════════════
 document.getElementById('globalSearch').addEventListener('input', function() {
-  const q = this.value.trim().toLowerCase();
+  const raw = this.value.trim();
+  const q = raw.toLowerCase();
+
+  // If a YouTube video link was typed/pasted, fetch & play it directly
+  if (extractYouTubeVideoId(raw)) {
+    tryPlayFromSearchLink(raw);
+    return;
+  }
+
   if (!q) {
     if (activeView === 'home') renderHomeVideos();
     if (activeView === 'channel' && activeChannelId) {
