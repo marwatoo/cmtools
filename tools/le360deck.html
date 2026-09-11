@@ -173,14 +173,58 @@
   </div>
 
   <script>
-    // ── CORS proxies ──────────────────────────────────────────────────────
-    const PROXIES = [
-      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-      url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
-      url => `https://proxy.cors.sh/${url}`,
-    ];
+    // ── CORS proxy ───────────────────────────────────────────────────────
+    // PRIMARY: your own Cloudflare Worker (see worker/le360-proxy-worker.js).
+    // Public proxy domains (allorigins, codetabs, etc.) are commonly
+    // blocked at the network/DNS level on school, corporate, and some ISP
+    // networks, since they're a known category used to bypass filters —
+    // that's a local network block, not something a "better proxy list"
+    // fixes. A Worker on a *.workers.dev domain isn't in that category.
+    //
+    // ▶▶ SET THIS to your deployed worker's URL, e.g.:
+    //    'https://le360-proxy.yoursubdomain.workers.dev'
+    // Leave it empty ('') to skip straight to the public-proxy fallbacks.
+    const WORKER_PROXY_BASE = 'https://worker.bifisse-marwa.workers.dev';
+
+    // Each entry is an async fetcher: (bustUrl) => Promise<string of feed text>.
+    // Using functions (not just URL templates) lets us mix plain-text proxies
+    // with allorigins' JSON envelope, which needs its own response parsing.
+    // Each fetcher carries a .proxyName for logging/diagnostics.
+    const PROXIES = [];
+
+    if (WORKER_PROXY_BASE) {
+      PROXIES.push(Object.assign(async bustUrl => {
+        const res = await fetch(`${WORKER_PROXY_BASE}/?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'own-worker' }));
+    }
+
+    // Fallbacks: public proxies. Kept in case the Worker above isn't set up
+    // yet, or is temporarily down. NOTE: if your network blocks known proxy
+    // domains (see diagnosis above), these will simply time out for you —
+    // that's expected, the Worker is the real fix.
+    PROXIES.push(
+      Object.assign(async bustUrl => {
+        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'codetabs' }),
+      Object.assign(async bustUrl => {
+        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'allorigins-raw' }),
+      Object.assign(async bustUrl => {
+        // JSON envelope endpoint hits different backend code than /raw above,
+        // so it's kept as a separate independent path rather than relying on /raw twice.
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data || !data.contents) throw new Error('empty contents');
+        return data.contents;
+      }, { proxyName: 'allorigins-json' })
+    );
 
     const REFRESH_INTERVAL = 1 * 60 * 1000; // 1 minute
     const CACHE_KEY = 'le360deck_cache_v2';
@@ -276,19 +320,30 @@
     }
 
     // ── Fetch helpers ─────────────────────────────────────────────────────
-    async function fetchWithProxy(url) {
+    async function fetchWithProxy(url, key) {
       const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Math.floor(Date.now() / 60000);
-      const results = PROXIES.map((proxy, i) =>
+      const results = PROXIES.map((fetcher, i) =>
         new Promise((resolve, reject) => {
           setTimeout(() => {
-            fetch(proxy(bustUrl), { signal: AbortSignal.timeout(12000) })
-              .then(res => { if (!res.ok) throw new Error('not ok'); return res.text(); })
-              .then(text => { if (!text || text.length < 100) throw new Error('empty'); resolve(text); })
-              .catch(reject);
+            fetcher(bustUrl)
+              .then(text => {
+                if (!text || text.length < 100) throw new Error('response too short (' + (text ? text.length : 0) + ' chars) — likely an error page, not the feed');
+                resolve(text);
+              })
+              .catch(err => {
+                console.warn(`[le360deck] proxy "${fetcher.proxyName}" failed for ${key}:`, err && err.message ? err.message : err);
+                reject(err);
+              });
           }, i * 200);
         })
       );
-      return Promise.any(results);
+      try {
+        return await Promise.any(results);
+      } catch (aggErr) {
+        console.error(`[le360deck] ALL proxies failed for ${key} (${url}):`,
+          (aggErr.errors || []).map((e, i) => `${PROXIES[i].proxyName}: ${e && e.message ? e.message : e}`));
+        throw aggErr;
+      }
     }
 
     function extractImagesFromHTML(html) {
@@ -304,7 +359,7 @@
     }
 
     async function fetchArticles(key, url) {
-      const text = await fetchWithProxy(url);
+      const text = await fetchWithProxy(url, key);
       const doc  = new DOMParser().parseFromString(text, 'text/xml');
       if (doc.querySelector('parsererror')) throw new Error('XML parse error');
 
@@ -464,11 +519,12 @@
     }
 
     // ── Status label per column ───────────────────────────────────────────
-    function setStatus(key, state, text) {
+    function setStatus(key, state, text, title) {
       const el = document.getElementById(`status-${key}`);
       if (!el) return;
       el.className = 'deck-refresh-status' + (state ? ` ${state}` : '');
       el.textContent = text;
+      if (title) el.title = title; else el.removeAttribute('title');
     }
 
     // ── Per-column fetch + render ─────────────────────────────────────────
@@ -489,7 +545,10 @@
           setTimeout(() => refreshColumn(key, url, true), 4000);
           return;
         }
-        setStatus(key, 'error', '⚠ failed');
+        const detail = e && e.errors
+          ? e.errors.map((err, i) => `${PROXIES[i].proxyName}: ${err && err.message ? err.message : err}`).join(' | ')
+          : (e && e.message ? e.message : String(e));
+        setStatus(key, 'error', '⚠ failed', detail);
 
         const feed = document.getElementById(`feed-${key}`);
         if (feed && !feed.querySelector('.deck-card')) {
