@@ -399,10 +399,41 @@
           + '_' + String(now.getHours()).padStart(2,'0')
           + String(now.getMinutes()).padStart(2,'0')
           + String(now.getSeconds()).padStart(2,'0');
-        const a = document.createElement('a');
-        a.href     = canvas.toDataURL('image/jpeg', 0.95);
-        a.download = `sport_post_${currentMode}_${ts}.jpg`;
-        a.click();
+        const filename = `sport_post_${currentMode}_${ts}.jpg`;
+
+        // iOS Safari is unreliable with data: URLs + a.download, especially
+        // when the anchor is never attached to the DOM. Use a Blob + object
+        // URL instead, and attach/click/detach the anchor for compatibility.
+        canvas.toBlob((blob) => {
+          if (!blob) { alert('Download error: could not generate image.'); return; }
+
+          const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          if (isIOS && navigator.share && navigator.canShare &&
+              navigator.canShare({ files: [new File([blob], filename, { type: 'image/jpeg' })] })) {
+            // iOS Safari has no real "download" concept for canvas images;
+            // the share sheet's "Save Image" is the most reliable path.
+            const file = new File([blob], filename, { type: 'image/jpeg' });
+            navigator.share({ files: [file] }).catch(() => {
+              // user cancelled or share failed — fall back to opening the image
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              setTimeout(() => URL.revokeObjectURL(url), 30000);
+            });
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href     = url;
+          a.download = filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+        }, 'image/jpeg', 0.95);
       } catch(e) {
         console.error('Download error:', e);
         alert('Download error: ' + e.message);
