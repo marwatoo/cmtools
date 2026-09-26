@@ -7,16 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
+
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
@@ -324,137 +315,7 @@
 
 </div>
 
-<script src="../assets/theme.js"></script>
-<script>
 
-  const inputEl  = document.getElementById('inputText');
-  const outputEl = document.getElementById('outputText');
-  const activeEl = document.getElementById('activeMode');
 
-  /* ── Stats ── */
-  function updateStats() {
-    const t = inputEl.value;
-    document.getElementById('statChars').textContent = t.length;
-    document.getElementById('statWords').textContent = t.trim() ? t.trim().split(/\s+/).length : 0;
-    document.getElementById('statLines').textContent = t ? t.split('\n').length : 0;
-    document.getElementById('statSentences').textContent = t.trim() ? (t.match(/[.!?]+/g) || []).length : 0;
-  }
-  inputEl.addEventListener('input', updateStats);
-
-  /* ── Transform functions ── */
-  function toTitleCase(str) {
-    return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-  }
-  function toSentenceCase(str) {
-    return str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
-  }
-  function toCamelCase(str) {
-    return str.trim().toLowerCase().replace(/[\s_-]+(.)/g, (_, c) => c.toUpperCase());
-  }
-  function toPascalCase(str) {
-    const c = toCamelCase(str);
-    return c.charAt(0).toUpperCase() + c.slice(1);
-  }
-  function toSnakeCase(str) {
-    return str.trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  }
-  function toKebabCase(str) {
-    return str.trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
-  }
-  function toAlternating(str) {
-    return str.split('').map((c, i) => i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()).join('');
-  }
-  function toInverse(str) {
-    return str.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
-  }
-
-  const TRANSFORMS = {
-    upper:        t => t.toUpperCase(),
-    lower:        t => t.toLowerCase(),
-    title:        t => toTitleCase(t),
-    sentence:     t => toSentenceCase(t),
-    camel:        t => toCamelCase(t),
-    pascal:       t => toPascalCase(t),
-    snake:        t => toSnakeCase(t),
-    kebab:        t => toKebabCase(t),
-    alternating:  t => toAlternating(t),
-    inverse:      t => toInverse(t),
-    reverse:      t => t.split('').reverse().join(''),
-    reverseWords: t => t.split(' ').reverse().join(' '),
-    trimSpaces:   t => t.replace(/[ \t]+/g, ' ').replace(/\n\s+/g, '\n').trim(),
-    removeLines:  t => t.split('\n').filter(l => l.trim() !== '').join('\n'),
-    sortLines:    t => t.split('\n').sort((a, b) => a.localeCompare(b)).join('\n'),
-    sortLinesDesc:t => t.split('\n').sort((a, b) => b.localeCompare(a)).join('\n'),
-    dedupe:       t => [...new Set(t.split('\n'))].join('\n'),
-    addNumbers:   t => t.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n'),
-    removeNumbers:t => t.replace(/\d/g, ''),
-    urlEncode:    t => encodeURIComponent(t),
-    urlDecode:    t => { try { return decodeURIComponent(t); } catch { return t; } },
-    base64enc:    t => btoa(unescape(encodeURIComponent(t))),
-    base64dec:    t => { try { return decodeURIComponent(escape(atob(t))); } catch { return '⚠ Invalid Base64'; } },
-    findReplace:  t => {
-      const f = document.getElementById('fnrFind').value;
-      const r = document.getElementById('fnrReplace').value;
-      if (!f) return t;
-      return t.split(f).join(r);
-    },
-  };
-
-  const LABELS = {
-    upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case',
-    camel: 'camelCase', pascal: 'PascalCase', snake: 'snake_case', kebab: 'kebab-case',
-    alternating: 'aLtErNaTiNg', inverse: 'iNVERSE cASE',
-    reverse: 'Reverse', reverseWords: 'Reverse Words', trimSpaces: 'Trim Spaces',
-    removeLines: 'Remove Empty Lines', sortLines: 'Sort A→Z', sortLinesDesc: 'Sort Z→A',
-    dedupe: 'Remove Duplicates', addNumbers: 'Number Lines', removeNumbers: 'Remove Numbers',
-    urlEncode: 'URL Encode', urlDecode: 'URL Decode', base64enc: 'Base64 Encode', base64dec: 'Base64 Decode',
-    findReplace: 'Find & Replace',
-  };
-
-  /* ── Apply transform ── */
-  function applyTransform(fn) {
-    const input = inputEl.value;
-    if (!input.trim()) { outputEl.value = ''; activeEl.textContent = '—'; return; }
-    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
-    document.querySelector(`[data-fn="${fn}"]`)?.classList.add('active-transform');
-    outputEl.value = TRANSFORMS[fn](input);
-    activeEl.textContent = LABELS[fn] || fn;
-  }
-
-  document.querySelectorAll('.xform-btn').forEach(btn => {
-    btn.addEventListener('click', () => applyTransform(btn.dataset.fn));
-  });
-
-  /* ── Copy ── */
-  document.getElementById('copyBtn').addEventListener('click', () => {
-    if (!outputEl.value) return;
-    navigator.clipboard.writeText(outputEl.value).then(() => {
-      const fb = document.getElementById('copyFeedback');
-      fb.textContent = '✓ Copied!';
-      setTimeout(() => { fb.textContent = ''; }, 2000);
-    });
-  });
-
-  /* ── Swap ── */
-  document.getElementById('swapBtn').addEventListener('click', () => {
-    if (!outputEl.value) return;
-    inputEl.value = outputEl.value;
-    outputEl.value = '';
-    activeEl.textContent = '—';
-    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
-    updateStats();
-  });
-
-  /* ── Clear ── */
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    inputEl.value = '';
-    outputEl.value = '';
-    activeEl.textContent = '—';
-    document.querySelectorAll('.xform-btn').forEach(b => b.classList.remove('active-transform'));
-    updateStats();
-  });
-
-  updateStats();
-</script>
 </body>
 </html>

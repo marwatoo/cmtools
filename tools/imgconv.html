@@ -7,16 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
+
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
@@ -149,112 +140,7 @@
   </div>
 </div>
 
-<script src="../assets/theme.js"></script>
-<script>
 
-  let files = [];
-  let targetFmt = 'image/jpeg', targetExt = 'jpg';
 
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
-  const fileListEl = document.getElementById('fileList');
-  const settingsWrap = document.getElementById('settingsWrap');
-  const qualitySlider = document.getElementById('qualitySlider');
-  const qualityVal = document.getElementById('qualityVal');
-
-  qualitySlider.addEventListener('input', () => { qualityVal.textContent = qualitySlider.value + '%'; });
-
-  /* Format buttons */
-  document.querySelectorAll('.fmt-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      targetFmt = btn.dataset.fmt;
-      targetExt = btn.dataset.ext;
-    });
-  });
-
-  /* Drag & drop */
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-  dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
-  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
-
-  function handleFiles(fl) {
-    [...fl].forEach(f => { if (f.type.startsWith('image/')) files.push({ file: f, status: 'ready' }); });
-    renderList();
-    settingsWrap.style.display = files.length ? 'block' : 'none';
-  }
-
-  function fmtBytes(b) { return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(2) + ' MB'; }
-
-  function renderList() {
-    fileListEl.innerHTML = '';
-    files.forEach((item, i) => {
-      const el = document.createElement('div'); el.className = 'file-item';
-      const img = document.createElement('img'); img.className = 'fi-thumb';
-      const reader = new FileReader();
-      reader.onload = e => { img.src = e.target.result; };
-      reader.readAsDataURL(item.file);
-      const statusMap = { ready: '—', working: 'Converting…', done: '✓ Done', error: '✕ Error' };
-      const statusClass = { ready: '', working: 'working', done: 'done', error: 'error' };
-      el.innerHTML = `<span></span><div class="fi-info"><div class="fi-name">${item.file.name}</div><div class="fi-size">${fmtBytes(item.file.size)}</div></div><span class="fi-status ${statusClass[item.status]}">${statusMap[item.status]}</span><button class="fi-remove" data-idx="${i}">✕</button>`;
-      el.querySelector('span').appendChild(img);
-      fileListEl.appendChild(el);
-    });
-    fileListEl.addEventListener('click', e => {
-      const btn = e.target.closest('.fi-remove'); if (!btn) return;
-      files.splice(parseInt(btn.dataset.idx), 1); renderList();
-      settingsWrap.style.display = files.length ? 'block' : 'none';
-    });
-  }
-
-  /* Convert */
-  document.getElementById('convertBtn').addEventListener('click', async () => {
-    if (!files.length) return;
-    const quality = parseInt(qualitySlider.value) / 100;
-    const progressWrap = document.getElementById('progressWrap');
-    const progressBar = document.getElementById('progressBar');
-    progressWrap.style.display = 'block';
-
-    for (let i = 0; i < files.length; i++) {
-      files[i].status = 'working'; renderList();
-      progressBar.style.width = Math.round((i / files.length) * 100) + '%';
-      try {
-        const blobUrl = URL.createObjectURL(files[i].file);
-        await new Promise((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            if (targetFmt === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-            ctx.drawImage(img, 0, 0);
-            canvas.toBlob(blob => {
-              if (!blob) { reject(); return; }
-              const a = document.createElement('a');
-              a.href = URL.createObjectURL(blob);
-              const base = files[i].file.name.replace(/\.[^.]+$/, '');
-              a.download = `${base}.${targetExt}`;
-              a.click();
-              URL.revokeObjectURL(blobUrl);
-              files[i].status = 'done'; renderList(); resolve();
-            }, targetFmt, quality);
-          };
-          img.onerror = reject;
-          img.src = blobUrl;
-        });
-      } catch { files[i].status = 'error'; renderList(); }
-      await new Promise(r => setTimeout(r, 150));
-    }
-    progressBar.style.width = '100%';
-    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 1000);
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    files = []; renderList(); settingsWrap.style.display = 'none';
-    fileInput.value = '';
-  });
-</script>
 </body>
 </html>

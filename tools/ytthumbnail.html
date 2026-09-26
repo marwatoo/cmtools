@@ -7,16 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-<script>
-  (function() {
-    var STORAGE_KEY = "mts-theme";
-    var theme = localStorage.getItem(STORAGE_KEY);
-    if (!theme) {
-      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
+
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
@@ -131,137 +122,7 @@
   </div>
 </div>
 
-<script src="../assets/theme.js"></script>
-<script>
 
-  const QUALITIES = [
-    { key:'maxresdefault', label:'Max Resolution', res:'1280 × 720+' },
-    { key:'sddefault',     label:'SD Default',     res:'640 × 480' },
-    { key:'hqdefault',     label:'HQ Default',     res:'480 × 360' },
-    { key:'mqdefault',     label:'MQ Default',     res:'320 × 180' },
-    { key:'default',       label:'Default',        res:'120 × 90' },
-    { key:'0',             label:'Frame 0',        res:'480 × 360' },
-    { key:'1',             label:'Frame 1',        res:'120 × 90' },
-    { key:'2',             label:'Frame 2',        res:'120 × 90' },
-    { key:'3',             label:'Frame 3',        res:'120 × 90' },
-  ];
 
-  function extractVideoId(input) {
-    const trim = input.trim();
-    // youtu.be
-    const short = trim.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (short) return short[1];
-    // youtube.com/watch?v=
-    const long = trim.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (long) return long[1];
-    // youtube.com/shorts/ or /embed/
-    const other = trim.match(/(?:shorts|embed|v)\/([a-zA-Z0-9_-]{11})/);
-    if (other) return other[1];
-    // raw ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(trim)) return trim;
-    return null;
-  }
-
-  function thumbUrl(vid, key) {
-    return `https://img.youtube.com/vi/${vid}/${key}.jpg`;
-  }
-
-  async function checkImage(url) {
-    return new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const isGrey = img.naturalWidth === 120 && img.naturalHeight === 90;
-        resolve(!isGrey);
-      };
-      img.onerror = () => resolve(false);
-      img.src = url;
-    });
-  }
-
-  let currentVid = null;
-  let availableThumbs = [];
-
-  document.getElementById('fetchBtn').addEventListener('click', async () => {
-    const input = document.getElementById('ytInput').value;
-    const vid = extractVideoId(input);
-    if (!vid) { alert('Could not find a valid YouTube video ID in that URL.'); return; }
-    currentVid = vid;
-
-    const btn = document.getElementById('fetchBtn');
-    btn.textContent = '⏳ Loading…'; btn.disabled = true;
-
-    document.getElementById('emptyState').style.display = 'none';
-    document.getElementById('results').style.display = 'none';
-
-    // Set video info
-    document.getElementById('viId').textContent = 'ID: ' + vid;
-    document.getElementById('viTitle').textContent = 'youtube.com/watch?v=' + vid;
-    document.getElementById('viThumb').src = thumbUrl(vid, 'default');
-
-    // Check which thumbnails exist
-    availableThumbs = [];
-    const thumbGrid = document.getElementById('thumbGrid');
-    thumbGrid.innerHTML = '';
-
-    for (const q of QUALITIES) {
-      const url = thumbUrl(vid, q.key);
-      const exists = await checkImage(url);
-      if (exists) {
-        availableThumbs.push({ ...q, url });
-        const card = document.createElement('div');
-        card.className = 'thumb-card';
-        card.innerHTML = `
-          <img src="${url}" alt="${q.label}" loading="lazy" />
-          <div class="tc-info">
-            <div><div class="tc-label">${q.label}</div><div class="tc-res">${q.res}</div></div>
-            <button class="tc-dl" data-url="${url}" data-name="${vid}_${q.key}.jpg">⬇ Save</button>
-          </div>`;
-        thumbGrid.appendChild(card);
-      }
-    }
-
-    // Download individual
-    thumbGrid.addEventListener('click', e => {
-      const btn2 = e.target.closest('.tc-dl'); if (!btn2) return;
-      downloadImage(btn2.dataset.url, btn2.dataset.name);
-    });
-
-    document.getElementById('results').style.display = 'block';
-    btn.textContent = '⚡ Fetch Thumbnails'; btn.disabled = false;
-  });
-
-  function downloadImage(url, filename) {
-    fetch(url)
-      .then(r => r.blob())
-      .then(blob => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        a.click();
-      })
-      .catch(() => {
-        // Fallback: open in new tab
-        window.open(url, '_blank');
-      });
-  }
-
-  document.getElementById('dlAllBtn').addEventListener('click', () => {
-    availableThumbs.forEach((t, i) => {
-      setTimeout(() => downloadImage(t.url, `${currentVid}_${t.key}.jpg`), i * 400);
-    });
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    document.getElementById('ytInput').value = '';
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('emptyState').style.display = 'block';
-    currentVid = null; availableThumbs = [];
-  });
-
-  // Enter key
-  document.getElementById('ytInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('fetchBtn').click();
-  });
-</script>
 </body>
 </html>
