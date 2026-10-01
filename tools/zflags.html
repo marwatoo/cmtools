@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     /* ── page-specific only ─────────────────────────────────────────────── */
 
@@ -398,6 +407,431 @@
 
   </div>
 
-  
+  <script>
+    const CW = 1920, CH = 1080;
+    const cv       = document.getElementById('cv');
+    const ctx      = cv.getContext('2d');
+    const noticeEl = document.getElementById('statusNotice');
+    const statusEl = document.getElementById('status');
+    const dlBtn    = document.getElementById('dlBtn');
+    const syncToggle = document.getElementById('syncToggle');
+
+    let flagL = null, flagR = null;
+    let zoomL = 1.0, zoomR = 1.0;
+    let posL = { x: 0, y: 0 }, posR = { x: 0, y: 0 };
+    let syncMode = false;
+
+    syncToggle.addEventListener('change', () => {
+      syncMode = syncToggle.checked;
+    });
+
+    // ── Touch handling for canvas (pinch-to-zoom, pan) ──────────────────────
+    let lastPinchDist = null;
+    let lastTouchCenter = null;
+    let activeSide = null; // 'L' or 'R', determined by touch start position
+
+    function getTouchSide(clientX) {
+      const rect = cv.getBoundingClientRect();
+      return clientX < rect.left + rect.width / 2 ? 'L' : 'R';
+    }
+
+    function pinchDistance(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function touchCenter(touchList) {
+      let cx = 0, cy = 0;
+      for (let t of touchList) { cx += t.clientX; cy += t.clientY; }
+      return { x: cx / touchList.length, y: cy / touchList.length };
+    }
+
+    cv.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        activeSide = getTouchSide(e.touches[0].clientX);
+        lastTouchCenter = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        const mid = touchCenter(e.touches);
+        activeSide = getTouchSide(mid.x);
+        lastPinchDist = pinchDistance(e.touches[0], e.touches[1]);
+        lastTouchCenter = mid;
+      }
+    }, { passive: false });
+
+    cv.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && lastPinchDist !== null && lastTouchCenter !== null) {
+        const newDist = pinchDistance(e.touches[0], e.touches[1]);
+        const scale = newDist / lastPinchDist;
+        applyZoomByTouch(scale, activeSide);
+        lastPinchDist = newDist;
+
+        const newCenter = touchCenter(e.touches);
+        const rect = cv.getBoundingClientRect();
+        const dx = (newCenter.x - lastTouchCenter.x) / rect.width * CW;
+        const dy = (newCenter.y - lastTouchCenter.y) / rect.height * CH;
+        applyPanByTouch(dx, dy, activeSide);
+        lastTouchCenter = newCenter;
+      } else if (e.touches.length === 1 && lastTouchCenter !== null) {
+        const t = e.touches[0];
+        const dx = t.clientX - lastTouchCenter.x;
+        const dy = t.clientY - lastTouchCenter.y;
+        const rect = cv.getBoundingClientRect();
+        applyPanByTouch(dx / rect.width * CW, dy / rect.height * CH, activeSide);
+        lastTouchCenter = { x: t.clientX, y: t.clientY };
+      }
+    }, { passive: false });
+
+    cv.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) lastPinchDist = null;
+      if (e.touches.length === 0) { lastTouchCenter = null; activeSide = null; }
+    });
+
+    cv.addEventListener('touchcancel', () => {
+      lastPinchDist = null;
+      lastTouchCenter = null;
+      activeSide = null;
+    });
+
+    // Mouse wheel zoom on canvas
+    cv.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const side = getTouchSide(e.clientX);
+      const delta = e.deltaY > 0 ? -5 : 5;
+      let val = Math.round((side === 'L' ? zoomL : zoomR) * 100) + delta;
+      val = Math.max(50, Math.min(300, val));
+      setZoom(side, val);
+      if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
+    }, { passive: false });
+
+    // Mouse drag pan on canvas — per-half
+    let isDragging = false;
+    let dragStart = null;
+    let dragSide = null;
+
+    cv.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragSide = getTouchSide(e.clientX);
+      dragStart = { x: e.clientX, y: e.clientY };
+      cv.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging || !dragStart) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      const rect = cv.getBoundingClientRect();
+      const scaledDx = dx / rect.width * CW;
+      const scaledDy = dy / rect.height * CH;
+      applyPanByTouch(scaledDx, scaledDy, dragSide);
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        dragStart = null;
+        dragSide = null;
+        cv.style.cursor = '';
+      }
+    });
+
+    function applyZoomByTouch(scale, side) {
+      let val = Math.round((side === 'L' ? zoomL : zoomR) * 100 * scale);
+      val = Math.max(50, Math.min(300, val));
+      setZoom(side, val);
+      if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
+    }
+
+    function applyPanByTouch(dx, dy, side) {
+      const pos = side === 'L' ? posL : posR;
+      const half = CW / 2;
+      const panScale = 0.5;
+      let newX = pos.x + (dx / half) * panScale;
+      let newY = pos.y + (dy / CH) * panScale;
+      newX = Math.max(-1, Math.min(1, newX));
+      newY = Math.max(-1, Math.min(1, newY));
+      pos.x = newX; pos.y = newY;
+      document.getElementById('posX' + side).value = Math.round(newX * 100);
+      document.getElementById('posY' + side).value = Math.round(newY * 100);
+      updatePosLabels(side);
+
+      if (syncMode) {
+        const otherSide = side === 'L' ? 'R' : 'L';
+        const otherPos = otherSide === 'L' ? posL : posR;
+        otherPos.x = newX; otherPos.y = newY;
+        document.getElementById('posX' + otherSide).value = Math.round(newX * 100);
+        document.getElementById('posY' + otherSide).value = Math.round(newY * 100);
+        updatePosLabels(otherSide);
+      }
+      drawCanvas();
+    }
+
+    function setStatus(msg) {
+      noticeEl.textContent = msg;
+      statusEl.textContent = msg;
+    }
+
+    function wikiThumbURL(title, px) {
+      return `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${px}&origin=*`;
+    }
+
+    async function fetchThumb(title, px = 800) {
+      try {
+        const r = await fetch(wikiThumbURL(title, px));
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        return p.thumbnail ? p.thumbnail.source : null;
+      } catch { return null; }
+    }
+
+    async function searchFlags(q) {
+      const url = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + q)}&limit=7&namespace=0&format=json&origin=*`;
+      const r   = await fetch(url);
+      const d   = await r.json();
+      const titles = d[1] || [];
+      const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
+      return titles
+        .map((t, i) => ({ title: t, thumb: thumbs[i] }))
+        .filter(x => x.thumb);
+    }
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Failed: ' + src));
+        img.src = src;
+      });
+    }
+
+    function drawCanvas() {
+      ctx.clearRect(0, 0, CW, CH);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, CW, CH);
+
+      const half = CW / 2;
+      const divW = 6;
+
+      function drawHalf(img, x, w, zoom, pos) {
+        if (!img) {
+          ctx.fillStyle = '#1c1c1c';
+          ctx.fillRect(x, 0, w, CH);
+          ctx.fillStyle = '#333';
+          ctx.font = 'bold 40px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('No flag selected', x + w / 2, CH / 2);
+          return;
+        }
+        // Base scale to cover the half, then apply user zoom
+        const baseScale = Math.max(w / img.width, CH / img.height);
+        const scale = baseScale * zoom;
+        const sw = img.width  * scale;
+        const sh = img.height * scale;
+        // Centre + position offset (pos is −1..+1 fraction of half-dimensions)
+        const ox = x + (w - sw) / 2 + pos.x * w * 0.5;
+        const oy = (CH - sh) / 2    + pos.y * CH * 0.5;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, 0, w, CH);
+        ctx.clip();
+        ctx.drawImage(img, ox, oy, sw, sh);
+        ctx.restore();
+      }
+
+      drawHalf(flagL, 0,               half - divW / 2, zoomL, posL);
+      drawHalf(flagR, half + divW / 2, half - divW / 2, zoomR, posR);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(half - divW / 2, 0, divW, CH);
+    }
+
+    // ── Zoom setup ──────────────────────────────────────────────────────────
+    function setZoom(side, val) {
+      val = Math.max(50, Math.min(300, Math.round(val)));
+      const slider = document.getElementById('slider' + side);
+      const labelEl = document.getElementById('zoomLabel' + side);
+      slider.value = val;
+      labelEl.textContent = val + '%';
+      if (side === 'L') zoomL = val / 100;
+      else              zoomR = val / 100;
+      drawCanvas();
+    }
+
+    function setupZoom(side) {
+      const slider    = document.getElementById('slider'    + side);
+      const labelEl   = document.getElementById('zoomLabel' + side);
+      const btnIn     = document.getElementById('zoomIn'    + side);
+      const btnOut    = document.getElementById('zoomOut'   + side);
+      const btnReset  = document.getElementById('zoomReset' + side);
+
+      function applyZoom(val) {
+        setZoom(side, val);
+        if (syncMode) setZoom(side === 'L' ? 'R' : 'L', val);
+      }
+
+      slider.addEventListener('input', () => applyZoom(parseInt(slider.value)));
+      btnIn.addEventListener('click',  () => applyZoom(parseInt(slider.value) + 10));
+      btnOut.addEventListener('click', () => applyZoom(parseInt(slider.value) - 10));
+      btnReset.addEventListener('click', () => applyZoom(100));
+    }
+
+    setupZoom('L');
+    setupZoom('R');
+
+    function updatePosLabels(side) {
+      const sliderX = document.getElementById('posX' + side);
+      const sliderY = document.getElementById('posY' + side);
+      const labelX = document.getElementById('posXLabel' + side);
+      const labelY = document.getElementById('posYLabel' + side);
+      const xVal = parseInt(sliderX.value);
+      const yVal = parseInt(sliderY.value);
+      labelX.textContent = (xVal >= 0 ? '+' : '') + xVal + '%';
+      labelY.textContent = (yVal >= 0 ? '+' : '') + yVal + '%';
+    }
+
+    // ── Position setup ──────────────────────────────────────────────────────
+    function setupPosition(side) {
+      const sliderX   = document.getElementById('posX'      + side);
+      const sliderY   = document.getElementById('posY'      + side);
+      const labelX    = document.getElementById('posXLabel' + side);
+      const labelY    = document.getElementById('posYLabel' + side);
+      const btnReset  = document.getElementById('posReset'  + side);
+      const pos       = side === 'L' ? posL : posR;
+
+      function applyPos(fromSide) {
+        const xVal = parseInt(sliderX.value);
+        const yVal = parseInt(sliderY.value);
+        labelX.textContent = (xVal >= 0 ? '+' : '') + xVal + '%';
+        labelY.textContent = (yVal >= 0 ? '+' : '') + yVal + '%';
+        pos.x = xVal / 100;
+        pos.y = yVal / 100;
+        if (syncMode && fromSide) {
+          const otherSide = fromSide === 'L' ? 'R' : 'L';
+          const otherSliderX = document.getElementById('posX' + otherSide);
+          const otherSliderY = document.getElementById('posY' + otherSide);
+          const otherPos = otherSide === 'L' ? posL : posR;
+          otherSliderX.value = xVal;
+          otherSliderY.value = yVal;
+          otherPos.x = xVal / 100;
+          otherPos.y = yVal / 100;
+          updatePosLabels(otherSide);
+        }
+        drawCanvas();
+      }
+
+      sliderX.addEventListener('input', () => applyPos(side));
+      sliderY.addEventListener('input', () => applyPos(side));
+      btnReset.addEventListener('click', () => {
+        sliderX.value = 0;
+        sliderY.value = 0;
+        applyPos(side);
+      });
+    }
+
+    setupPosition('L');
+    setupPosition('R');
+
+    // ── Flag side setup ─────────────────────────────────────────────────────
+    function setupSide(side) {
+      const inp     = document.getElementById('input'   + side);
+      const btn     = document.getElementById('btn'     + side);
+      const sug     = document.getElementById('sug'     + side);
+      const preview = document.getElementById('preview' + side);
+
+      let debounce;
+
+      function triggerSearch() {
+        const q = inp.value.trim();
+        if (q.length < 2) return;
+        clearTimeout(debounce);
+        doSearch(q);
+      }
+
+      inp.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = inp.value.trim();
+        if (q.length < 2) { sug.style.display = 'none'; return; }
+        debounce = setTimeout(() => doSearch(q), 420);
+      });
+
+      btn.addEventListener('click', triggerSearch);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') triggerSearch(); });
+
+      document.addEventListener('click', e => {
+        if (!sug.contains(e.target) && e.target !== inp) sug.style.display = 'none';
+      });
+
+      async function doSearch(q) {
+        setStatus('Searching Wikipedia…');
+        btn.disabled = true;
+        try {
+          const results = await searchFlags(q);
+          if (!results.length) {
+            setStatus('No results — try a different spelling.');
+            btn.disabled = false;
+            return;
+          }
+          sug.innerHTML = '';
+          results.forEach(({ title, thumb }) => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            const label = title.replace(/^Flag of /i, '');
+            item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
+            item.addEventListener('click', () => selectFlag(title, thumb, label));
+            sug.appendChild(item);
+          });
+          sug.style.display = 'block';
+          setStatus(`${results.length} result(s) found — click to select.`);
+        } catch (err) {
+          setStatus('Search error. Check your connection.');
+          console.error(err);
+        }
+        btn.disabled = false;
+      }
+
+      async function selectFlag(title, previewThumb, label) {
+        sug.style.display = 'none';
+        inp.value = label;
+        preview.className = 'flag-preview';
+        preview.innerHTML = '<span>Loading HD flag…</span>';
+        setStatus('Fetching high-resolution flag…');
+        try {
+          const hdSrc = await fetchThumb(title, 1920) || previewThumb;
+          const img   = await loadImg(hdSrc);
+          if (side === 'L') flagL = img;
+          else              flagR = img;
+          preview.className = 'flag-preview loaded';
+          preview.innerHTML = `<img src="${hdSrc}" alt=""><span>${label}</span>`;
+          drawCanvas();
+          const ready = flagL && flagR;
+          dlBtn.disabled = !ready;
+          setStatus(ready
+            ? 'Ready — 1920×1080 image generated.'
+            : 'Now select the ' + (side === 'L' ? 'right' : 'left') + ' flag.');
+        } catch {
+          preview.innerHTML = '<span>Could not load image.</span>';
+          setStatus('Failed to load flag image.');
+        }
+      }
+    }
+
+    setupSide('L');
+    setupSide('R');
+
+    dlBtn.addEventListener('click', () => {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const a  = document.createElement('a');
+      a.href     = cv.toDataURL('image/png');
+      a.download = `flags_1920x1080_${ts}.png`;
+      a.click();
+    });
+
+    drawCanvas();
+  </script>
 </body>
 </html>

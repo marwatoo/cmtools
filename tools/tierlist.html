@@ -9,7 +9,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
   <style>
     
     
@@ -149,7 +158,201 @@
   </div>
 </div>
 
+<script src="../assets/theme.js"></script>
+<script>
 
+const TIER_COLORS = ['#ff6b6b','#ff9f43','#feca57','#48dbfb','#1dd1a1','#5f27cd','#ee5a24','#009432'];
+let tiers = [
+  { label: 'S', color: TIER_COLORS[0] },
+  { label: 'A', color: TIER_COLORS[1] },
+  { label: 'B', color: TIER_COLORS[2] },
+  { label: 'C', color: TIER_COLORS[3] }
+];
+let items = [];
+let nextId = 1;
 
+function renderTiers() {
+  const board = document.getElementById('tierBoard');
+  board.innerHTML = tiers.map((t, i) => `
+    <div class="tier-row" data-tier="${i}">
+      <div class="tier-label" style="background:${t.color}">${t.label}</div>
+      <div class="tier-items" data-tier="${i}"></div>
+    </div>
+  `).join('');
+  
+  document.querySelectorAll('.tier-items').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const tierIndex = parseInt(zone.dataset.tier);
+      const item = items.find(it => it.id == id);
+      if (item) { item.tier = tierIndex; renderItems(); }
+    });
+  });
+  
+  renderItems();
+  renderTierLabels();
+}
+
+function renderItems() {
+  document.querySelectorAll('.tier-items').forEach(z => z.innerHTML = '');
+  const pool = document.getElementById('poolItems');
+  pool.innerHTML = '';
+  
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tier-item';
+    el.draggable = true;
+    el.dataset.id = item.id;
+    
+    if (item.src.startsWith('data:image')) {
+      el.innerHTML = `<img src="${item.src}" /><span class="remove-item">×</span>`;
+    } else {
+      el.innerHTML = `<span class="item-label">${item.src}</span><span class="remove-item">×</span>`;
+    }
+    
+    el.querySelector('.remove-item').addEventListener('click', (e) => {
+      e.stopPropagation();
+      items = items.filter(it => it.id != item.id);
+      renderItems();
+    });
+    
+    el.addEventListener('dragstart', e => {
+      el.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', item.id);
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    
+    if (item.tier === null) {
+      pool.appendChild(el);
+    } else {
+      const zone = document.querySelector(`.tier-items[data-tier="${item.tier}"]`);
+      if (zone) zone.appendChild(el);
+    }
+  });
+}
+
+function renderTierLabels() {
+  const list = document.getElementById('tierLabelsList');
+  list.innerHTML = tiers.map((t, i) => `
+    <div class="input-row" style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="color" class="color-input" value="${t.color}" data-index="${i}" />
+      <input type="text" class="tier-label-input" value="${t.label}" placeholder="Label" data-index="${i}" />
+    </div>
+  `).join('');
+  
+  list.querySelectorAll('.tier-label-input').forEach(input => {
+    input.addEventListener('input', e => {
+      const idx = parseInt(e.target.dataset.index);
+      tiers[idx].label = e.target.value;
+      const labelEl = document.querySelector(`.tier-row[data-tier="${idx}"] .tier-label`);
+      if (labelEl) labelEl.textContent = e.target.value;
+    });
+  });
+  
+  list.querySelectorAll('.color-input').forEach(input => {
+    input.addEventListener('change', e => {
+      tiers[parseInt(e.target.dataset.index)].color = e.target.value;
+      renderTiers();
+    });
+  });
+}
+
+document.getElementById('addTierBtn').addEventListener('click', () => {
+  const label = document.getElementById('newTierLabel').value.trim();
+  if (label) {
+    tiers.push({ label, color: TIER_COLORS[tiers.length % TIER_COLORS.length] });
+    document.getElementById('newTierLabel').value = '';
+    renderTiers();
+  }
+});
+
+const dropzone = document.querySelector('.dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      items.push({ id: nextId++, src: e.target.result, tier: null });
+      renderItems();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const w = parseInt(document.getElementById('exportW').value) || 1200;
+  const h = parseInt(document.getElementById('exportH').value) || 800;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+  
+  const rowH = h / tiers.length;
+  const labelW = 100;
+  
+  tiers.forEach((t, i) => {
+    ctx.fillStyle = t.color;
+    ctx.fillRect(0, i * rowH, labelW, rowH);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Syne, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t.label, labelW / 2, i * rowH + rowH / 2);
+  });
+  
+  let yOffset = 0;
+  tiers.forEach((t, i) => {
+    const tierItems = items.filter(it => it.tier === i);
+    let x = labelW + 10;
+    const zone = document.querySelector(`.tier-items[data-tier="${i}"]`);
+    const itemSize = zone ? Math.min(48, (w - labelW - 20) / Math.max(1, tierItems.length)) : 48;
+    
+    tierItems.forEach(item => {
+      if (item.src.startsWith('data:image')) {
+        const img = new Image();
+        img.src = item.src;
+        ctx.drawImage(img, x, yOffset + 5, itemSize - 4, itemSize - 4);
+      }
+      x += itemSize;
+    });
+    yOffset += rowH;
+  });
+  
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tier-list.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (confirm('Clear all items?')) {
+    items = [];
+    renderItems();
+  }
+});
+
+renderTiers();
+</script>
 </body>
 </html>

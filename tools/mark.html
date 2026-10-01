@@ -7,12 +7,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
-  
-  
+  <script src="../assets/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <style>
     .md-layout {
@@ -221,6 +230,151 @@
     </div>
   </div>
 
-  
+  <script>
+    const mdInput = document.getElementById('markdownInput');
+    const previewDiv = document.getElementById('previewPane');
+    const fileInput = document.getElementById('fileInput');
+    let viewMode = 'preview';
+    let splitMode = false;
+
+    const example = `# Welcome to Markdown ✨
+
+## Features
+- **Bold** and *italic* text
+- ~~Strikethrough~~
+- [Links](https://example.com)
+- Inline \`code\`
+
+## Code Block
+\`\`\`javascript
+const greet = (name) => {
+  console.log(\`Hello, \${name}!\`);
+};
+greet('World');
+\`\`\`
+
+## Table
+| Language | Level |
+|----------|-------|
+| JS       | ★★★   |
+| Python   | ★★★   |
+
+## Quote
+> Design is thinking made visual.
+
+## Image
+![Placeholder](https://placehold.co/600x200/e8ff47/111?text=Markdown+Preview)`;
+
+    function render() {
+      const text = mdInput.value;
+      if (!text.trim()) {
+        previewDiv.innerHTML = '<em>Start typing to see preview...</em>';
+        return;
+      }
+      try {
+        marked.setOptions({ highlight: function(code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            try { return hljs.highlight(code, { language: lang }).value; }
+            catch(e) {}
+          }
+          try { return hljs.highlightAuto(code).value; }
+          catch(e) { return code; }
+        }});
+        const html = marked.parse(text);
+        previewDiv.innerHTML = html;
+        previewDiv.querySelectorAll('pre code').forEach((block) => {
+          hljs.highlightElement(block);
+        });
+      } catch(e) {
+        previewDiv.innerHTML = '<span style="color:var(--accent3)">Error: ' + e.message + '</span>';
+      }
+    }
+
+    function setView(mode) {
+      viewMode = mode;
+      splitMode = false;
+      const layout = document.querySelector('.md-layout');
+      const splitBtn = document.getElementById('splitBtn');
+      layout.classList.remove('split', 'code', 'preview');
+      splitBtn.classList.remove('active');
+      document.getElementById('viewPreview').classList.remove('active');
+      document.getElementById('viewCode').classList.remove('active');
+      
+      if (mode === 'preview') {
+        document.getElementById('viewPreview').classList.add('active');
+        layout.classList.add('preview');
+      } else if (mode === 'code') {
+        document.getElementById('viewCode').classList.add('active');
+        layout.classList.add('code');
+      }
+    }
+
+    mdInput.addEventListener('input', render);
+
+    document.getElementById('viewPreview').addEventListener('click', () => setView('preview'));
+    document.getElementById('viewCode').addEventListener('click', () => setView('code'));
+    
+    document.getElementById('splitBtn').addEventListener('click', () => {
+      splitMode = !splitMode;
+      const layout = document.querySelector('.md-layout');
+      const btn = document.getElementById('splitBtn');
+      if (splitMode) {
+        layout.classList.remove('code', 'preview');
+        layout.classList.add('split');
+        btn.classList.add('active');
+        document.getElementById('viewPreview').classList.remove('active');
+        document.getElementById('viewCode').classList.remove('active');
+        viewMode = 'split';
+      } else {
+        setView('preview');
+      }
+    });
+
+    document.getElementById('pasteBtn').addEventListener('click', async () => {
+      try {
+        mdInput.value = await navigator.clipboard.readText();
+        render();
+      } catch(err) {
+        alert('Paste denied. Use Ctrl+V to paste manually.');
+      }
+    });
+
+    document.getElementById('loadFileBtn').addEventListener('click', () => fileInput.click());
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => { mdInput.value = ev.target.result; render(); };
+        reader.readAsText(file);
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      mdInput.value = ''; render();
+    });
+
+    let rtlMode = false;
+    document.getElementById('rtlBtn').addEventListener('click', () => {
+      rtlMode = !rtlMode;
+      previewDiv.dir = rtlMode ? 'rtl' : 'ltr';
+      document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
+    });
+
+    document.getElementById('copyHtmlBtn').addEventListener('click', async () => {
+      try {
+        const html = marked.parse(mdInput.value);
+        await navigator.clipboard.writeText(html);
+        const btn = document.getElementById('copyHtmlBtn');
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = '📄 Copy HTML', 1200);
+      } catch(err) {
+        alert('Copy failed. Select manually.');
+      }
+    });
+
+    mdInput.value = example;
+    render();
+  </script>
 </body>
 </html>

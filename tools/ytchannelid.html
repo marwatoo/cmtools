@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .search-row {
       display: flex;
@@ -233,6 +242,140 @@
     </div>
   </div>
 
-  
+  <script>
+    const PROXY = (url) => 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+
+    const handleInput = document.getElementById('handleInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const status = document.getElementById('status');
+    const resultsWrap = document.getElementById('resultsWrap');
+    const channelIdResult = document.getElementById('channelIdResult');
+    const rssResult = document.getElementById('rssResult');
+    const channelUrlResult = document.getElementById('channelUrlResult');
+
+    handleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+    searchBtn.addEventListener('click', doSearch);
+
+    async function doSearch() {
+      const raw = handleInput.value.trim();
+      if (!raw) return;
+
+      searchBtn.disabled = true;
+      status.textContent = 'Looking up channel…';
+      resultsWrap.classList.remove('visible');
+
+      let handle = raw;
+      if (handle.startsWith('@')) handle = handle.slice(1);
+      if (handle.includes('youtube.com')) {
+        const m = handle.match(/@([^/?&#]+)/);
+        if (m) handle = m[1];
+      }
+
+      const url = 'https://www.youtube.com/@' + handle;
+
+      try {
+        const html = await fetch(PROXY(url), { mode: 'cors' }).then(r => {
+          if (!r.ok) throw new Error('Channel not found');
+          return r.text();
+        });
+
+        const idMatch = html.match(/channel_id=([^"&]+)/) || html.match(/"channelId":"([^"]+)"/);
+        if (!idMatch) throw new Error('Could not find channel ID');
+
+        const channelId = idMatch[1];
+        const rssFeed = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId;
+        const channelUrl = 'https://www.youtube.com/channel/' + channelId;
+
+        // Extract avatar - get the largest thumbnail available
+        let avatarUrl = '';
+        const avatarBlock = html.match(/"avatar":\{"thumbnails":\[([^\]]+)\]/);
+        if (avatarBlock) {
+          const thumbs = avatarBlock[1].match(/"url":"([^"]+)"/g);
+          if (thumbs && thumbs.length) {
+            avatarUrl = thumbs[thumbs.length - 1].replace(/"url":"/, '').replace(/"/g, '');
+          }
+        }
+        avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+
+        // Extract channel title
+        const titleMatch = html.match(/"title":"([^"]{1,100}?)"/);
+        const channelTitle = titleMatch ? titleMatch[1] : '';
+
+        // Extract subscriber count
+        const subMatch = html.match(/"subscriberCountText":\{"accessibility":\{"accessibilityData":\{"label":"([^"]+)"/);
+        const subCount = subMatch ? subMatch[1] : '';
+
+        // Extract video count
+        const vidMatch = html.match(/"videosText":\{"simpleText":"([^"]+)"/) || html.match(/"videoCountText":\{"simpleText":"([^"]+)"/);
+        const videoCount = vidMatch ? vidMatch[1] : '';
+
+        // Extract description
+        const descMatch = html.match(/"description":\{"simpleText":"((?:[^"\\]|\\.)*)"/);
+        const desc = descMatch ? descMatch[1].replace(/\\n/g, '\n').replace(/\\u0026/g, '&') : '';
+
+        // Set avatar
+        const avatarImg = document.getElementById('avatarImg');
+        if (avatarUrl) {
+          avatarImg.src = avatarUrl;
+          avatarImg.style.display = 'block';
+        } else {
+          avatarImg.style.display = 'none';
+        }
+
+        // Set channel info
+        document.getElementById('channelTitle').textContent = channelTitle || handle;
+        document.getElementById('channelHandle').textContent = '@' + handle;
+        document.getElementById('subCount').textContent = subCount || '';
+        document.getElementById('videoCount').textContent = videoCount || '';
+        const descEl = document.getElementById('channelDesc');
+        if (desc) {
+          descEl.textContent = desc;
+          descEl.style.display = 'block';
+        } else {
+          descEl.style.display = 'none';
+        }
+
+        // Set results
+        channelIdResult.textContent = channelId;
+        rssResult.href = rssFeed;
+        rssResult.textContent = rssFeed;
+        channelUrlResult.href = channelUrl;
+        channelUrlResult.textContent = channelUrl;
+
+        resultsWrap.classList.add('visible');
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = '⚠ ' + (e.message || 'Failed to find channel. Try a different handle.');
+      } finally {
+        searchBtn.disabled = false;
+      }
+    }
+
+    async function copyText(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch {
+        alert('Copy manually: ' + text);
+      }
+    }
+
+    document.getElementById('copyId').addEventListener('click', function() {
+      copyText(channelIdResult.textContent, this);
+    });
+    document.getElementById('copyRss').addEventListener('click', function() {
+      copyText(rssResult.textContent, this);
+    });
+    document.getElementById('copyUrl').addEventListener('click', function() {
+      copyText(channelUrlResult.href, this);
+    });
+  </script>
 </body>
 </html>

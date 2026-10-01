@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .mockup-layout {
       display: grid;
@@ -486,6 +495,609 @@
   </div>
 </div>
 
+<script>
+let frameType = 'phone';
+let deviceColor = '#1a1a1a';
+let bgType = 'solid';
+let bgColor = '#ffffff';
+let gradient = '667eea,764ba2';
+let screenshotImage = null;
+let canvasW = 1200;
+let canvasH = 900;
 
+let browserFrameCache = null;
+let browserFrameCacheKey = '';
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+function adjustColor(hex, amount) {
+  const rgb = hexToRgb(hex);
+  const r = Math.min(255, Math.max(0, rgb.r + amount));
+  const g = Math.min(255, Math.max(0, rgb.g + amount));
+  const b = Math.min(255, Math.max(0, rgb.b + amount));
+  return `rgb(${r},${g},${b})`;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawPhoneFrame(ctx, x, y, w, h, img, padding) {
+  const deviceRgb = hexToRgb(deviceColor);
+  const bezelWidth = Math.max(8, w * 0.025);
+  const screenX = x + bezelWidth;
+  const screenY = y + bezelWidth;
+  const screenW = w - bezelWidth * 2;
+  const screenH = h - bezelWidth * 2;
+  const cornerR = w * 0.08;
+
+  ctx.save();
+
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = parseInt(document.getElementById('shadow').value) * 1.5;
+  ctx.shadowOffsetY = parseInt(document.getElementById('shadow').value) * 0.55;
+
+  roundRect(ctx, x, y, w, h, cornerR);
+  const bodyGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+  bodyGrad.addColorStop(0, adjustColor(deviceColor, 15));
+  bodyGrad.addColorStop(0.5, deviceColor);
+  bodyGrad.addColorStop(1, adjustColor(deviceColor, -10));
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+
+  ctx.beginPath();
+  ctx.moveTo(screenX + cornerR - bezelWidth * 0.3, screenY);
+  ctx.lineTo(screenX + screenW - cornerR + bezelWidth * 0.3, screenY);
+  ctx.quadraticCurveTo(screenX + screenW, screenY, screenX + screenW, screenY + cornerR - bezelWidth * 0.3);
+  ctx.lineTo(screenX + screenW, screenY + screenH - cornerR + bezelWidth * 0.3);
+  ctx.quadraticCurveTo(screenX + screenW, screenY + screenH, screenX + screenW - cornerR + bezelWidth * 0.3, screenY + screenH);
+  ctx.lineTo(screenX + cornerR - bezelWidth * 0.3, screenY + screenH);
+  ctx.quadraticCurveTo(screenX, screenY + screenH, screenX, screenY + screenH - cornerR + bezelWidth * 0.3);
+  ctx.lineTo(screenX, screenY + cornerR - bezelWidth * 0.3);
+  ctx.quadraticCurveTo(screenX, screenY, screenX + cornerR - bezelWidth * 0.3, screenY);
+  ctx.closePath();
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  if (img) {
+    ctx.save();
+    ctx.clip();
+
+    const imgAspect = img.width / img.height;
+    const screenAspect = screenW / screenH;
+    let drawX, drawY, drawW, drawH;
+
+    if (imgAspect > screenAspect) {
+      drawH = screenH;
+      drawW = screenH * imgAspect;
+      drawX = screenX + (screenW - drawW) / 2;
+      drawY = screenY;
+    } else {
+      drawW = screenW;
+      drawH = screenW / imgAspect;
+      drawX = screenX;
+      drawY = screenY + (screenH - drawH) / 2;
+    }
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    ctx.restore();
+  }
+
+  const notchW = w * 0.3;
+  const notchH = h * 0.035;
+  const notchX = x + (w - notchW) / 2;
+  const notchY = y + bezelWidth * 0.5;
+  const notchR = notchH * 0.4;
+
+  roundRect(ctx, notchX, notchY, notchW, notchH, notchR);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  const camR = Math.max(3, h * 0.008);
+  ctx.beginPath();
+  ctx.arc(notchX + notchW * 0.75, notchY + notchH / 2, camR, 0, Math.PI * 2);
+  ctx.fillStyle = adjustColor(deviceColor, 25);
+  ctx.fill();
+
+  const speakerW = w * 0.06;
+  const speakerH = Math.max(2, h * 0.004);
+  roundRect(ctx, notchX + notchW * 0.35, notchY + notchH / 2 - speakerH / 2, speakerW, speakerH, speakerH / 2);
+  ctx.fillStyle = adjustColor(deviceColor, 20);
+  ctx.fill();
+
+  const indicatorW = w * 0.25;
+  const indicatorH = Math.max(3, h * 0.006);
+  const indicatorX = x + (w - indicatorW) / 2;
+  const indicatorY = y + h - bezelWidth * 0.6 - indicatorH;
+  roundRect(ctx, indicatorX, indicatorY, indicatorW, indicatorH, indicatorH / 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fill();
+
+  const sideBtnW = Math.max(2, bezelWidth * 0.3);
+  const sideBtnH = h * 0.06;
+
+  ctx.fillStyle = adjustColor(deviceColor, 10);
+  roundRect(ctx, x - sideBtnW * 0.5, y + h * 0.2, sideBtnW, sideBtnH, sideBtnW / 2);
+  ctx.fill();
+
+  roundRect(ctx, x - sideBtnW * 0.5, y + h * 0.28, sideBtnW, sideBtnH * 0.7, sideBtnW / 2);
+  ctx.fill();
+
+  roundRect(ctx, x - sideBtnW * 0.5, y + h * 0.36, sideBtnW, sideBtnH * 0.7, sideBtnW / 2);
+  ctx.fill();
+
+  const pwrBtnH = h * 0.08;
+  roundRect(ctx, x + w + sideBtnW * -0.5, y + h * 0.25, sideBtnW, pwrBtnH, sideBtnW / 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, cornerR);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawLaptopFrame(ctx, x, y, w, h, img) {
+  const deviceRgb = hexToRgb(deviceColor);
+  const bezelTop = Math.max(6, h * 0.03);
+  const bezelSides = Math.max(6, w * 0.015);
+  const bezelBottom = Math.max(4, h * 0.02);
+  const chinH = h * 0.045;
+
+  const screenX = x + bezelSides;
+  const screenY = y + bezelTop;
+  const screenW = w - bezelSides * 2;
+  const screenH = h - bezelTop - bezelBottom - chinH;
+
+  const cornerR = Math.max(4, w * 0.015);
+
+  ctx.save();
+
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = parseInt(document.getElementById('shadow').value) * 1.5;
+  ctx.shadowOffsetY = parseInt(document.getElementById('shadow').value) * 0.55;
+
+  roundRect(ctx, x, y, w, h - chinH, cornerR);
+  const bodyGrad = ctx.createLinearGradient(x, y, x, y + h - chinH);
+  bodyGrad.addColorStop(0, adjustColor(deviceColor, 12));
+  bodyGrad.addColorStop(1, adjustColor(deviceColor, -8));
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+
+  ctx.save();
+  roundRect(ctx, screenX, screenY, screenW, screenH, Math.max(2, cornerR * 0.5));
+  ctx.clip();
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(screenX, screenY, screenW, screenH);
+
+  if (img) {
+    const imgAspect = img.width / img.height;
+    const screenAspect = screenW / screenH;
+    let drawX, drawY, drawW, drawH;
+
+    if (imgAspect > screenAspect) {
+      drawH = screenH;
+      drawW = screenH * imgAspect;
+      drawX = screenX + (screenW - drawW) / 2;
+      drawY = screenY;
+    } else {
+      drawW = screenW;
+      drawH = screenW / imgAspect;
+      drawX = screenX;
+      drawY = screenY + (screenH - drawH) / 2;
+    }
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  }
+  ctx.restore();
+
+  const camR = Math.max(2.5, bezelTop * 0.35);
+  const camX = x + w / 2;
+  const camY = y + bezelTop / 2;
+  ctx.beginPath();
+  ctx.arc(camX, camY, camR, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(camX, camY, camR * 0.4, 0, Math.PI * 2);
+  ctx.fillStyle = adjustColor(deviceColor, 30);
+  ctx.fill();
+
+  ctx.fillStyle = adjustColor(deviceColor, -5);
+  ctx.fillRect(x + w * 0.38, y + h - chinH - bezelBottom, w * 0.24, Math.max(2, chinH * 0.15));
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+
+  const baseY = y + h - chinH;
+  const baseH = chinH;
+  const baseOverhang = w * 0.02;
+
+  ctx.beginPath();
+  ctx.moveTo(x - baseOverhang, baseY);
+  ctx.lineTo(x + w + baseOverhang, baseY);
+  ctx.quadraticCurveTo(x + w + baseOverhang + 4, baseY, x + w + baseOverhang + 4, baseY + 2);
+  ctx.lineTo(x + w + baseOverhang + 4, baseY + baseH - 2);
+  ctx.quadraticCurveTo(x + w + baseOverhang + 4, baseY + baseH, x + w + baseOverhang, baseY + baseH);
+  ctx.lineTo(x - baseOverhang, baseY + baseH);
+  ctx.quadraticCurveTo(x - baseOverhang - 4, baseY + baseH, x - baseOverhang - 4, baseY + baseH - 2);
+  ctx.lineTo(x - baseOverhang - 4, baseY + 2);
+  ctx.quadraticCurveTo(x - baseOverhang - 4, baseY, x - baseOverhang, baseY);
+  ctx.closePath();
+
+  const baseGrad = ctx.createLinearGradient(x, baseY, x, baseY + baseH);
+  baseGrad.addColorStop(0, adjustColor(deviceColor, 8));
+  baseGrad.addColorStop(1, adjustColor(deviceColor, -15));
+  ctx.fillStyle = baseGrad;
+  ctx.fill();
+
+  ctx.restore();
+
+  const indentW = w * 0.12;
+  const indentH = Math.max(2, baseH * 0.2);
+  const indentX = x + (w - indentW) / 2;
+  const indentY = baseY + 2;
+  ctx.fillStyle = adjustColor(deviceColor, -10);
+  roundRect(ctx, indentX, indentY, indentW, indentH, indentH / 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h - chinH, cornerR);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawBrowserFrame(ctx, x, y, w, h, img) {
+  const titleBarH = Math.max(32, h * 0.055);
+  const urlBarH = Math.max(22, h * 0.038);
+  const ubY = y + (titleBarH - urlBarH) / 2;
+  const dotR = Math.max(4, titleBarH * 0.18);
+  const dotsArea = titleBarH * 0.45 + dotR * 2.8 * 2;
+  const navGap = Math.max(8, w * 0.012);
+  const urlBarMarginX = Math.max(8, w * 0.02);
+  const urlBarX = x + dotsArea + navGap;
+  const urlBarW = w - dotsArea - navGap - urlBarMarginX;
+  const cornerR = Math.max(8, w * 0.02);
+  const shadowVal = parseInt(document.getElementById('shadow').value);
+  const cacheKey = `${w|0}_${h|0}_${titleBarH|0}_${urlBarH|0}`;
+
+  if (!browserFrameCache || browserFrameCacheKey !== cacheKey) {
+    browserFrameCache = document.createElement('canvas');
+    browserFrameCache.width = w;
+    browserFrameCache.height = h;
+    const bCtx = browserFrameCache.getContext('2d');
+
+    const titleGrad = bCtx.createLinearGradient(0, 0, 0, titleBarH);
+    titleGrad.addColorStop(0, '#e8e8ed');
+    titleGrad.addColorStop(1, '#dcdce0');
+    bCtx.fillStyle = titleGrad;
+
+    bCtx.beginPath();
+    bCtx.moveTo(cornerR, 0);
+    bCtx.lineTo(w - cornerR, 0);
+    bCtx.quadraticCurveTo(w, 0, w, cornerR);
+    bCtx.lineTo(w, titleBarH);
+    bCtx.lineTo(0, titleBarH);
+    bCtx.lineTo(0, cornerR);
+    bCtx.quadraticCurveTo(0, 0, cornerR, 0);
+    bCtx.closePath();
+    bCtx.fill();
+
+    bCtx.beginPath();
+    bCtx.moveTo(0, titleBarH);
+    bCtx.lineTo(w, titleBarH);
+    bCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+    bCtx.lineWidth = 1;
+    bCtx.stroke();
+
+    const dotY = titleBarH / 2;
+    const dotX = titleBarH * 0.45;
+    const dotGap = dotR * 2.8;
+    ['#ff5f57', '#febc2e', '#28c840'].forEach((color, i) => {
+      bCtx.beginPath();
+      bCtx.arc(dotX + i * dotGap, dotY, dotR, 0, Math.PI * 2);
+      bCtx.fillStyle = color;
+      bCtx.fill();
+      bCtx.strokeStyle = adjustColor(color, -20);
+      bCtx.lineWidth = 0.5;
+      bCtx.stroke();
+    });
+
+    const ubCornerRadius = urlBarH / 2;
+    roundRect(bCtx, urlBarX - x, ubY - y, urlBarW, urlBarH, ubCornerRadius);
+    bCtx.fillStyle = '#f5f5f7';
+    bCtx.fill();
+    bCtx.strokeStyle = 'rgba(0,0,0,0.06)';
+    bCtx.lineWidth = 1;
+    roundRect(bCtx, urlBarX - x, ubY - y, urlBarW, urlBarH, ubCornerRadius);
+    bCtx.stroke();
+
+    const lockIconX = (urlBarX - x) + urlBarH * 0.4;
+    bCtx.font = `${Math.max(8, urlBarH * 0.4)}px DM Sans`;
+    bCtx.fillStyle = '#888';
+    bCtx.textAlign = 'left';
+    bCtx.textBaseline = 'middle';
+    bCtx.fillText('\uD83D\uDD12', lockIconX, ubY - y + urlBarH / 2);
+
+    browserFrameCacheKey = cacheKey;
+  }
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = shadowVal * 1.5;
+  ctx.shadowOffsetY = shadowVal * 0.55;
+  roundRect(ctx, x, y, w, h, cornerR);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.drawImage(browserFrameCache, x, y);
+
+  const contentY = y + titleBarH;
+  const contentH = h - titleBarH;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, contentY + cornerR * 0.5);
+  ctx.lineTo(x, y + h - cornerR);
+  ctx.quadraticCurveTo(x, y + h, x + cornerR, y + h);
+  ctx.lineTo(x + w - cornerR, y + h);
+  ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - cornerR);
+  ctx.lineTo(x + w, contentY + cornerR * 0.5);
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x, contentY, w, contentH);
+
+  if (img) {
+    const contentX = x;
+    const contentW = w;
+    const imgAspect = img.width / img.height;
+    const contentAspect = contentW / contentH;
+    let drawX, drawY, drawW, drawH;
+
+    if (imgAspect > contentAspect) {
+      drawH = contentH;
+      drawW = contentH * imgAspect;
+      drawX = contentX + (contentW - drawW) / 2;
+      drawY = contentY;
+    } else {
+      drawW = contentW;
+      drawH = contentW / imgAspect;
+      drawX = contentX;
+      drawY = contentY + (contentH - drawH) / 2;
+    }
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, x, y, w, h, cornerR);
+  ctx.stroke();
+
+  const urlTextVal = document.getElementById('urlText').value || 'https://example.com';
+  ctx.font = `${Math.max(9, urlBarH * 0.5)}px DM Mono`;
+  ctx.fillStyle = '#555';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const lockIconXFinal = urlBarX + urlBarH * 0.4;
+  ctx.fillText(urlTextVal, lockIconXFinal + urlBarH * 0.4, ubY + urlBarH / 2);
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('mockupCanvas');
+  const ctx = canvas.getContext('2d');
+  const padding = parseInt(document.getElementById('padding').value);
+  const scale = parseInt(document.getElementById('scale').value) / 100;
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+
+  if (bgType === 'gradient') {
+    const colors = gradient.split(',');
+    const grad = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+    grad.addColorStop(0, '#' + colors[0]);
+    grad.addColorStop(1, '#' + colors[1]);
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = bgColor;
+  }
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  if (!screenshotImage) {
+    ctx.fillStyle = '#888';
+    ctx.font = '600 18px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload a screenshot to preview', canvasW / 2, canvasH / 2);
+    return;
+  }
+
+  let frameW, frameH;
+  const maxW = canvasW - padding * 2;
+  const maxH = canvasH - padding * 2;
+
+  if (frameType === 'phone') {
+    const phoneAspect = 9 / 19.5;
+    frameH = Math.min(maxH, maxW / phoneAspect) * scale;
+    frameW = frameH * phoneAspect;
+  } else if (frameType === 'laptop') {
+    const laptopAspect = 16 / 10;
+    frameH = Math.min(maxH, maxW / laptopAspect) * scale;
+    frameW = frameH * laptopAspect;
+  } else {
+    const browserAspect = 16 / 10;
+    frameH = Math.min(maxH, maxW / browserAspect) * scale;
+    frameW = frameH * browserAspect;
+  }
+
+  const frameX = (canvasW - frameW) / 2;
+  const frameY = (canvasH - frameH) / 2;
+
+  if (frameType === 'phone') {
+    drawPhoneFrame(ctx, frameX, frameY, frameW, frameH, screenshotImage, padding);
+  } else if (frameType === 'laptop') {
+    drawLaptopFrame(ctx, frameX, frameY, frameW, frameH, screenshotImage);
+  } else {
+    drawBrowserFrame(ctx, frameX, frameY, frameW, frameH, screenshotImage);
+  }
+}
+
+function updateCanvasSize() {
+  const scale = parseInt(document.getElementById('scale').value) / 100;
+  canvasW = 1200;
+  canvasH = 900;
+  renderCanvas();
+}
+
+document.querySelectorAll('.style-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    frameType = e.currentTarget.dataset.frame;
+    browserFrameCache = null;
+    browserFrameCacheKey = '';
+    document.getElementById('deviceColorSection').style.display = frameType === 'browser' ? 'none' : 'block';
+    updateCanvasSize();
+  });
+});
+
+document.querySelectorAll('.bg-toggle-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.bg-toggle-btn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    bgType = e.currentTarget.dataset.bgtype;
+    document.getElementById('solidColors').style.display = bgType === 'solid' ? 'block' : 'none';
+    document.getElementById('gradientColors').style.display = bgType === 'gradient' ? 'block' : 'none';
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('gradColors').addEventListener('click', e => {
+  if (e.target.classList.contains('gradient-btn')) {
+    document.querySelectorAll('#gradColors .gradient-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    gradient = e.target.dataset.grad;
+    renderCanvas();
+  }
+});
+
+document.getElementById('deviceColors').addEventListener('click', e => {
+  if (e.target.classList.contains('device-color-btn')) {
+    document.querySelectorAll('#deviceColors .device-color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    deviceColor = e.target.dataset.color;
+    renderCanvas();
+  }
+});
+
+document.getElementById('padding').addEventListener('input', e => {
+  document.getElementById('paddingVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('shadow').addEventListener('input', e => {
+  document.getElementById('shadowVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('scale').addEventListener('input', e => {
+  document.getElementById('scaleVal').textContent = e.target.value + '%';
+  updateCanvasSize();
+});
+
+document.getElementById('urlText').addEventListener('input', renderCanvas);
+
+document.getElementById('downloadPngBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('mockupCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mockup.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('downloadJpgBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('mockupCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mockup.jpg';
+    a.click();
+  }, 'image/jpeg', 0.92);
+});
+
+const dropzone = document.getElementById('screenshotDropzone');
+const input = document.getElementById('screenshotInput');
+const preview = document.getElementById('screenshotPreview');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+});
+input.addEventListener('change', () => { if (input.files.length) loadImage(input.files[0]); });
+
+function loadImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      screenshotImage = img;
+      document.getElementById('screenshotText').textContent = file.name.substring(0, 25);
+      dropzone.classList.add('has-file');
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      renderCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+renderCanvas();
+</script>
 </body>
 </html>

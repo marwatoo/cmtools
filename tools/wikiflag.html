@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .tool-wrap {
       max-width: 640px; margin: 0 auto; padding: 32px 24px;
@@ -171,6 +180,197 @@
     <canvas id="exportCanvas"></canvas>
   </div>
 
-  
+  <script>
+    const $ = id => document.getElementById(id);
+    let hdImg = null;
+    let currentTitle = '';
+
+    function setStatus(msg) {
+      const el = $('statusMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideStatus() {
+      $('statusMsg').classList.remove('visible');
+    }
+
+    function wikiThumbURL(title, px) {
+      return `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${px}&origin=*`;
+    }
+
+    async function fetchThumb(title, px = 800) {
+      try {
+        const r = await fetch(wikiThumbURL(title, px));
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        return p.thumbnail ? p.thumbnail.source : null;
+      } catch { return null; }
+    }
+
+    async function fetchOriginal(title) {
+      try {
+        const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url|size&format=json&origin=*`);
+        const d = await r.json();
+        const p = Object.values(d.query.pages)[0];
+        if (p.imageinfo && p.imageinfo.length > 0) {
+          return p.imageinfo[0].url;
+        }
+      } catch { return null; }
+      return null;
+    }
+
+    async function searchFlags(q) {
+      const words = [...new Set(
+        [q, ...q.trim().split(/\s+/)].filter(w => w.length >= 2)
+      )];
+
+      const queries = words.map(w =>
+        fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent('Flag of ' + w)}&limit=7&namespace=0&format=json&origin=*`)
+          .then(r => r.json()).then(d => d[1] || []).catch(() => [])
+      );
+
+      const results = await Promise.all(queries);
+
+      const seen = new Set();
+      const titles = [];
+      for (const batch of results) {
+        for (const t of batch) {
+          if (!seen.has(t) && /^Flag of /i.test(t)) {
+            seen.add(t);
+            titles.push(t);
+          }
+        }
+      }
+
+      const thumbs = await Promise.all(titles.map(t => fetchThumb(t, 300)));
+      return titles
+        .map((t, i) => ({ title: t, thumb: thumbs[i] }))
+        .filter(x => x.thumb);
+    }
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => res(img);
+        img.onerror = () => rej(new Error('Failed: ' + src));
+        img.src = src;
+      });
+    }
+
+    async function doSearch(q) {
+      setStatus('Searching Wikipedia…');
+      $('searchBtn').disabled = true;
+      try {
+        const results = await searchFlags(q);
+        if (!results.length) {
+          setStatus('No flag results found — try a different country name.');
+          $('searchBtn').disabled = false;
+          return;
+        }
+        $('suggestions').innerHTML = '';
+        results.forEach(({ title, thumb }) => {
+          const item = document.createElement('div');
+          item.className = 'suggestion-item';
+          const label = title.replace(/^Flag of (?:the )?/i, '');
+          item.innerHTML = `<img src="${thumb}" alt=""><span>${label}</span>`;
+          item.addEventListener('click', () => selectFlag(title, thumb, label));
+          $('suggestions').appendChild(item);
+        });
+        $('suggestions').classList.add('visible');
+        setStatus(`${results.length} result(s) found — click to select.`);
+      } catch (err) {
+        setStatus('Search error. Check your connection.');
+        console.error(err);
+      }
+      $('searchBtn').disabled = false;
+    }
+
+    async function selectFlag(title, previewThumb, label) {
+      $('suggestions').classList.remove('visible');
+      $('flagSearch').value = label;
+      currentTitle = title;
+      setStatus('Fetching high-resolution flag…');
+      try {
+        const hdSrc = await fetchOriginal(title) || await fetchThumb(title, 1920) || previewThumb;
+        hdImg = await loadImg(hdSrc);
+
+      $('previewImg').src = hdSrc;
+      $('flagName').textContent = label;
+      $('flagRes').textContent = `${hdImg.width} × ${hdImg.height}px`;
+
+      $('previewArea').classList.add('visible');
+      $('actionRow').style.display = 'flex';
+      $('emptyState').style.display = 'none';
+        hideStatus();
+      } catch {
+        setStatus('Failed to load flag image.');
+      }
+    }
+
+    $('searchBtn').addEventListener('click', () => {
+      const q = $('flagSearch').value.trim();
+      if (q.length < 2) return;
+      $('suggestions').classList.remove('visible');
+      doSearch(q);
+    });
+
+    $('flagSearch').addEventListener('input', () => {
+      clearTimeout($('flagSearch').debounce);
+      const q = $('flagSearch').value.trim();
+      if (q.length < 2) { $('suggestions').classList.remove('visible'); return; }
+      $('flagSearch').debounce = setTimeout(() => doSearch(q), 420);
+    });
+
+    $('flagSearch').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const q = $('flagSearch').value.trim();
+        if (q.length < 2) return;
+        $('suggestions').classList.remove('visible');
+        doSearch(q);
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!$('suggestions').contains(e.target) && e.target !== $('flagSearch')) {
+        $('suggestions').classList.remove('visible');
+      }
+    });
+
+    $('dlBtn').addEventListener('click', () => {
+      if (!hdImg) return;
+      const canvas = $('exportCanvas');
+      canvas.width = hdImg.width;
+      canvas.height = hdImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(hdImg, 0, 0);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      const name = currentTitle.replace(/^Flag of (?:the )?/i, '').replace(/\s+/g, '_').toLowerCase();
+      a.download = `flag_${name}_${hdImg.width}x${hdImg.height}.png`;
+      a.click();
+    });
+
+    $('copyBtn').addEventListener('click', async () => {
+      if (!hdImg) return;
+      try {
+        const canvas = $('exportCanvas');
+        canvas.width = hdImg.width;
+        canvas.height = hdImg.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(hdImg, 0, 0);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        $('copyBtn').textContent = '✓ Copied!';
+        setTimeout(() => { $('copyBtn').textContent = 'Copy to Clipboard'; }, 2000);
+      } catch (err) {
+        setStatus('Failed to copy — try downloading instead.');
+        console.error(err);
+      }
+    });
+  </script>
 </body>
 </html>

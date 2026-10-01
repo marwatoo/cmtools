@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .color-layout {
       display: grid;
@@ -263,6 +272,116 @@
     </div>
   </div>
 
-  
+  <script>
+    let R = 232, G = 255, B = 71;
+
+    const hexEl = document.getElementById('hex');
+    const rgbEl = document.getElementById('rgb');
+    const hslEl = document.getElementById('hsl');
+    const preview = document.getElementById('preview');
+    const rEl = document.getElementById('r');
+    const gEl = document.getElementById('g');
+    const bEl = document.getElementById('b');
+    const picker = document.getElementById('colorPicker');
+
+    function toHex(n) { return n.toString(16).padStart(2,'0'); }
+    function fromHex(h) { return parseInt(h, 16); }
+
+    function rgbToHex(r,g,b) { return '#' + toHex(r) + toHex(g) + toHex(b); }
+    function hexToRgb(hex) {
+      hex = hex.replace('#','');
+      if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+      return { r: fromHex(hex.slice(0,2)), g: fromHex(hex.slice(2,4)), b: fromHex(hex.slice(4,6)) };
+    }
+
+    function rgbToHsl(r,g,b) {
+      r/=255; g/=255; b/=255;
+      const max=Math.max(r,g,b), min=Math.min(r,g,b);
+      let h=0, s=0, l=(max+min)/2;
+      if (max!==min) {
+        const d=max-min;
+        s = l>0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max) {
+          case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+          case g: h = ((b-r)/d + 2)/6; break;
+          case b: h = ((r-g)/d + 4)/6; break;
+        }
+      }
+      return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+    }
+
+    function update() {
+      const hex = rgbToHex(R,G,B);
+      const hsl = rgbToHsl(R,G,B);
+      hexEl.value = hex;
+      rgbEl.value = `rgb(${R}, ${G}, ${B})`;
+      hslEl.value = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+      preview.textContent = hex;
+      preview.style.background = hex;
+      rEl.value = R; gEl.value = G; bEl.value = B;
+      document.getElementById('rVal').textContent = R;
+      document.getElementById('gVal').textContent = G;
+      document.getElementById('bVal').textContent = B;
+    }
+
+    function setRgb(r,g,b) {
+      R=r; G=g; B=b;
+      update();
+    }
+
+    // Palettes
+    const palettes = {
+      brand: ['#e8ff47','#7c6bff','#ff6b6b','#111118','#f4f4f0'],
+      material: ['#f44336','#e91e63','#9c27b0','#673ab7','#3f51b5'],
+      basic: ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff'],
+      custom: ['#ff7a14','#C84A32', '#4499F7', '#891AAE', '#F3B23E', '#49A34A', '#E8692B', '#E5C72A', '#4F9091', '#C73977']
+    };
+
+    ['brand','material','basic','custom'].forEach(name => {
+      document.getElementById(name).innerHTML = palettes[name].map(c => 
+        `<div class="swatch" style="background:${c}" data-color="${c}"></div>`
+      ).join('');
+    });
+
+    document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', e => {
+      const c = hexToRgb(e.target.dataset.color);
+      setRgb(c.r,c.g,c.b);
+    }));
+
+    // Events
+    hexEl.addEventListener('change', () => {
+      const c = hexToRgb(hexEl.value);
+      setRgb(c.r,c.g,c.b);
+    });
+
+    [rEl,gEl,bEl].forEach((el,i) => el.addEventListener('input', () => {
+      setRgb(parseInt(rEl.value), parseInt(gEl.value), parseInt(bEl.value));
+    }));
+
+    document.getElementById('random').addEventListener('click', () => {
+      setRgb(Math.floor(Math.random()*256), Math.floor(Math.random()*256), Math.floor(Math.random()*256));
+    });
+
+    document.getElementById('picker').addEventListener('click', () => picker.click());
+    picker.addEventListener('input', e => {
+      const c = hexToRgb(e.target.value);
+      setRgb(c.r,c.g,c.b);
+    });
+
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const val = {
+          hex: hexEl.value,
+          rgb: rgbEl.value,
+          hsl: hslEl.value
+        }[btn.dataset.copy];
+        await navigator.clipboard.writeText(val);
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = '📋', 800);
+      });
+    });
+
+    update();
+  </script>
 </body>
 </html>

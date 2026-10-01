@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .sort-layout {
       display: grid;
@@ -171,6 +180,88 @@
     </div>
   </div>
 
-  
+  <script>
+    const inputEl = document.getElementById('inputText');
+    const outputEl = document.getElementById('outputText');
+    const caseInsensitive = document.getElementById('caseInsensitive');
+    const trimLines = document.getElementById('trimLines');
+
+    function getLines() {
+      let text = inputEl.value;
+      if (trimLines.checked) {
+        text = text.split('\n').map(l => l.trim()).join('\n');
+      }
+      return text.split('\n').filter(l => l.length > 0);
+    }
+
+    function sortAZ() {
+      const lines = getLines();
+      const cmp = caseInsensitive.checked 
+        ? (a, b) => a.localeCompare(b)
+        : (a, b) => a.localeCompare(b, undefined, { sensitivity: 'variant' });
+      lines.sort(cmp);
+      outputEl.value = lines.join('\n');
+      updateStats();
+    }
+
+    function sortZA() {
+      const lines = getLines();
+      const cmp = caseInsensitive.checked 
+        ? (a, b) => a.localeCompare(b)
+        : (a, b) => a.localeCompare(b, undefined, { sensitivity: 'variant' });
+      lines.sort(cmp).reverse();
+      outputEl.value = lines.join('\n');
+      updateStats();
+    }
+
+    function removeDup() {
+      const lines = getLines();
+      const seen = new Set();
+      const unique = lines.filter(line => {
+        const key = caseInsensitive.checked ? line.toLowerCase() : line;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      outputEl.value = unique.join('\n');
+      updateStats();
+    }
+
+    function updateStats() {
+      const inputLines = inputEl.value.split('\n').filter(l => l.trim()).length;
+      const outputLines = outputEl.value.split('\n').filter(l => l.trim()).length;
+      document.getElementById('inputStats').textContent = inputLines + ' line' + (inputLines !== 1 ? 's' : '');
+      document.getElementById('outputStats').textContent = outputLines + ' line' + (outputLines !== 1 ? 's' : '');
+    }
+
+    document.getElementById('sortAZ').addEventListener('click', sortAZ);
+    document.getElementById('sortZA').addEventListener('click', sortZA);
+    document.getElementById('removeDup').addEventListener('click', removeDup);
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(outputEl.value);
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy Result', 1000);
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.value = '';
+      updateStats();
+    });
+
+    document.getElementById('swapBtn').addEventListener('click', () => {
+      const temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateStats();
+    });
+
+    inputEl.addEventListener('input', updateStats);
+    outputEl.addEventListener('input', updateStats);
+    caseInsensitive.addEventListener('change', () => { if (outputEl.value) sortAZ(); });
+    trimLines.addEventListener('change', () => { if (outputEl.value) sortAZ(); });
+  </script>
 </body>
 </html>

@@ -7,7 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
@@ -305,7 +314,447 @@
   <div class="copy-feedback" id="copyFeedback" aria-live="polite"></div>
 </div>
 
+<script src="../assets/theme.js"></script>
+<script>
 
+/* ── Quoted-Printable decoder ── */
+function qpDecode(s) {
+  return s.replace(/=([0-9A-Fa-f]{2})/g, function(_, h) {
+    return String.fromCharCode(parseInt(h, 16));
+  }).replace(/=\r?\n/g, '');
+}
 
+function isRTL(text) {
+  if (!text) return false;
+  var rtlChars = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0590-\u05FF\u0700-\u074F\uFB1D-\uFDFD\uFE70-\uFEFF]/;
+  return rtlChars.test(text);
+}
+
+function isQuotedPrintable(line) {
+  return /CHARSET=(UTF-8|ISO-8859-1|WINDOWS-1256)[^;]*;ENCODING=QUOTED-PRINTABLE/i.test(line) ||
+         /ENCODING=QUOTED-PRINTABLE/i.test(line);
+}
+
+function foldLines(text) {
+  return text.replace(/\r?\n[ \t]/g, '');
+}
+
+/* ── Parse VCF ── */
+function parseVCF(text) {
+  var folded = foldLines(text);
+  var rawContacts = folded.split(/(?=BEGIN:VCARD)/i).filter(function(c) {
+    return /^BEGIN:VCARD/i.test(c.trim());
+  });
+
+  var contacts = [];
+  rawContacts.forEach(function(raw) {
+    var lines = raw.split('\n');
+    var contact = {
+      fullName: '',
+      firstName: '',
+      lastName: '',
+      phones: [],
+      emails: [],
+      org: '',
+      title: '',
+      address: '',
+      url: '',
+      note: '',
+      bday: '',
+      photo: null,
+      categories: [],
+      raw: raw.trim()
+    };
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line || /^BEGIN:VCARD/i.test(line) || /^END:VCARD/i.test(line) || /^VERSION:/i.test(line)) continue;
+
+      var sepIdx = line.indexOf(':');
+      if (sepIdx === -1) continue;
+
+      var keyPart = line.substring(0, sepIdx);
+      var value = line.substring(sepIdx + 1).trim();
+
+      var propName = keyPart.split(';')[0].toUpperCase();
+      var params = {};
+      if (keyPart.indexOf(';') !== -1) {
+        var paramParts = keyPart.substring(keyPart.indexOf(';') + 1).split(';');
+        paramParts.forEach(function(p) {
+          var eq = p.indexOf('=');
+          if (eq !== -1) {
+            params[p.substring(0, eq).toUpperCase()] = p.substring(eq + 1);
+          } else {
+            params.TYPE = p;
+          }
+        });
+      }
+
+      var types = [];
+      if (params.TYPE) {
+        types = params.TYPE.toUpperCase().split(',').map(function(t) { return t.trim(); });
+      }
+
+      var decoded = value;
+      if (isQuotedPrintable(line)) {
+        decoded = qpDecode(value);
+        if (/CHARSET=(WINDOWS-1256|ISO-8859-1)/i.test(line)) {
+          try {
+            decoded = decodeURIComponent(escape(decoded));
+          } catch(e) {}
+        }
+      }
+
+      if (propName === 'FN') {
+        contact.fullName = decoded;
+      } else if (propName === 'N') {
+        var nParts = decoded.split(';');
+        contact.lastName = (nParts[0] || '').trim();
+        contact.firstName = (nParts[1] || '').trim();
+      } else if (propName === 'TEL') {
+        var phoneType = 'Voice';
+        if (types.indexOf('CELL') !== -1) phoneType = 'Mobile';
+        else if (types.indexOf('HOME') !== -1) phoneType = 'Home';
+        else if (types.indexOf('WORK') !== -1) phoneType = 'Work';
+        else if (types.indexOf('FAX') !== -1) phoneType = 'Fax';
+        else if (types.indexOf('VOICE') !== -1) phoneType = 'Voice';
+        contact.phones.push({ value: decoded, type: phoneType });
+      } else if (propName === 'EMAIL') {
+        var emailType = 'Other';
+        if (types.indexOf('HOME') !== -1) emailType = 'Home';
+        else if (types.indexOf('WORK') !== -1) emailType = 'Work';
+        else if (types.indexOf('INTERNET') !== -1) emailType = 'Internet';
+        contact.emails.push({ value: decoded, type: emailType });
+      } else if (propName === 'ORG') {
+        contact.org = decoded.replace(/;/g, ' / ');
+      } else if (propName === 'TITLE') {
+        contact.title = decoded;
+      } else if (propName === 'ADR') {
+        var adrParts = decoded.split(';');
+        var adrStr = [adrParts[2], adrParts[3], adrParts[4], adrParts[5], adrParts[6]]
+          .filter(function(p) { return p && p.trim(); }).join(', ');
+        var adrType = 'Other';
+        if (types.indexOf('HOME') !== -1) adrType = 'Home';
+        else if (types.indexOf('WORK') !== -1) adrType = 'Work';
+        contact.address = adrStr || decoded;
+      } else if (propName === 'URL') {
+        contact.url = decoded;
+      } else if (propName === 'NOTE') {
+        contact.note = decoded;
+      } else if (propName === 'BDAY') {
+        contact.bday = decoded;
+      } else if (propName === 'CATEGORIES') {
+        contact.categories = decoded.split(',').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+      } else if (propName === 'PHOTO' || propName === 'LOGO') {
+        if (params.ENCODING && params.ENCODING.toUpperCase() === 'B') {
+          var encVal = value;
+          for (var j = i + 1; j < lines.length; j++) {
+            var nxt = lines[j].trim();
+            if (nxt.indexOf(':') !== -1 || /^BEGIN:/i.test(nxt) || /^END:/i.test(nxt)) break;
+            encVal += nxt;
+            i = j;
+          }
+          contact.photo = {
+            data: encVal,
+            type: params.TYPE || 'jpeg'
+          };
+        } else if (value.indexOf('http') === 0) {
+          contact.photo = {
+            url: value,
+            type: params.TYPE || 'jpeg'
+          };
+        }
+      }
+    }
+
+    if (!contact.fullName && (contact.firstName || contact.lastName)) {
+      contact.fullName = (contact.firstName + ' ' + contact.lastName).trim();
+    }
+    if (!contact.fullName) contact.fullName = 'Unnamed';
+
+    contacts.push(contact);
+  });
+
+  return contacts;
+}
+
+/* ── Render ── */
+function getInitials(name) {
+  var parts = name.trim().split(/\s+/);
+  var initials = '';
+  for (var i = 0; i < Math.min(parts.length, 2); i++) {
+    initials += parts[i].charAt(0).toUpperCase();
+  }
+  return initials || '?';
+}
+
+function getAvatarColor(name) {
+  var colors = ['#7c6bff', '#e8ff47', '#ff6b6b', '#48dbfb', '#1dd1a1', '#ff9f43', '#ff6bd6', '#5f27cd'];
+  var hash = 0;
+  for (var i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function renderContacts(contacts) {
+  var container = document.getElementById('contactsContainer');
+  var emptyState = document.getElementById('emptyState');
+  var head = document.getElementById('resultsHead');
+
+  if (!contacts || contacts.length === 0) {
+    container.innerHTML = '<div class="empty-state" id="emptyState">' +
+      '<div class="empty-icon">📇</div>' +
+      '<div class="empty-text">No contacts loaded</div>' +
+      '<div class="empty-sub">Paste VCF content or upload a file to view contacts</div>' +
+      '</div>';
+    head.style.display = 'none';
+    return;
+  }
+
+  head.style.display = 'flex';
+  var html = '<div class="contacts-grid" id="contactsGrid">';
+
+  contacts.forEach(function(c, ci) {
+    var dir = isRTL(c.fullName) ? 'dir="rtl"' : '';
+    var orgDir = c.org && isRTL(c.org) ? 'dir="rtl"' : '';
+    var initials = getInitials(c.fullName);
+    var avatarColor = getAvatarColor(c.fullName);
+
+    var avatarHtml;
+    if (c.photo && c.photo.data) {
+      avatarHtml = '<img src="data:image/' + c.photo.type + ';base64,' + c.photo.data + '" alt="' + escAttr(c.fullName) + '" />';
+    } else if (c.photo && c.photo.url) {
+      avatarHtml = '<img src="' + escAttr(c.photo.url) + '" alt="' + escAttr(c.fullName) + '" />';
+    } else {
+      avatarHtml = initials;
+    }
+
+    html += '<div class="contact-card" data-index="' + ci + '">';
+    html += '<div class="contact-header">';
+    html += '<div class="contact-avatar" style="background:' + avatarColor + ';color:' + getContrastColor(avatarColor) + ';">' + avatarHtml + '</div>';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div class="contact-name" ' + dir + '>' + esc(c.fullName) + '</div>';
+    var orgParts = [];
+    if (c.org) orgParts.push(c.org);
+    if (c.title) orgParts.push(c.title);
+    if (orgParts.length) {
+      html += '<div class="contact-org" ' + orgDir + '>' + esc(orgParts.join(' — ')) + '</div>';
+    }
+    html += '</div></div>';
+
+    html += '<div class="contact-details">';
+
+    /* Phones */
+    c.phones.forEach(function(p) {
+      var valDir = isRTL(p.value) ? 'dir="rtl"' : '';
+      html += '<div class="detail-row" ' + valDir + '>' +
+        '<span class="detail-icon">📞</span>' +
+        '<div><span class="detail-label">' + esc(p.type) + '</span><br><span class="detail-value">' + esc(p.value) + '</span></div>' +
+        '</div>';
+    });
+
+    /* Emails */
+    c.emails.forEach(function(e) {
+      html += '<div class="detail-row">' +
+        '<span class="detail-icon">✉</span>' +
+        '<div><span class="detail-label">' + esc(e.type) + '</span><br><span class="detail-value">' + esc(e.value) + '</span></div>' +
+        '</div>';
+    });
+
+    /* Address */
+    if (c.address) {
+      var addrDir = isRTL(c.address) ? 'dir="rtl"' : '';
+      html += '<div class="detail-row" ' + addrDir + '>' +
+        '<span class="detail-icon">📍</span>' +
+        '<div><span class="detail-value">' + esc(c.address) + '</span></div>' +
+        '</div>';
+    }
+
+    /* URL */
+    if (c.url) {
+      html += '<div class="detail-row">' +
+        '<span class="detail-icon">🔗</span>' +
+        '<div><a class="detail-value" href="' + escAttr(c.url) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">' + esc(c.url) + '</a></div>' +
+        '</div>';
+    }
+
+    /* BDAY */
+    if (c.bday) {
+      html += '<div class="detail-row">' +
+        '<span class="detail-icon">🎂</span>' +
+        '<div><span class="detail-value">' + esc(c.bday) + '</span></div>' +
+        '</div>';
+    }
+
+    /* Note */
+    if (c.note) {
+      var noteDir = isRTL(c.note) ? 'dir="rtl"' : '';
+      html += '<div class="detail-row" ' + noteDir + '>' +
+        '<span class="detail-icon">📝</span>' +
+        '<div><span class="detail-value">' + esc(c.note) + '</span></div>' +
+        '</div>';
+    }
+
+    /* Categories */
+    if (c.categories.length) {
+      html += '<div class="detail-tags">';
+      c.categories.forEach(function(cat) {
+        html += '<span class="detail-tag">' + esc(cat) + '</span>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    html += '<div class="contact-actions">' +
+      '<button class="contact-action-btn" data-action="vcard" data-index="' + ci + '">⧉ vCard</button>' +
+      '<button class="contact-action-btn" data-action="copy-name" data-index="' + ci + '">Copy Name</button>' +
+      '</div>';
+
+    html += '</div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  /* Wire action buttons */
+  container.querySelectorAll('.contact-action-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var action = btn.dataset.action;
+      var idx = parseInt(btn.dataset.index, 10);
+      if (action === 'vcard') {
+        navigator.clipboard.writeText(contacts[idx].raw).then(function() {
+          showCopyFeedback('✓ vCard copied for ' + contacts[idx].fullName);
+          btn.classList.add('copied');
+          setTimeout(function() { btn.classList.remove('copied'); }, 1500);
+        });
+      } else if (action === 'copy-name') {
+        navigator.clipboard.writeText(contacts[idx].fullName).then(function() {
+          showCopyFeedback('✓ Name copied: ' + contacts[idx].fullName);
+          btn.classList.add('copied');
+          setTimeout(function() { btn.classList.remove('copied'); }, 1500);
+        });
+      }
+    });
+  });
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function hexToRgb(hex) {
+  var r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 0, g: 0, b: 0 };
+}
+
+function getContrastColor(hex) {
+  var rgb = hexToRgb(hex);
+  return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 160 ? '#000000' : '#ffffff';
+}
+
+function showCopyFeedback(msg) {
+  var fb = document.getElementById('copyFeedback');
+  if (!fb) return;
+  fb.textContent = msg;
+  fb.style.opacity = '1';
+  clearTimeout(fb._timer);
+  fb._timer = setTimeout(function() { fb.style.opacity = '0'; }, 2000);
+}
+
+function updateStats(contacts, rawLen) {
+  var phoneCount = 0, emailCount = 0;
+  contacts.forEach(function(c) {
+    if (c.phones.length) phoneCount++;
+    if (c.emails.length) emailCount++;
+  });
+  document.getElementById('statContacts').textContent = contacts.length;
+  document.getElementById('statWithPhone').textContent = phoneCount;
+  document.getElementById('statWithEmail').textContent = emailCount;
+  document.getElementById('statVcfSize').textContent = rawLen ? formatBytes(rawLen) : '—';
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes < 0) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+/* ── Main parse function ── */
+function doParse() {
+  var input = document.getElementById('vcfInput').value.trim();
+  if (!input) {
+    renderContacts([]);
+    updateStats([], null);
+    return;
+  }
+
+  var contacts = parseVCF(input);
+  renderContacts(contacts);
+  updateStats(contacts, input.length);
+
+  if (!contacts.length) {
+    showCopyFeedback('⚠ No valid vCard entries found. Check the format.');
+  } else {
+    showCopyFeedback('✓ Parsed ' + contacts.length + ' contact' + (contacts.length !== 1 ? 's' : ''));
+  }
+}
+
+/* ── File upload ── */
+document.getElementById('vcfFile').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('vcfInput').value = ev.target.result;
+    doParse();
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+/* ── Parse button ── */
+document.getElementById('parseBtn').addEventListener('click', doParse);
+
+/* ── Clear ── */
+document.getElementById('clearBtn').addEventListener('click', function() {
+  document.getElementById('vcfInput').value = '';
+  document.getElementById('vcfFile').value = '';
+  renderContacts([]);
+  updateStats([], null);
+  document.getElementById('copyFeedback').textContent = '';
+});
+
+/* ── Auto-parse on paste into textarea (debounced) ── */
+var parseTimeout;
+document.getElementById('vcfInput').addEventListener('input', function() {
+  clearTimeout(parseTimeout);
+  parseTimeout = setTimeout(doParse, 400);
+});
+
+/* ── Drag & drop on textarea ── */
+var textarea = document.getElementById('vcfInput');
+textarea.addEventListener('dragover', function(e) { e.preventDefault(); textarea.style.borderColor = 'var(--accent)'; });
+textarea.addEventListener('dragleave', function() { textarea.style.borderColor = ''; });
+textarea.addEventListener('drop', function(e) {
+  e.preventDefault();
+  textarea.style.borderColor = '';
+  var files = e.dataTransfer.files;
+  if (files.length) {
+    var reader = new FileReader();
+    reader.onload = function(ev) { textarea.value = ev.target.result; doParse(); };
+    reader.readAsText(files[0], 'UTF-8');
+  } else {
+    var text = e.dataTransfer.getData('text');
+    if (text) { textarea.value = text; doParse(); }
+  }
+});
+</script>
 </body>
 </html>

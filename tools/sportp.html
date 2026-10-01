@@ -8,10 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  
+  <script>(function(){var t=localStorage.getItem("mts-theme");if(!t){t=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t)})();</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .mode-tabs {
       display: flex;
@@ -106,7 +106,7 @@
 </head>
 <body>
 
-  
+  <script src="../assets/nav.js" data-title="Sport Post"></script>
 
   <div class="tool-page">
     <div class="tool-header">
@@ -182,6 +182,478 @@
     </div>
   </div>
 
-  
+  <script>
+    const upload         = document.getElementById('upload');
+    const canvas         = document.getElementById('canvas');
+    const ctx            = canvas.getContext('2d');
+    const dlWrap         = document.getElementById('dlWrap');
+    const dlBtn          = document.getElementById('dlBtn');
+    const txt1El         = document.getElementById('txt1');
+    const txt2El         = document.getElementById('txt2');
+    const txt3El         = document.getElementById('txt3');
+    const dropzone       = document.getElementById('dropzone');
+    const uploadText     = document.getElementById('uploadText');
+    const modeTabs       = document.getElementById('modeTabs');
+    const modeNoticeIcon = document.getElementById('modeNoticeIcon');
+    const modeNoticeText = document.getElementById('modeNoticeText');
+    const fieldsGrid     = document.getElementById('fieldsGrid');
+    const txt3Wrap       = document.getElementById('txt3Wrap');
+    const label1         = document.getElementById('label1');
+    const label2         = document.getElementById('label2');
+    const label3         = document.getElementById('label3');
+
+    const W = 1080, H = 1350;
+
+    let currentFile     = null;
+    let currentMode     = 'mode1';
+    let loadedImg       = null;
+    let imgW = 0, imgH  = 0;
+    let imgOffsetX = 0, imgOffsetY = 0;
+    let imgZoom         = 1;
+    let isDragging      = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetStartX = 0, dragOffsetStartY = 0;
+    let isPinching      = false;
+    let pinchStartDist  = 0, pinchStartZoom = 1;
+    let pinchMidX = 0,  pinchMidY = 0;
+    let pinchOffsetStartX = 0, pinchOffsetStartY = 0;
+
+    // ── Mode config ──────────────────────────────────────────────────────────
+    const MODES = {
+      mode1: {
+        icon: '⬇', label: 'Text Bottom 2 Lines', desc: 'Arabic, 60pt',
+        overlay: '../assets/overlays/mode1.png',
+        lines: 2, fontSize: 45,
+        // y positions for line 1 and line 2 (canvas coords, from top)
+        lineY: [1140, 1210],
+      },
+      mode2: {
+        icon: '⬆', label: 'Text Top 2 Lines', desc: 'Arabic, 60pt',
+        overlay: '../assets/overlays/mode2.png',
+        lines: 2, fontSize: 45,
+        lineY: [134, 204],
+      },
+      mode3: {
+        icon: '⬇', label: 'Text Bottom 3 Lines', desc: 'Arabic, 55pt',
+        overlay: '../assets/overlays/mode3.png',
+        lines: 3, fontSize: 41.5,
+        lineY: [1104, 1180, 1254],
+      },
+    };
+
+    // ── Image loader (with CORS retry) ───────────────────────────────────────
+    function loadImg(src, useCors = true) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        if (useCors) img.crossOrigin = 'anonymous';
+        img.onload  = () => resolve(img);
+        img.onerror = () => {
+          if (useCors) loadImg(src, false).then(resolve).catch(reject);
+          else reject(new Error('Cannot load: ' + src));
+        };
+        img.src = src;
+      });
+    }
+
+    // ── Overlay cache (pre-load all on startup) ───────────────────────────────
+    const overlayCache = {};
+    const overlayReady = {}; // fast boolean flags for sync drawFrame
+
+    function getOverlay(mode) {
+      const src = MODES[mode].overlay;
+      if (!overlayCache[mode]) {
+        overlayCache[mode] = loadImg(src).then(img => {
+          overlayReady[mode] = img;
+          return img;
+        }).catch(() => null);
+      }
+      return overlayCache[mode];
+    }
+    Object.keys(MODES).forEach(k => getOverlay(k));
+
+    // ── Font ─────────────────────────────────────────────────────────────────
+    let _fontReady = false;
+    async function loadFont() {
+      try {
+        const f = new FontFace('LamaSans', 'url(../fonts/LamaSans-ExtraBold.ttf)');
+        await f.load();
+        document.fonts.add(f);
+        _fontReady = true;
+      } catch(e) { console.warn('LamaSans not loaded, using fallback.'); _fontReady = true; }
+    }
+    const fontsReady = loadFont();
+
+    // ── File handling ─────────────────────────────────────────────────────────
+    function enableFile(file) {
+      currentFile  = file;
+      imgOffsetX   = 0; imgOffsetY = 0;
+      imgZoom      = 1;
+      loadedImg    = null;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      document.getElementById('posXSlider').value = 0;
+      document.getElementById('posXValue').textContent = '0';
+      document.getElementById('posYSlider').value = 0;
+      document.getElementById('posYValue').textContent = '0';
+      previewDraw();
+    }
+
+    function previewDraw() {
+      if (!currentFile) return;
+      loadImg(URL.createObjectURL(currentFile)).then(drawAll);
+    }
+
+    async function drawAll(img) {
+      if (!img) { renderFrame(null); return; }
+      loadedImg = img;
+      imgW = img.naturalWidth  || img.width;
+      imgH = img.naturalHeight || img.height;
+      // Cover-fit initial zoom
+      const scaleW = W / imgW, scaleH = H / imgH;
+      imgZoom = Math.max(scaleW, scaleH);
+      document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
+      document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
+      imgOffsetX = 0; imgOffsetY = 0;
+      syncSliders();
+      await renderFrame(img);
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    // Fast synchronous draw used during gestures (no awaits)
+    function drawFrame() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      if (loadedImg) {
+        const baseW = imgW * imgZoom;
+        const baseH = imgH * imgZoom;
+        const cx = W / 2, cy = H / 2;
+        ctx.drawImage(loadedImg, cx - baseW / 2 + imgOffsetX, cy - baseH / 2 + imgOffsetY, baseW, baseH);
+      }
+
+      const ov = overlayReady[currentMode];
+      if (ov) ctx.drawImage(ov, 0, 0, W, H);
+
+      if (_fontReady) drawText();
+    }
+
+    // RAF-throttled version for gestures
+    let _rafPending = false;
+    function scheduleRender() {
+      if (_rafPending) return;
+      _rafPending = true;
+      requestAnimationFrame(() => { _rafPending = false; drawFrame(); });
+    }
+
+    // Full async render (awaits font/overlay if needed, updates download state)
+    async function renderFrame(img) {
+      if (!overlayReady[currentMode]) await getOverlay(currentMode);
+      if (!_fontReady) await fontsReady;
+      drawFrame();
+      updateDownloadBtn();
+    }
+
+    function drawText() {
+      const cfg = MODES[currentMode];
+      const lines = [txt1El.value.trim(), txt2El.value.trim(), txt3El.value.trim()].slice(0, cfg.lines);
+
+      ctx.font      = `900 ${cfg.fontSize}pt LamaSans, Arial`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'right';
+      ctx.direction = 'rtl';
+      ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur    = 10;
+
+      lines.forEach((line, i) => {
+        if (line) ctx.fillText(line, W - 60, cfg.lineY[i]);
+      });
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowBlur    = 0;
+    }
+
+    // ── Download ──────────────────────────────────────────────────────────────
+    function isReady() {
+      if (!currentFile) return false;
+      const cfg = MODES[currentMode];
+      const t1 = txt1El.value.trim(), t2 = txt2El.value.trim(), t3 = txt3El.value.trim();
+      if (cfg.lines === 3) return t1 !== '' && t2 !== '' && t3 !== '';
+      return t1 !== '' && t2 !== '';
+    }
+
+    function updateDownloadBtn() {
+      dlWrap.classList.toggle('visible', isReady());
+    }
+
+    dlBtn.addEventListener('click', () => {
+      try {
+        const now = new Date();
+        const ts  = now.getFullYear()
+          + String(now.getMonth()+1).padStart(2,'0')
+          + String(now.getDate()).padStart(2,'0')
+          + '_' + String(now.getHours()).padStart(2,'0')
+          + String(now.getMinutes()).padStart(2,'0')
+          + String(now.getSeconds()).padStart(2,'0');
+        const filename = `sport_post_${currentMode}_${ts}.jpg`;
+
+        // iOS Safari is unreliable with data: URLs + a.download, especially
+        // when the anchor is never attached to the DOM. Use a Blob + object
+        // URL instead, and attach/click/detach the anchor for compatibility.
+        canvas.toBlob((blob) => {
+          if (!blob) { alert('Download error: could not generate image.'); return; }
+
+          const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          if (isIOS && navigator.share && navigator.canShare &&
+              navigator.canShare({ files: [new File([blob], filename, { type: 'image/jpeg' })] })) {
+            // iOS Safari has no real "download" concept for canvas images;
+            // the share sheet's "Save Image" is the most reliable path.
+            const file = new File([blob], filename, { type: 'image/jpeg' });
+            navigator.share({ files: [file] }).catch(() => {
+              // user cancelled or share failed — fall back to opening the image
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              setTimeout(() => URL.revokeObjectURL(url), 30000);
+            });
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href     = url;
+          a.download = filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+        }, 'image/jpeg', 0.95);
+      } catch(e) {
+        console.error('Download error:', e);
+        alert('Download error: ' + e.message);
+      }
+    });
+
+    // ── Mode switching ────────────────────────────────────────────────────────
+    function setMode(mode) {
+      currentMode = mode;
+      const cfg   = MODES[mode];
+
+      document.querySelectorAll('.mode-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.mode === mode)
+      );
+
+      modeNoticeIcon.textContent = cfg.icon;
+      modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
+
+      // Show/hide 3rd line field
+      txt3Wrap.style.display = cfg.lines === 3 ? 'block' : 'none';
+
+      dlWrap.classList.remove('visible');
+
+      if (loadedImg) renderFrame(loadedImg);
+      else { ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────────────
+    modeTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (tab) setMode(tab.dataset.mode);
+    });
+
+    dropzone.addEventListener('click',    () => upload.click());
+    dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave',()  => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop',     e  => {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    // Note: no separate 'touchend' handler here. iOS Safari synthesizes a
+    // 'click' event from a tap, so the 'click' listener above already
+    // covers touch. Calling upload.click() from both touchend AND the
+    // resulting click fires the native file picker twice in a row, which
+    // on iOS can cause the photo picker sheet to open and immediately
+    // dismiss itself before the user can pick anything.
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
+
+    txt1El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    txt2El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+    txt3El.addEventListener('input', () => { if (loadedImg) renderFrame(loadedImg); });
+
+    // ── Canvas gestures ───────────────────────────────────────────────────────
+    canvas.addEventListener('mousedown',  onDragStart);
+    canvas.addEventListener('mousemove',  onDragMove);
+    canvas.addEventListener('mouseup',    onDragEnd);
+    canvas.addEventListener('mouseleave', onDragEnd);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    canvas.addEventListener('touchend',   onDragEnd);
+
+    function getCanvasCoords(e) {
+      const rect   = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+    }
+
+    function getTouchMid(e) {
+      const rect   = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      return { x: (mx - rect.left) * scaleX, y: (my - rect.top) * scaleY };
+    }
+
+    function getTouchDist(e) {
+      if (e.touches.length < 2) return 0;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onDragStart(e) {
+      if (!loadedImg) return;
+      isDragging = true;
+      const coords = getCanvasCoords(e);
+      dragStartX = coords.x; dragStartY = coords.y;
+      dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !loadedImg) return;
+      const coords = getCanvasCoords(e);
+      imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+      imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+      scheduleRender();
+      syncSliders();
+    }
+
+    function onTouchStart(e) {
+      if (!loadedImg) return;
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinching = true; isDragging = false;
+        pinchStartDist = getTouchDist(e);
+        pinchStartZoom = imgZoom;
+        const mid = getTouchMid(e);
+        pinchMidX = mid.x; pinchMidY = mid.y;
+        pinchOffsetStartX = imgOffsetX; pinchOffsetStartY = imgOffsetY;
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        isDragging = true;
+        dragStartX = coords.x; dragStartY = coords.y;
+        dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!loadedImg) return;
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        const ratio    = getTouchDist(e) / pinchStartDist;
+        const newZoom  = Math.max(0.1, Math.min(30, pinchStartZoom * ratio));
+        const imgCX    = pinchMidX - pinchOffsetStartX;
+        const imgCY    = pinchMidY - pinchOffsetStartY;
+        const sr       = newZoom / pinchStartZoom;
+        imgOffsetX = pinchMidX - imgCX * sr;
+        imgOffsetY = pinchMidY - imgCY * sr;
+        imgZoom    = newZoom;
+        document.getElementById('zoomSlider').value = Math.round(imgZoom * 100);
+        document.getElementById('zoomValue').textContent = Math.round(imgZoom * 100) + '%';
+        scheduleRender();
+        syncSliders();
+        return;
+      }
+      if (isDragging && e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e);
+        imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+        imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+        scheduleRender();
+        syncSliders();
+      }
+    }
+
+    function onDragEnd() {
+      isDragging = false; isPinching = false;
+      syncSliders();
+      if (loadedImg) renderFrame(loadedImg);
+    }
+
+    // ── Scroll-wheel zoom (cursor-anchored) ───────────────────────────────────
+    canvas.addEventListener('wheel', function(e) {
+      if (!loadedImg) return;
+      e.preventDefault();
+      const delta    = e.deltaY > 0 ? -0.05 : 0.05;
+      const newZoom  = Math.max(0.1, Math.min(30, imgZoom + delta));
+      const coords   = getCanvasCoords(e);
+      const imgCX    = coords.x - imgOffsetX;
+      const imgCY    = coords.y - imgOffsetY;
+      const sr       = newZoom / imgZoom;
+      imgOffsetX = coords.x - imgCX * sr;
+      imgOffsetY = coords.y - imgCY * sr;
+      imgZoom    = newZoom;
+      document.getElementById('zoomSlider').value = Math.round(newZoom * 100);
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      scheduleRender();
+      syncSliders();
+    }, { passive: false });
+
+    // ── Sliders ───────────────────────────────────────────────────────────────
+    function syncSliders() {
+      if (!loadedImg) return;
+      const baseW = imgW * imgZoom, baseH = imgH * imgZoom;
+      let xPct = Math.round((imgOffsetX / (baseW / 2)) * 100);
+      let yPct = Math.round((imgOffsetY / (baseH / 2)) * 100);
+      xPct = Math.max(-100, Math.min(100, xPct));
+      yPct = Math.max(-100, Math.min(100, yPct));
+      document.getElementById('posXSlider').value = xPct;
+      document.getElementById('posXValue').textContent = xPct;
+      document.getElementById('posYSlider').value = yPct;
+      document.getElementById('posYValue').textContent = yPct;
+    }
+
+    document.getElementById('posXSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      imgOffsetX = (parseInt(this.value) / 100) * (imgW * imgZoom / 2);
+      document.getElementById('posXValue').textContent = this.value;
+      scheduleRender();
+    });
+
+    document.getElementById('posYSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      imgOffsetY = (parseInt(this.value) / 100) * (imgH * imgZoom / 2);
+      document.getElementById('posYValue').textContent = this.value;
+      scheduleRender();
+    });
+
+    document.getElementById('zoomSlider').addEventListener('input', function() {
+      if (!loadedImg) return;
+      const newZoom = parseInt(this.value) / 100;
+      const cx = W / 2, cy = H / 2;
+      const sr = newZoom / imgZoom;
+      imgOffsetX = imgOffsetX * sr + (cx - imgW * newZoom / 2) - (cx - imgW * imgZoom / 2) * sr;
+      imgOffsetY = imgOffsetY * sr + (cy - imgH * newZoom / 2) - (cy - imgH * imgZoom / 2) * sr;
+      imgZoom = newZoom;
+      document.getElementById('zoomValue').textContent = Math.round(newZoom * 100) + '%';
+      scheduleRender();
+      syncSliders();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    setMode('mode1');
+  </script>
 </body>
 </html>

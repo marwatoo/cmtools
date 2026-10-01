@@ -7,7 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <style>
@@ -441,7 +450,660 @@
     </div>
   </div>
 
+<script src="../assets/theme.js"></script>
+<script>
 
+// ── Config ─────────────────────────────────────────────────────────────────
+// 👇 Your Railway API base URL
+const API_BASE = 'https://rssweb-production.up.railway.app';
 
+const COLUMNS = [
+  { key: 'le360fr',       handle: '@le360fr',       label: 'Le360 FR'   },
+  { key: 'le360ar',       handle: '@le360ar',       label: 'Le360 AR'   },
+  { key: 'le360sport',    handle: '@le360sport',    label: 'Le360 Sport'      },
+  { key: 'le360es',       handle: '@le360es',       label: 'Le360 Español'   },
+  { key: 'le360_afrique', handle: '@le360_afrique', label: 'Le360 Afrique'    },
+];
+
+const seen = {}; // key → Set of tweet IDs
+const profileImages = {}; // key → profile_image URL
+
+// ── Fetch from YOUR Railway API ────────────────────────────────────────────
+async function fetchFeed(username) {
+  const url = `${API_BASE}/api/feed?user=${encodeURIComponent(username)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const data = await res.json();
+  if (data.error && !data.items?.length) throw new Error(data.error);
+  return data;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function formatDate(ds) {
+  if (!ds) return '';
+  try {
+    const d = new Date(ds);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return d.toLocaleString('fr-FR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  } catch(e) { return ds; }
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1400);
+  });
+}
+
+// ── Map rss_fetcher.py item → tweet object ─────────────────────────────────
+// rss_fetcher returns: id, title, description, link, pub_date, parsed_date,
+//                      images:[{url, type}], has_video, author
+function mapItem(item, colKey) {
+  const images = (item.images || []).map(img => img.url || img);
+  const isRetweet = (item.title || '').startsWith('RT by ');
+
+  // Extract images from description HTML
+  let contentImages = [];
+  if (item.description) {
+    const d = document.createElement('div');
+    d.innerHTML = item.description;
+    contentImages = [...d.querySelectorAll('img')].map(i => i.src).filter(Boolean);
+  }
+
+  // Convert nitter link → x.com
+  const xLink = (item.link || '').replace(/https?:\/\/[^/]+/, 'https://x.com');
+
+  // Extract tweet ID from link
+  let tweetId = '';
+  const idMatch = (item.link || '').match(/status\/(\d+)/);
+  if (idMatch) tweetId = idMatch[1];
+
+  // Strip HTML from title for display text
+  const div = document.createElement('div');
+  div.innerHTML = item.title || '';
+  const text = div.textContent.trim();
+
+  return {
+    id:         item.id || item.link,
+    tweetId,
+    text,
+    link:       xLink,
+    rawLink:    item.link,
+    pubDate:    item.pub_date || '',
+    parsedDate: item.parsed_date || '',
+    images,
+    contentImages,
+    hasVideo:   item.has_video || false,
+    author:     item.author || colKey,
+    isRetweet,
+    colKey,
+    likes:      null,
+    retweets:   null,
+    replies:    null,
+  };
+}
+
+// ── Fetch engagement stats from fxtwitter ──────────────────────────────────
+async function fetchTweetStats(tweetId) {
+  if (!tweetId) return null;
+  try {
+    const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code === 200 && data.tweet) {
+      return {
+        likes: data.tweet.likes || 0,
+        retweets: data.tweet.retweets || 0,
+        replies: data.tweet.replies || 0,
+      };
+    }
+    return null;
+  } catch(e) {
+    console.warn('fxtwitter API error:', e);
+    return null;
+  }
+}
+
+function formatCount(n) {
+  if (n === null || n === undefined) return '';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K';
+  return n.toString();
+}
+
+// ── Media tags ─────────────────────────────────────────────────────────────
+function isArabic(text) {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+}
+
+function getMediaTags(tweet) {
+  const tags = [];
+  if (tweet.isRetweet)          tags.push({ cls: 'tag-retweet', icon: '🔁', label: 'RT' });
+  if (tweet.hasVideo)           tags.push({ cls: 'tag-video',   icon: '▶',  label: 'Video' });
+  return tags;
+}
+
+// ── Build tweet card ───────────────────────────────────────────────────────
+function createTweetCard(tweet) {
+  const card = document.createElement('div');
+  card.className = 'tweet-card';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'tweet-header';
+
+  const avatar = document.createElement('img');
+  avatar.className = 'tweet-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.textContent = '@';
+  }
+  //header.appendChild(avatar);
+
+  const info = document.createElement('div');
+  info.style.cssText = 'display:flex;flex-direction:column;min-width:0;flex:1;';
+  const handleEl = document.createElement('div');
+  handleEl.className = 'tweet-handle';
+  handleEl.textContent = `@${tweet.colKey}`;
+  info.appendChild(handleEl);
+  header.appendChild(info);
+
+  const dateEl = document.createElement('div');
+  dateEl.className = 'tweet-date';
+  dateEl.textContent = formatDate(tweet.pubDate);
+  header.appendChild(dateEl);
+  card.appendChild(header);
+
+  // Tags
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = `tweet-tag ${t.cls}`;
+      span.textContent = `${t.icon} ${t.label}`;
+      row.appendChild(span);
+    });
+    card.appendChild(row);
+  }
+
+  // Text
+  if (tweet.text) {
+    const p = document.createElement('div');
+    p.className = 'tweet-text';
+    p.textContent = tweet.text.length > 220 ? tweet.text.slice(0, 220) + '…' : tweet.text;
+    if (isArabic(tweet.text)) p.dir = 'rtl';
+    card.appendChild(p);
+  }
+
+  // Media
+  if (tweet.hasVideo) {
+    const vw = document.createElement('div');
+    vw.className = 'tweet-video-wrap';
+    const thumbSrc = tweet.images?.[0] || tweet.contentImages?.[0] || '';
+    if (thumbSrc) {
+      const thumb = document.createElement('img');
+      thumb.className = 'video-thumb';
+      thumb.src = thumbSrc;
+      thumb.loading = 'lazy';
+      thumb.onerror = function(){ this.style.display='none'; };
+      vw.appendChild(thumb);
+    }
+    const icon = document.createElement('div');
+    icon.className = 'play-btn-icon';
+    icon.textContent = '▶';
+    vw.appendChild(icon);
+    card.appendChild(vw);
+  } else if (tweet.images.length === 1) {
+    const img = document.createElement('img');
+    img.className = 'tweet-img full';
+    img.src = tweet.images[0];
+    img.loading = 'lazy'; img.alt = '';
+    img.onerror = function(){ this.style.display='none'; };
+    img.style.cursor = 'zoom-out';
+    img.addEventListener('click', e => {
+      e.stopPropagation();
+      img.classList.toggle('full');
+      img.style.objectFit = img.classList.contains('full') ? 'contain' : 'cover';
+      img.style.aspectRatio = img.classList.contains('full') ? 'auto' : '16/9';
+      img.style.cursor = img.classList.contains('full') ? 'zoom-out' : 'zoom-in';
+    });
+    card.appendChild(img);
+  } else if (tweet.images.length > 1) {
+    const grid = document.createElement('div');
+    const cnt = Math.min(tweet.images.length, 4);
+    grid.className = `tweet-img-grid count-${cnt}`;
+    tweet.images.slice(0, 4).forEach(src => {
+      const img = document.createElement('img');
+      img.className = 'grid-img';
+      img.src = src; img.loading = 'lazy'; img.alt = '';
+      img.onerror = function(){ this.parentNode?.removeChild(this); };
+      grid.appendChild(img);
+    });
+    card.appendChild(grid);
+  }
+
+  // Engagement stats
+  if (tweet.tweetId) {
+    const statsRow = document.createElement('div');
+    statsRow.className = 'tweet-stats';
+    statsRow.innerHTML = `
+      <div class="tweet-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count" id="likes-${tweet.tweetId}">...</span></div>
+      <div class="tweet-stat stat-retweets"><span class="stat-icon">🔁</span><span class="stat-count" id="retweets-${tweet.tweetId}">...</span></div>
+      <div class="tweet-stat stat-replies"><span class="stat-icon">💬</span><span class="stat-count" id="replies-${tweet.tweetId}">...</span></div>
+    `;
+    card.appendChild(statsRow);
+
+    // Fetch stats asynchronously
+    fetchTweetStats(tweet.tweetId).then(stats => {
+      if (stats) {
+        const likesEl = document.getElementById(`likes-${tweet.tweetId}`);
+        const retweetsEl = document.getElementById(`retweets-${tweet.tweetId}`);
+        const repliesEl = document.getElementById(`replies-${tweet.tweetId}`);
+        if (likesEl) likesEl.textContent = formatCount(stats.likes);
+        if (retweetsEl) retweetsEl.textContent = formatCount(stats.retweets);
+        if (repliesEl) repliesEl.textContent = formatCount(stats.replies);
+        tweet.likes = stats.likes;
+        tweet.retweets = stats.retweets;
+        tweet.replies = stats.replies;
+      }
+    });
+  }
+
+  // Buttons
+  const btns = document.createElement('div');
+  btns.className = 'tweet-btns';
+
+  const copyLinkBtn = document.createElement('button');
+  copyLinkBtn.className = 'tweet-btn';
+  copyLinkBtn.textContent = 'Copy Link';
+  copyLinkBtn.addEventListener('click', e => { e.stopPropagation(); copyText(tweet.link, copyLinkBtn); });
+  btns.appendChild(copyLinkBtn);
+
+  const copyTextBtn = document.createElement('button');
+  copyTextBtn.className = 'tweet-btn';
+  copyTextBtn.textContent = 'Copy Text';
+  copyTextBtn.addEventListener('click', e => { e.stopPropagation(); copyText(tweet.text, copyTextBtn); });
+  btns.appendChild(copyTextBtn);
+
+  const copyBothBtn = document.createElement('button');
+  copyBothBtn.className = 'tweet-btn';
+  copyBothBtn.textContent = 'Copy Both';
+  copyBothBtn.addEventListener('click', e => { e.stopPropagation(); copyText(`${tweet.text}\n${tweet.link}`, copyBothBtn); });
+  btns.appendChild(copyBothBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'tweet-btn open-x';
+  openBtn.textContent = '↗ Open';
+  openBtn.href = tweet.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.addEventListener('click', e => e.stopPropagation());
+  btns.appendChild(openBtn);
+
+  card.appendChild(btns);
+  card.addEventListener('click', () => openModal(tweet));
+  return card;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(tweet) {
+  const overlay = document.getElementById('modalOverlay');
+  const body    = document.getElementById('modalBody');
+  body.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'modal-tweet-header';
+  const avatar = document.createElement('img');
+  avatar.className = 'modal-avatar';
+  const profileUrl = profileImages[tweet.colKey];
+  if (profileUrl) {
+    avatar.src = profileUrl;
+  } else {
+    avatar.className = 'modal-avatar';
+    avatar.textContent = '𝕏';
+  }
+  header.appendChild(avatar);
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'modal-name';
+  name.textContent = tweet.author || tweet.colKey;
+  const handle = document.createElement('div');
+  handle.className = 'modal-handle';
+  handle.textContent = `@${tweet.colKey}`;
+  info.appendChild(name); info.appendChild(handle);
+  header.appendChild(info);
+  body.appendChild(header);
+
+  // Tags
+  const tags = getMediaTags(tweet);
+  if (tags.length) {
+    const row = document.createElement('div');
+    row.className = 'tweet-tags';
+    row.style.marginBottom = '12px';
+    tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = `tweet-tag ${t.cls}`;
+      span.textContent = `${t.icon} ${t.label}`;
+      row.appendChild(span);
+    });
+    body.appendChild(row);
+  }
+
+  // Engagement stats in modal
+  if (tweet.tweetId) {
+    const statsRow = document.createElement('div');
+    statsRow.className = 'modal-stats';
+    statsRow.innerHTML = `
+      <div class="modal-stat stat-likes"><span class="stat-icon">♥</span><span class="stat-count" id="modal-likes-${tweet.tweetId}">${tweet.likes !== null ? formatCount(tweet.likes) : '...'}</span></div>
+      <div class="modal-stat stat-retweets"><span class="stat-icon">🔁</span><span class="stat-count" id="modal-retweets-${tweet.tweetId}">${tweet.retweets !== null ? formatCount(tweet.retweets) : '...'}</span></div>
+      <div class="modal-stat stat-replies"><span class="stat-icon">💬</span><span class="stat-count" id="modal-replies-${tweet.tweetId}">${tweet.replies !== null ? formatCount(tweet.replies) : '...'}</span></div>
+    `;
+    body.appendChild(statsRow);
+
+    // Fetch stats if not already loaded
+    if (tweet.likes === null) {
+      fetchTweetStats(tweet.tweetId).then(stats => {
+        if (stats) {
+          const likesEl = document.getElementById(`modal-likes-${tweet.tweetId}`);
+          const retweetsEl = document.getElementById(`modal-retweets-${tweet.tweetId}`);
+          const repliesEl = document.getElementById(`modal-replies-${tweet.tweetId}`);
+          if (likesEl) likesEl.textContent = formatCount(stats.likes);
+          if (retweetsEl) retweetsEl.textContent = formatCount(stats.retweets);
+          if (repliesEl) repliesEl.textContent = formatCount(stats.replies);
+        }
+      });
+    }
+  }
+
+  // Full text
+  if (tweet.text) {
+    const p = document.createElement('div');
+    p.className = 'modal-text';
+    p.innerHTML = tweet.text.replace(/(https?:\/\/[^\s<>"']+)/g,
+      '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    if (isArabic(tweet.text)) p.dir = 'rtl';
+    body.appendChild(p);
+  }
+
+  // Video
+  if (tweet.hasVideo) {
+    const vw = document.createElement('div');
+    vw.className = 'modal-video-wrap';
+    const thumbSrc = tweet.images?.[0] || tweet.contentImages?.[0] || '';
+    if (thumbSrc) {
+      const thumb = document.createElement('img');
+      thumb.className = 'modal-video-thumb';
+      thumb.src = thumbSrc;
+      thumb.onerror = function(){ this.style.display='none'; };
+      vw.appendChild(thumb);
+    }
+    const icon = document.createElement('div');
+    icon.style.cssText = 'position:relative;z-index:2;font-size:2.5rem;color:var(--text3);';
+    icon.textContent = '▶';
+    const note = document.createElement('div');
+    note.style.cssText = 'position:relative;z-index:2;font-size:0.8rem;color:var(--text3);text-align:center;';
+    note.textContent = 'Video playback requires opening on X.com';
+    vw.appendChild(icon); vw.appendChild(note);
+    body.appendChild(vw);
+  }
+
+  // Images
+  if (!tweet.hasVideo && tweet.images.length > 0) {
+    const grid = document.createElement('div');
+    grid.style.display = 'flex';
+    grid.style.flexDirection = 'column';
+    grid.style.gap = '4px';
+    grid.style.marginBottom = '14px';
+    grid.style.borderRadius = '10px';
+    grid.style.overflow = 'hidden';
+    tweet.images.slice(0, 4).forEach(src => {
+      const img = document.createElement('img');
+      img.src = src; img.alt = '';
+      img.style.width = '100%';
+      img.style.objectFit = 'contain';
+      img.style.maxHeight = '80vh';
+      img.onerror = function(){ this.style.display='none'; };
+      grid.appendChild(img);
+    });
+    body.appendChild(grid);
+  }
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  const date = document.createElement('div');
+  date.className = 'modal-date';
+  date.textContent = formatDate(tweet.pubDate);
+  footer.appendChild(date);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'modal-copy-btn';
+  copyBtn.textContent = 'Copy Link';
+  copyBtn.addEventListener('click', () => copyText(tweet.link, copyBtn));
+  footer.appendChild(copyBtn);
+
+  const copyTxtBtn = document.createElement('button');
+  copyTxtBtn.className = 'modal-copy-btn';
+  copyTxtBtn.textContent = 'Copy Text';
+  copyTxtBtn.addEventListener('click', () => copyText(tweet.text, copyTxtBtn));
+  footer.appendChild(copyTxtBtn);
+
+  const openBtn = document.createElement('a');
+  openBtn.className = 'modal-open-btn';
+  openBtn.href = tweet.link;
+  openBtn.target = '_blank'; openBtn.rel = 'noopener';
+  openBtn.textContent = '↗ Open on 𝕏';
+  footer.appendChild(openBtn);
+  body.appendChild(footer);
+
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('modalClose').addEventListener('click', () =>
+  document.getElementById('modalOverlay').classList.add('hidden'));
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.add('hidden');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+});
+
+// ── Build columns ──────────────────────────────────────────────────────────
+const container = document.getElementById('deckContainer');
+
+COLUMNS.forEach(col => {
+  seen[col.key] = new Set();
+
+  const colEl = document.createElement('div');
+  colEl.className = 'deck-column';
+  colEl.id = `col-${col.key}`;
+  colEl.innerHTML = `
+    <div class="deck-col-header">
+      <img class="col-avatar" src="" alt="" style="display:none;" />
+      <div>
+        <h2>${col.label}</h2>
+        <div class="handle">${col.handle}</div>
+      </div>
+      <span class="deck-col-badge"><span class="deck-pulse"></span>live</span>
+    </div>
+    <div class="deck-col-feed" id="feed-${col.key}">
+      <div class="deck-loading">Loading…</div>
+    </div>`;
+  container.appendChild(colEl);
+});
+
+// ── Update single column ───────────────────────────────────────────────────
+async function updateColumn(col) {
+  const feed = document.getElementById(`feed-${col.key}`);
+  try {
+    const data   = await fetchFeed(col.key);
+    const items  = data.items || [];
+    const tweets = items.map(item => mapItem(item, col.key));
+    const fresh  = tweets.filter(t => !seen[col.key].has(t.id));
+
+    // Update profile image if available
+    if (data.profile_image) {
+      let profileUrl = data.profile_image;
+      // Remove nitter.net/pic/ prefix and fix double https://
+      if (profileUrl.includes('nitter.net/pic/')) {
+        profileUrl = profileUrl.replace('nitter.net/pic/', '');
+        profileUrl = profileUrl.replace('https://https://', 'https://');
+      }
+      profileImages[col.key] = profileUrl;
+      const colHeader = document.querySelector(`#col-${col.key} .deck-col-header`);
+      if (colHeader) {
+        const avatar = colHeader.querySelector('.col-avatar');
+        if (avatar) {
+          avatar.src = profileUrl;
+          avatar.style.display = 'block';
+        }
+      }
+      setTabAvatar(col.key, profileUrl);
+    }
+
+    if (!fresh.length) return;
+
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) loader.remove();
+
+    const frag = document.createDocumentFragment();
+    fresh.forEach(t => {
+      frag.appendChild(createTweetCard(t));
+      seen[col.key].add(t.id);
+    });
+    feed.insertBefore(frag, feed.firstChild);
+  } catch(e) {
+    const loader = feed.querySelector('.deck-loading');
+    if (loader) {
+      loader.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.textContent = '⚠ Failed to load';
+      msg.style.cssText = 'margin-bottom:8px;font-size:0.8rem;color:var(--text3);';
+      const btn = document.createElement('button');
+      btn.textContent = '↺ Retry';
+      btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
+      btn.onmouseenter = () => btn.style.borderColor = 'var(--accent)';
+      btn.onmouseleave = () => btn.style.borderColor = 'var(--border2)';
+      btn.onclick = () => { loader.textContent = 'Retrying…'; updateColumn(col); };
+      loader.appendChild(msg);
+      loader.appendChild(btn);
+    }
+    console.warn('Feed error', col.key, e);
+  }
+}
+
+// ── Staggered update loop ──────────────────────────────────────────────────
+function updateLoop() {
+  COLUMNS.forEach((col, i) => {
+    setTimeout(() => updateColumn(col), i * 1000);
+  });
+  setTimeout(updateLoop, 45000);
+}
+
+// ── Mobile tab bar ─────────────────────────────────────────────────────────
+const IS_MOBILE = () => window.innerWidth <= 700;
+let mobileActiveIndex = 0;
+
+function buildMobileTabs() {
+  const bar = document.getElementById('mobileTabBar');
+  bar.innerHTML = '';
+  COLUMNS.forEach((col, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'mobile-tab' + (i === 0 ? ' active' : '');
+
+    const initWrap = document.createElement('div');
+    initWrap.className = 'mobile-tab-initial';
+    initWrap.id = `tab-initial-${col.key}`;
+    initWrap.textContent = col.label.charAt(0).toUpperCase();
+
+    const img = document.createElement('img');
+    img.id = `tab-avatar-${col.key}`;
+    img.alt = col.label;
+    initWrap.appendChild(img);
+
+    const label = document.createElement('span');
+    label.className = 'mobile-tab-label';
+    label.textContent = col.label;
+
+    tab.appendChild(initWrap);
+    tab.appendChild(label);
+    tab.addEventListener('click', () => switchMobileTab(i));
+    bar.appendChild(tab);
+  });
+}
+
+function switchMobileTab(newIndex, direction) {
+  if (!IS_MOBILE() || newIndex === mobileActiveIndex) return;
+  const dir = direction !== undefined ? direction : (newIndex > mobileActiveIndex ? 'right' : 'left');
+  const animClass = dir === 'right' ? 'slide-from-right' : 'slide-from-left';
+  const oldCol = document.getElementById(`col-${COLUMNS[mobileActiveIndex].key}`);
+  if (oldCol) oldCol.classList.remove('mobile-active');
+  const newCol = document.getElementById(`col-${COLUMNS[newIndex].key}`);
+  if (newCol) {
+    newCol.classList.add('mobile-active');
+    newCol.classList.remove('slide-from-right', 'slide-from-left');
+    void newCol.offsetWidth;
+    newCol.classList.add(animClass);
+    setTimeout(() => newCol.classList.remove(animClass), 300);
+  }
+  document.querySelectorAll('.mobile-tab').forEach((t, i) => t.classList.toggle('active', i === newIndex));
+  const tabs = document.querySelectorAll('.mobile-tab');
+  if (tabs[newIndex]) tabs[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  mobileActiveIndex = newIndex;
+}
+
+function applyMobileLayout() {
+  COLUMNS.forEach((col, i) => {
+    const el = document.getElementById(`col-${col.key}`);
+    if (el) {
+      if (IS_MOBILE()) el.classList.toggle('mobile-active', i === mobileActiveIndex);
+      else el.classList.remove('mobile-active');
+    }
+  });
+}
+
+// Expose so updateColumn can call it when profile image loads
+function setTabAvatar(colKey, url) {
+  const img = document.getElementById(`tab-avatar-${colKey}`);
+  if (!img) return;
+  img.onload = () => img.classList.add('loaded');
+  img.onerror = () => {};
+  img.src = url;
+}
+
+// Touch swipe
+(function initSwipe() {
+  const container = document.getElementById('deckContainer');
+  let tx = 0, ty = 0, swiping = false;
+  container.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; swiping = false; }, { passive: true });
+  container.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - tx, dy = e.touches[0].clientY - ty;
+    if (!swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) swiping = true;
+  }, { passive: true });
+  container.addEventListener('touchend', e => {
+    if (!IS_MOBILE() || !swiping) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (dx < -60 && mobileActiveIndex < COLUMNS.length - 1) switchMobileTab(mobileActiveIndex + 1, 'right');
+    else if (dx > 60 && mobileActiveIndex > 0) switchMobileTab(mobileActiveIndex - 1, 'left');
+    swiping = false;
+  }, { passive: true });
+})();
+
+window.addEventListener('resize', applyMobileLayout);
+buildMobileTabs();
+applyMobileLayout();
+
+updateLoop();
+</script>
 </body>
 </html>

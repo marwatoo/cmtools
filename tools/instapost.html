@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -728,6 +737,671 @@
     </div><!-- /modal -->
   </div><!-- /modal-backdrop -->
 
-  
+  <script>
+    const W = 1080, H = 1350;
+    const ORANGE = '#ff7a14';
+    const MARGIN = 33;
+    const TXT_W  = W - MARGIN * 2;
+
+    // Main canvas
+    const canvas        = document.getElementById('canvas');
+    const ctx           = canvas.getContext('2d');
+
+    // Modal canvas (live preview)
+    const modalCanvas   = document.getElementById('modalCanvas');
+    const mCtx          = modalCanvas.getContext('2d');
+
+    const upload        = document.getElementById('upload');
+    const dropzone      = document.getElementById('dropzone');
+    const uploadText    = document.getElementById('uploadText');
+    const dlWrap        = document.getElementById('dlWrap');
+    const dlBtn         = document.getElementById('dlBtn');
+    const txtMain       = document.getElementById('txtMain');
+    const hlWordEl      = document.getElementById('highlightWord');
+    const fontSizeEl    = document.getElementById('fontSize');
+    const lineSpacingEl = document.getElementById('lineSpacing');
+    const logoYEl       = document.getElementById('logoY');
+    const textYEl       = document.getElementById('textY');
+    const imgZoomEl     = document.getElementById('imgZoom');
+    const imgXEl        = document.getElementById('imgX');
+    const imgYEl        = document.getElementById('imgY');
+    const resetImgBtn   = document.getElementById('resetImg');
+    const modeTabs      = document.getElementById('modeTabs');
+    const modeNoticeIcon= document.getElementById('modeNoticeIcon');
+    const modeNoticeText= document.getElementById('modeNoticeText');
+    const labelText     = document.getElementById('labelText');
+
+    // Modal controls
+    const editModal      = document.getElementById('editModal');
+    const openModalBtn   = document.getElementById('openModalBtn');
+    const closeModalBtn  = document.getElementById('closeModalBtn');
+    const applyModalBtn  = document.getElementById('applyModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+
+    // Text summary (shown in main panel)
+    const textSummary        = document.getElementById('textSummary');
+    const textSummaryContent = document.getElementById('textSummaryContent');
+
+    let currentFile = null;
+    let currentMode = 'fr';
+    let loadedImg = null;
+    let imgW = 0, imgH = 0;
+    let imgOffsetX = 0, imgOffsetY = 0;
+    let imgZoom = 1;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetStartX = 0, dragOffsetStartY = 0;
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
+
+    // Snapshot for cancel
+    let snapshot = {};
+
+    const MODES = {
+      fr: {
+        icon: '🇫🇷', label: 'French Mode',
+        desc: 'DIN Condensed Bold, centered',
+        font: 'DINCondensedBold',
+        fallback: 'Impact, Helvetica Neue, Helvetica',
+        dir: 'ltr', upper: true,
+        lbl: 'Text',
+        ph: 'GRAIN PRODUCTION: NEARLY 90 MILLION QUINTALS EXPECTED IN 2025-2026',
+      },
+      ar: {
+        icon: '🇲🇦', label: 'Arabic Mode',
+        desc: 'Somar Bold, centered',
+        font: 'SomarBold',
+        fallback: 'Arial',
+        dir: 'rtl', upper: false,
+        lbl: 'Text',
+        ph: 'مندوبية التخطيط: أسعار الخضر والمحروقات ارتفعت بأزيد من 9% في شهر واحد',
+      },
+    };
+
+    async function loadFonts() {
+      const list = [
+        { name: 'DINCondensedBold', url: '../fonts/DINCondensed-Bold.ttf' },
+        { name: 'SomarBold',        url: '../fonts/Somar-Bold.otf' },
+      ];
+      for (const { name, url } of list) {
+        try {
+          const f = new FontFace(name, `url(${url})`);
+          await f.load();
+          document.fonts.add(f);
+        } catch(e) { console.warn('Font not loaded:', name); }
+      }
+    }
+    const fontsReady = loadFonts();
+
+    function loadImg(src) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => res(img);
+        img.onerror = () => rej(new Error('Cannot load: ' + src));
+        img.src = src;
+      });
+    }
+
+    const imgCache = {};
+    function getCached(key, src) {
+      if (!imgCache[key]) {
+        imgCache[key] = loadImg(src).catch(err => { delete imgCache[key]; return Promise.reject(err); });
+      }
+      return imgCache[key];
+    }
+    getCached('shadow', '../assets/overlays/shadow.png').catch(() => {});
+    getCached('logo',   '../assets/overlays/le360.png').catch(() => {});
+
+    // ── Render helpers ──
+    function wrapTextCtx(context, text, maxW) {
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for (const word of words) {
+        const candidate = line ? line + ' ' + word : word;
+        if (context.measureText(candidate).width <= maxW) {
+          line = candidate;
+        } else {
+          if (line) lines.push(line);
+          line = word;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    async function renderToContext(context) {
+      if (!loadedImg) {
+        context.clearRect(0, 0, W, H);
+        context.fillStyle = '#000';
+        context.fillRect(0, 0, W, H);
+        return;
+      }
+
+      context.clearRect(0, 0, W, H);
+      context.fillStyle = '#000';
+      context.fillRect(0, 0, W, H);
+
+      const zoom  = imgZoom * (parseFloat(imgZoomEl.value) || 100) / 100;
+      const baseW = imgW * zoom;
+      const baseH = imgH * zoom;
+      const sliderOffX = parseFloat(imgXEl.value) || 0;
+      const sliderOffY = parseFloat(imgYEl.value) || 0;
+      const cx = W / 2, cy = H / 2;
+      const dx = cx - baseW / 2 + imgOffsetX + sliderOffX;
+      const dy = cy - baseH / 2 + imgOffsetY + sliderOffY;
+      context.drawImage(loadedImg, dx, dy, baseW, baseH);
+
+      try {
+        const sh = await getCached('shadow', '../assets/overlays/shadow.png');
+        context.drawImage(sh, 0, 0, W, H);
+      } catch(_) {
+        const g = context.createLinearGradient(0, H * 0.4, 0, H);
+        g.addColorStop(0,   'rgba(0,0,0,0)');
+        g.addColorStop(0.4, 'rgba(0,0,0,0.65)');
+        g.addColorStop(1,   'rgba(0,0,0,0.92)');
+        context.fillStyle = g;
+        context.fillRect(0, 0, W, H);
+      }
+
+      const logoOffsetY = (parseFloat(logoYEl.value) || 0) / 100 * H;
+      try {
+        const logo = await getCached('logo', '../assets/overlays/le360.png');
+        context.drawImage(logo, 0, logoOffsetY, W, H);
+      } catch(_) {
+        context.save();
+        context.font = 'bold 38px Arial';
+        context.fillStyle = '#fff';
+        context.textAlign = 'center';
+        context.direction = 'ltr';
+        context.fillText('le360', W / 2, H * 0.775 + logoOffsetY);
+        context.restore();
+      }
+
+      await fontsReady;
+      drawTextOnContext(context);
+    }
+
+    function withShadowOnContext(context, fn) {
+      context.shadowColor   = 'rgba(0,0,0,0.85)';
+      context.shadowOffsetX = 3;
+      context.shadowOffsetY = 3;
+      context.shadowBlur    = 14;
+      fn();
+      context.shadowColor   = 'transparent';
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 0;
+      context.shadowBlur    = 0;
+    }
+
+    function drawHighlightedLineOnContext(context, line, hl, cx, y, fontStr) {
+      context.font      = fontStr;
+      context.direction = 'ltr';
+      context.textAlign = 'center';
+
+      const isRTL = MODES[currentMode].dir === 'rtl';
+
+      if (!isRTL) {
+        context.textAlign = 'left';
+        const words  = line.split(' ');
+        const spaceW = context.measureText(' ').width;
+        const widths = words.map(w => context.measureText(w).width);
+        const totalW = widths.reduce((s, w) => s + w, 0) + spaceW * (words.length - 1);
+        let x = cx - totalW / 2;
+        for (let i = 0; i < words.length; i++) {
+          const isHL = hl && words[i] === hl;
+          withShadowOnContext(context, () => {
+            context.fillStyle = isHL ? ORANGE : '#fff';
+            context.fillText(words[i], x, y);
+          });
+          x += widths[i] + spaceW;
+        }
+      } else {
+        withShadowOnContext(context, () => {
+          context.fillStyle = '#fff';
+          context.fillText(line, cx, y);
+        });
+
+        if (!hl || line.indexOf(hl) === -1) return;
+
+        const os  = document.createElement('canvas');
+        os.width  = W; os.height = 1;
+        const oc  = os.getContext('2d');
+        oc.font      = fontStr;
+        oc.direction = 'rtl';
+        oc.textAlign = 'center';
+
+        const fullW = oc.measureText(line).width;
+        const hlW   = oc.measureText(hl).width;
+        const hlCharIdx = line.indexOf(hl);
+        const before    = line.slice(0, hlCharIdx).trimEnd();
+        const after     = line.slice(hlCharIdx + hl.length).trimStart();
+        const beforeW = before.length ? oc.measureText(before).width + oc.measureText(' ').width : 0;
+
+        const blockRight = cx + fullW / 2;
+        const hlCx       = blockRight - beforeW - hlW / 2;
+
+        context.textAlign = 'center';
+        withShadowOnContext(context, () => {
+          context.fillStyle = ORANGE;
+          context.fillText(hl, hlCx, y);
+        });
+      }
+    }
+
+    function drawTextOnContext(context) {
+      const cfg  = MODES[currentMode];
+      const raw  = txtMain.value.trim();
+      if (!raw) return;
+
+      const text    = cfg.upper ? raw.toUpperCase() : raw;
+      const hlRaw   = hlWordEl.value.trim();
+      const hl      = hlRaw ? (cfg.upper ? hlRaw.toUpperCase() : hlRaw) : '';
+      const px      = Math.max(20, parseInt(fontSizeEl.value, 10) || 107);
+      const spacing = parseInt(lineSpacingEl.value, 10) || 0;
+      const lineH   = Math.round(px * 1.16) + spacing;
+      const fontStr = `normal ${px}px ${cfg.font}, ${cfg.fallback}`;
+
+      context.save();
+      context.font      = fontStr;
+      context.direction = 'ltr';
+      context.textAlign = 'center';
+
+      const lines  = wrapTextCtx(context, text, TXT_W);
+      const anchorY = H * ((parseFloat(textYEl.value) || 90) / 100);
+      const startY  = anchorY - lines.length * lineH + lineH;
+
+      lines.forEach((line, i) => {
+        const y = startY + i * lineH;
+        if (hl) {
+          drawHighlightedLineOnContext(context, line, hl, W / 2, y, fontStr);
+        } else {
+          withShadowOnContext(context, () => {
+            context.fillStyle = '#fff';
+            context.fillText(line, W / 2, y);
+          });
+        }
+      });
+
+      context.restore();
+    }
+
+    // ── Draw wrappers ──
+    async function draw() {
+      if (!currentFile) { updateDlBtn(); return; }
+      if (loadedImg) { await renderToContext(ctx); updateDlBtn(); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => loadImg(e.target.result).then(img => {
+        loadedImg = img; imgW = img.width; imgH = img.height;
+        renderToContext(ctx).then(updateDlBtn);
+      });
+      reader.readAsDataURL(currentFile);
+    }
+
+    async function drawModal() {
+      if (!loadedImg) return;
+      await renderToContext(mCtx);
+    }
+
+    function updateDlBtn() {
+      dlWrap.classList.toggle('visible', !!(currentFile && txtMain.value.trim()));
+    }
+
+    function updateTextSummary() {
+      const txt = txtMain.value.trim();
+      const hl  = hlWordEl.value.trim();
+      if (txt) {
+        textSummary.style.display = 'block';
+        const short = txt.length > 80 ? txt.slice(0, 80) + '…' : txt;
+        textSummaryContent.innerHTML = short + (hl ? ` <span style="color:#ff7a14;font-weight:600;">[${hl}]</span>` : '');
+      } else {
+        textSummary.style.display = 'none';
+      }
+    }
+
+    // ── Snapshot for cancel ──
+    function takeSnapshot() {
+      snapshot = {
+        text:        txtMain.value,
+        hl:          hlWordEl.value,
+        fontSize:    fontSizeEl.value,
+        lineSpacing: lineSpacingEl.value,
+        textY:       textYEl.value,
+        logoY:       logoYEl.value,
+        imgZoom:     imgZoomEl.value,
+        imgX:        imgXEl.value,
+        imgY:        imgYEl.value,
+        imgOffsetX:  imgOffsetX,
+        imgOffsetY:  imgOffsetY,
+        imgZoomVal:  imgZoom,
+      };
+    }
+
+    function restoreSnapshot() {
+      txtMain.value        = snapshot.text;
+      hlWordEl.value       = snapshot.hl;
+      fontSizeEl.value     = snapshot.fontSize;
+      lineSpacingEl.value  = snapshot.lineSpacing;
+      textYEl.value        = snapshot.textY;
+      logoYEl.value        = snapshot.logoY;
+      imgZoomEl.value      = snapshot.imgZoom;
+      imgXEl.value         = snapshot.imgX;
+      imgYEl.value         = snapshot.imgY;
+      imgOffsetX           = snapshot.imgOffsetX;
+      imgOffsetY           = snapshot.imgOffsetY;
+      imgZoom              = snapshot.imgZoomVal;
+      syncAllSlidersDisplay();
+    }
+
+    function syncAllSlidersDisplay() {
+      const pairs = [
+        { el: fontSizeEl,    out: document.getElementById('fontSizeVal'),    unit: ' px' },
+        { el: lineSpacingEl, out: document.getElementById('lineSpacingVal'), unit: ' px' },
+        { el: textYEl,       out: document.getElementById('textYVal'),       unit: ' %'  },
+        { el: logoYEl,       out: document.getElementById('logoYVal'),       unit: ' %'  },
+        { el: imgZoomEl,     out: document.getElementById('imgZoomVal'),     unit: ' %'  },
+        { el: imgXEl,        out: document.getElementById('imgXVal'),        unit: ' px' },
+        { el: imgYEl,        out: document.getElementById('imgYVal'),        unit: ' px' },
+      ];
+      pairs.forEach(({ el, out, unit }) => { out.textContent = el.value + unit; });
+    }
+
+    // ── Modal open/close ──
+    function openModal() {
+      takeSnapshot();
+      editModal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      drawModal();
+    }
+
+    function closeModal(apply) {
+      if (!apply) restoreSnapshot();
+      editModal.classList.remove('open');
+      document.body.style.overflow = '';
+      draw();
+      updateTextSummary();
+      updateDlBtn();
+    }
+
+    openModalBtn.addEventListener('click', openModal);
+    closeModalBtn.addEventListener('click', () => closeModal(false));
+    cancelModalBtn.addEventListener('click', () => closeModal(false));
+    applyModalBtn.addEventListener('click', () => closeModal(true));
+
+    // Close on backdrop click
+    editModal.addEventListener('click', e => {
+      if (e.target === editModal) closeModal(false);
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && editModal.classList.contains('open')) closeModal(false);
+    });
+
+    // ── All inputs trigger modal redraw ──
+    [txtMain, hlWordEl, fontSizeEl, lineSpacingEl, logoYEl, textYEl, imgZoomEl, imgXEl, imgYEl]
+      .forEach(el => el.addEventListener('input', () => drawModal()));
+
+    // ── Download ──
+    dlBtn.addEventListener('click', () => {
+      try {
+        const now = new Date();
+        const ts  = now.getFullYear()
+          + String(now.getMonth()+1).padStart(2,'0')
+          + String(now.getDate()).padStart(2,'0')
+          + '_' + String(now.getHours()).padStart(2,'0')
+          + String(now.getMinutes()).padStart(2,'0')
+          + String(now.getSeconds()).padStart(2,'0');
+        const filename = `insta_post_${currentMode}_${ts}.jpeg`;
+
+        // iOS Safari is unreliable with data: URLs + a.download, especially
+        // when the anchor is never attached to the DOM. Use a Blob + object
+        // URL instead, and attach/click/detach the anchor for compatibility.
+        canvas.toBlob((blob) => {
+          if (!blob) { alert('Download error: could not generate image.'); return; }
+
+          const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          if (isIOS && navigator.share && navigator.canShare &&
+              navigator.canShare({ files: [new File([blob], filename, { type: 'image/jpeg' })] })) {
+            // iOS Safari has no real "download" concept for canvas images;
+            // the share sheet's "Save Image" is the most reliable path.
+            const file = new File([blob], filename, { type: 'image/jpeg' });
+            navigator.share({ files: [file] }).catch(() => {
+              // user cancelled or share failed — fall back to opening the image
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              setTimeout(() => URL.revokeObjectURL(url), 30000);
+            });
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href     = url;
+          a.download = filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+        }, 'image/jpeg', 0.94);
+      } catch(e) { alert('Error: ' + e.message); }
+    });
+
+    // ── Mode tabs ──
+    modeTabs.addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (tab) setMode(tab.dataset.mode);
+    });
+
+    // ── Upload / dropzone ──
+    dropzone.addEventListener('click',    () => upload.click());
+    dropzone.addEventListener('dragover', e  => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave',() => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) enableFile(e.dataTransfer.files[0]);
+    });
+    upload.addEventListener('change', () => { if (upload.files[0]) enableFile(upload.files[0]); });
+
+    function enableFile(file) {
+      currentFile = file;
+      loadedImg = null;
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      imgZoomEl.value = 100;
+      imgXEl.value = 0;
+      imgYEl.value = 0;
+      document.getElementById('imgZoomVal').textContent = '100 %';
+      document.getElementById('imgXVal').textContent = '0 px';
+      document.getElementById('imgYVal').textContent = '0 px';
+      draw();
+    }
+
+    // ── Reset image ──
+    resetImgBtn.addEventListener('click', () => {
+      imgZoomEl.value = 100;
+      imgXEl.value    = 0;
+      imgYEl.value    = 0;
+      imgOffsetX = 0; imgOffsetY = 0;
+      imgZoom = 1;
+      document.getElementById('imgZoomVal').textContent = '100 %';
+      document.getElementById('imgXVal').textContent    = '0 px';
+      document.getElementById('imgYVal').textContent    = '0 px';
+      drawModal();
+    });
+
+    // ── Slider display sync ──
+    const sliders = [
+      { el: fontSizeEl,    out: document.getElementById('fontSizeVal'),    unit: ' px' },
+      { el: lineSpacingEl, out: document.getElementById('lineSpacingVal'), unit: ' px' },
+      { el: textYEl,       out: document.getElementById('textYVal'),       unit: ' %'  },
+      { el: logoYEl,       out: document.getElementById('logoYVal'),       unit: ' %'  },
+      { el: imgZoomEl,     out: document.getElementById('imgZoomVal'),     unit: ' %'  },
+      { el: imgXEl,        out: document.getElementById('imgXVal'),        unit: ' px' },
+      { el: imgYEl,        out: document.getElementById('imgYVal'),        unit: ' px' },
+    ];
+    sliders.forEach(({ el, out, unit }) => {
+      const sync = () => { out.textContent = el.value + unit; };
+      sync();
+      el.addEventListener('input', sync);
+    });
+
+    // ── Stepper buttons (+/−) ──
+    document.querySelectorAll('.step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const el  = document.getElementById(btn.dataset.target);
+        const dir = parseInt(btn.dataset.dir, 10);
+        const step = parseFloat(el.step) || 1;
+        const min  = parseFloat(el.min);
+        const max  = parseFloat(el.max);
+        const val  = Math.min(max, Math.max(min, parseFloat(el.value) + dir * step));
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+
+    // ── Pinch/Zoom & Drag on MAIN canvas ──
+    canvas.addEventListener('mousedown', onDragStart);
+    canvas.addEventListener('mousemove', onDragMove);
+    canvas.addEventListener('mouseup', onDragEnd);
+    canvas.addEventListener('mouseleave', onDragEnd);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onDragEnd);
+
+    function getCanvasCoords(e, cvs) {
+      const rect = cvs.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+    }
+
+    function onDragStart(e) {
+      if (!loadedImg) return;
+      isDragging = true;
+      const coords = getCanvasCoords(e, canvas);
+      dragStartX = coords.x; dragStartY = coords.y;
+      dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !loadedImg) return;
+      const coords = getCanvasCoords(e, canvas);
+      imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+      imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+      renderToContext(ctx).then(updateDlBtn);
+      syncSliders();
+    }
+
+    function onTouchStart(e) {
+      if (!loadedImg) return;
+      if (e.touches.length === 2) {
+        e.preventDefault(); isPinching = true; isDragging = false;
+        pinchStartDist = getTouchDist(e); pinchStartZoom = imgZoom; return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e, canvas);
+        isDragging = true;
+        dragStartX = coords.x; dragStartY = coords.y;
+        dragOffsetStartX = imgOffsetX; dragOffsetStartY = imgOffsetY;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!loadedImg) return;
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        var dist = getTouchDist(e);
+        var ratio = dist / pinchStartDist;
+        imgZoom = Math.max(0.1, Math.min(30, pinchStartZoom * ratio));
+        document.getElementById('imgZoom').value = Math.round(imgZoom * 100);
+        document.getElementById('imgZoomVal').textContent = Math.round(imgZoom * 100) + ' %';
+        renderToContext(ctx).then(updateDlBtn);
+        return;
+      }
+      if (isDragging && e.touches.length === 1 && !isPinching) {
+        e.preventDefault();
+        const coords = getCanvasCoords(e, canvas);
+        imgOffsetX = dragOffsetStartX + (coords.x - dragStartX);
+        imgOffsetY = dragOffsetStartY + (coords.y - dragStartY);
+        renderToContext(ctx).then(updateDlBtn);
+        syncSliders();
+      }
+    }
+
+    function onDragEnd() {
+      isDragging = false; isPinching = false;
+      syncSliders();
+    }
+
+    function syncSliders() {
+      if (!loadedImg) return;
+      var zoom = imgZoom * (parseFloat(imgZoomEl.value) || 100) / 100;
+      var baseW = imgW * zoom, baseH = imgH * zoom;
+      var maxOffX = baseW / 2, maxOffY = baseH / 2;
+      var xPct = Math.round((imgOffsetX / maxOffX) * 100);
+      var yPct = Math.round((imgOffsetY / maxOffY) * 100);
+      xPct = Math.max(-100, Math.min(100, xPct));
+      yPct = Math.max(-100, Math.min(100, yPct));
+      document.getElementById('imgX').value = xPct * 5.4;
+      document.getElementById('imgXVal').textContent = Math.round(xPct * 5.4) + ' px';
+      document.getElementById('imgY').value = yPct * 6.75;
+      document.getElementById('imgYVal').textContent = Math.round(yPct * 6.75) + ' px';
+    }
+
+    canvas.addEventListener('wheel', function(e) {
+      if (!loadedImg) return;
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? -0.05 : 0.05;
+      var newZoom = Math.max(0.1, Math.min(30, imgZoom + delta));
+      var coords = getCanvasCoords(e, canvas);
+      var imgCX = coords.x - imgOffsetX;
+      var imgCY = coords.y - imgOffsetY;
+      var scaleRatio = newZoom / imgZoom;
+      imgOffsetX = coords.x - imgCX * scaleRatio;
+      imgOffsetY = coords.y - imgCY * scaleRatio;
+      imgZoom = newZoom;
+      document.getElementById('imgZoom').value = Math.round(newZoom * 100);
+      document.getElementById('imgZoomVal').textContent = Math.round(newZoom * 100) + ' %';
+      renderToContext(ctx).then(updateDlBtn);
+      syncSliders();
+    }, { passive: false });
+
+    function getTouchDist(e) {
+      if (e.touches.length < 2) return 0;
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const cfg   = MODES[mode];
+      document.querySelectorAll('.mode-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.mode === mode)
+      );
+      modeNoticeIcon.textContent = cfg.icon;
+      modeNoticeText.innerHTML   = `<strong>${cfg.label}</strong> — ${cfg.desc}`;
+      labelText.textContent      = cfg.lbl;
+      txtMain.placeholder        = cfg.ph;
+      txtMain.dir                = cfg.dir;
+      hlWordEl.dir               = cfg.dir;
+      dlWrap.classList.remove('visible');
+      draw();
+    }
+
+    setMode('fr');
+  </script>
 </body>
 </html>

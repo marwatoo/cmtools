@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .quote-layout {
       display: grid;
@@ -468,6 +477,241 @@
   </div>
 </div>
 
+<script>
+let fontStyle = 'Playfair Display';
+let bgColor = '#0a0a0f';
+let accentColor = '#ff6b6b';
+let canvasW = 1080;
+let canvasH = 1080;
+let authorImage = null;
+let authorImageSrc = '';
 
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
+
+function getContrastColor(hex) {
+  const rgb = hexToRgb(hex);
+  return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 186 ? '#000000' : '#ffffff';
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('quoteCanvas');
+  const ctx = canvas.getContext('2d');
+  const padding = parseInt(document.getElementById('padding').value);
+  const quoteSize = parseInt(document.getElementById('quoteSize').value);
+  const authorSize = parseInt(document.getElementById('authorSize').value);
+  const quoteText = document.getElementById('quoteText').value;
+  const authorText = document.getElementById('quoteAuthor').value;
+  const showQuoteMark = document.getElementById('showQuoteMark').checked;
+  const showBorder = document.getElementById('showBorder').checked;
+  const showAuthorImage = document.getElementById('showAuthorImage').checked;
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  if (showBorder) {
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(20, 20, canvasW - 40, canvasH - 40);
+  }
+
+  const textColor = getContrastColor(bgColor);
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'center';
+  
+  if (showQuoteMark) {
+    ctx.font = `${quoteSize * 3}px ${fontStyle}`;
+    ctx.fillStyle = accentColor;
+    ctx.globalAlpha = 0.3;
+    ctx.fillText('"', canvasW / 2, padding + quoteSize);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.font = `${quoteSize}px ${fontStyle}`;
+  ctx.fillStyle = textColor;
+  
+  let quoteCenterY = canvasH / 2;
+  if (showAuthorImage && authorImage) {
+    quoteCenterY = canvasH / 2 - 80;
+  }
+  
+  const lines = wrapText(ctx, quoteText, canvasW - padding * 2);
+  let y = quoteCenterY - (lines.length * quoteSize) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, canvasW / 2, y + i * quoteSize * 1.3);
+  });
+
+  const authorY = quoteCenterY + (lines.length * quoteSize) / 2 + 40;
+  
+  if (showAuthorImage && authorImage) {
+    const circleRadius = 60;
+    const circleX = canvasW / 2;
+    const circleY = authorY + 80;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    
+    const imgSize = circleRadius * 2;
+    ctx.drawImage(authorImage, circleX - circleRadius, circleY - circleRadius, imgSize, imgSize);
+    ctx.restore();
+    
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    
+    ctx.font = `${authorSize}px DM Sans`;
+    ctx.fillStyle = accentColor;
+    ctx.fillText(authorText, canvasW / 2, authorY);
+  } else {
+    ctx.font = `${authorSize}px DM Sans`;
+    ctx.fillStyle = accentColor;
+    ctx.fillText(authorText, canvasW / 2, authorY);
+  }
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    if (ctx.measureText(testLine).width < maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function updateSize(w, h) {
+  canvasW = parseInt(w);
+  canvasH = parseInt(h);
+  renderCanvas();
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    updateSize(e.target.dataset.w, e.target.dataset.h);
+  });
+});
+
+document.querySelectorAll('.style-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    fontStyle = e.target.dataset.font;
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('accentColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#accentColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    accentColor = e.target.dataset.accent;
+    renderCanvas();
+  }
+});
+
+document.getElementById('quoteSize').addEventListener('input', e => {
+  document.getElementById('quoteSizeVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('authorSize').addEventListener('input', e => {
+  document.getElementById('authorSizeVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('padding').addEventListener('input', e => {
+  document.getElementById('paddingVal').textContent = e.target.value;
+  renderCanvas();
+});
+
+document.getElementById('showQuoteMark').addEventListener('change', renderCanvas);
+document.getElementById('showBorder').addEventListener('change', renderCanvas);
+
+document.getElementById('quoteText').addEventListener('input', renderCanvas);
+document.getElementById('quoteAuthor').addEventListener('input', renderCanvas);
+
+document.getElementById('downloadPngBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('quoteCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'quote-card.png';
+    a.click();
+  }, 'image/png');
+});
+
+document.getElementById('downloadJpgBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('quoteCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'quote-card.jpg';
+    a.click();
+  }, 'image/jpeg', 0.92);
+});
+
+const authorDropzone = document.getElementById('authorDropzone');
+const authorImageInput = document.getElementById('authorImageInput');
+
+authorDropzone.addEventListener('dragover', e => { e.preventDefault(); authorDropzone.classList.add('drag-over'); });
+authorDropzone.addEventListener('dragleave', () => authorDropzone.classList.remove('drag-over'));
+authorDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  authorDropzone.classList.remove('drag-over');
+  loadAuthorImage(e.dataTransfer.files[0]);
+});
+authorImageInput.addEventListener('change', () => loadAuthorImage(authorImageInput.files[0]));
+
+function loadAuthorImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      authorImage = img;
+      authorImageSrc = e.target.result;
+      document.getElementById('authorImageText').textContent = file.name.substring(0, 20);
+      renderCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('showAuthorImage').addEventListener('change', renderCanvas);
+
+renderCanvas();
+</script>
 </body>
 </html>

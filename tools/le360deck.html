@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .deck-container {
       opacity: 0; transform: translateY(12px);
@@ -163,6 +172,598 @@
     </div>
   </div>
 
-  
+  <script>
+    // ── CORS proxy ───────────────────────────────────────────────────────
+    // PRIMARY: your own Cloudflare Worker (see worker/le360-proxy-worker.js).
+    // Public proxy domains (allorigins, codetabs, etc.) are commonly
+    // blocked at the network/DNS level on school, corporate, and some ISP
+    // networks, since they're a known category used to bypass filters —
+    // that's a local network block, not something a "better proxy list"
+    // fixes. A Worker on a *.workers.dev domain isn't in that category.
+    //
+    // ▶▶ SET THIS to your deployed worker's URL, e.g.:
+    //    'https://le360-proxy.yoursubdomain.workers.dev'
+    // Leave it empty ('') to skip straight to the public-proxy fallbacks.
+    const WORKER_PROXY_BASE = 'https://worker.bifisse-marwa.workers.dev';
+
+    // Each entry is an async fetcher: (bustUrl) => Promise<string of feed text>.
+    // Using functions (not just URL templates) lets us mix plain-text proxies
+    // with allorigins' JSON envelope, which needs its own response parsing.
+    // Each fetcher carries a .proxyName for logging/diagnostics.
+    const PROXIES = [];
+
+    if (WORKER_PROXY_BASE) {
+      PROXIES.push(Object.assign(async bustUrl => {
+        const res = await fetch(`${WORKER_PROXY_BASE}/?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'own-worker' }));
+    }
+
+    // Fallbacks: public proxies. Kept in case the Worker above isn't set up
+    // yet, or is temporarily down. NOTE: if your network blocks known proxy
+    // domains (see diagnosis above), these will simply time out for you —
+    // that's expected, the Worker is the real fix.
+    PROXIES.push(
+      Object.assign(async bustUrl => {
+        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'codetabs' }),
+      Object.assign(async bustUrl => {
+        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, { proxyName: 'allorigins-raw' }),
+      Object.assign(async bustUrl => {
+        // JSON envelope endpoint hits different backend code than /raw above,
+        // so it's kept as a separate independent path rather than relying on /raw twice.
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(bustUrl)}`, { signal: AbortSignal.timeout(12000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data || !data.contents) throw new Error('empty contents');
+        return data.contents;
+      }, { proxyName: 'allorigins-json' })
+    );
+
+    const REFRESH_INTERVAL = 7 * 60 * 1000; // 7 minutes
+    const CACHE_KEY = 'le360deck_cache_v2';
+
+    const sources = {
+      FR:       'https://fr.le360.ma/arc/outboundfeeds/google-news-feed/',
+      AR:       'https://ar.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Sport_AR: 'https://ar.sport.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Sport_FR: 'https://sport.le360.ma/arc/outboundfeeds/google-news-feed/',
+      AFRIQUE:  'https://afrique.le360.ma/arc/outboundfeeds/google-news-feed/',
+      Es:       'https://es.le360.ma/arc/outboundfeeds/google-news-feed/category/actualites-es/'
+    };
+
+    const labels = { AR:'Arabe', FR:'Français', AFRIQUE:'Afrique', Sport_AR:'Sport Ar', Sport_FR:'Sport Fr', Es:'Espagnol' };
+
+    // Per-column state: last fetched timestamp + last article list
+    // Only lightweight fields are cached (no full content/contentImages)
+    const colState = {};
+
+    // Interval IDs for cleanup
+    const intervalIds = {};
+
+    // ── Persist / restore ─────────────────────────────────────────────────
+    function saveCache() {
+      try {
+        // Strip heavy fields before caching to avoid localStorage quota issues
+        const slim = {};
+        Object.entries(colState).forEach(([key, state]) => {
+          if (!state) return;
+          slim[key] = {
+            fetchedAt: state.fetchedAt,
+            articles: (state.articles || []).map(a => ({
+              title:       a.title,
+              link:        a.link,
+              img:         a.img,
+              date:        a.date,
+              description: a.description,
+              _isRtl:      a._isRtl,
+              // content and contentImages are intentionally omitted
+            }))
+          };
+        });
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), cols: slim }));
+      } catch(e) {
+        // Quota exceeded or private mode — silently ignore
+      }
+    }
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        Object.entries(data.cols || {}).forEach(([key, state]) => {
+          // Restore slim cache; missing heavy fields will re-fetch on modal open
+          colState[key] = {
+            fetchedAt: state.fetchedAt,
+            articles: (state.articles || []).map(a => ({
+              ...a,
+              content:       a.description || '<p>No content.</p>',
+              contentImages: [],
+            }))
+          };
+        });
+      } catch(e) {}
+    }
+
+    // ── Clipboard helper (with execCommand fallback) ───────────────────────
+    function copyToClipboard(text, btn) {
+      const finish = () => {
+        btn.classList.add('copied');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1200);
+      };
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(finish).catch(() => fallbackCopy(text, finish));
+      } else {
+        fallbackCopy(text, finish);
+      }
+    }
+
+    function fallbackCopy(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); cb(); } catch(e) {}
+      document.body.removeChild(ta);
+    }
+
+    // ── Fetch helpers ─────────────────────────────────────────────────────
+    async function fetchWithProxy(url, key) {
+      const bustUrl = url + (url.includes('?') ? '&' : '?') + '_t=' + Math.floor(Date.now() / 60000);
+      const results = PROXIES.map((fetcher, i) =>
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            fetcher(bustUrl)
+              .then(text => {
+                if (!text || text.length < 100) throw new Error('response too short (' + (text ? text.length : 0) + ' chars) — likely an error page, not the feed');
+                resolve(text);
+              })
+              .catch(err => {
+                console.warn(`[le360deck] proxy "${fetcher.proxyName}" failed for ${key}:`, err && err.message ? err.message : err);
+                reject(err);
+              });
+          }, i * 200);
+        })
+      );
+      try {
+        return await Promise.any(results);
+      } catch (aggErr) {
+        console.error(`[le360deck] ALL proxies failed for ${key} (${url}):`,
+          (aggErr.errors || []).map((e, i) => `${PROXIES[i].proxyName}: ${e && e.message ? e.message : e}`));
+        throw aggErr;
+      }
+    }
+
+    function extractImagesFromHTML(html) {
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      return [...d.querySelectorAll('img')].map(i => i.src).filter(Boolean);
+    }
+
+    function imgFromDescription(desc) {
+      if (!desc) return '';
+      const d = document.createElement('div'); d.innerHTML = desc;
+      return d.querySelector('img')?.src || '';
+    }
+
+    async function fetchArticles(key, url) {
+      const text = await fetchWithProxy(url, key);
+      const doc  = new DOMParser().parseFromString(text, 'text/xml');
+      if (doc.querySelector('parsererror')) throw new Error('XML parse error');
+
+      return [...doc.querySelectorAll('item')].slice(0, 12).map(item => {
+        let content = '';
+        try {
+          const nodes = item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/', 'encoded');
+          if (nodes.length) content = nodes[0].textContent;
+        } catch(e) {}
+
+        const desc = item.querySelector('description')?.textContent || '';
+
+        // FIX: use getElementsByTagNameNS for media:content (more reliable in XML docs)
+        let mediaUrl = '';
+        try {
+          const mediaNodes = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content');
+          if (mediaNodes.length) mediaUrl = mediaNodes[0].getAttribute('url') || '';
+        } catch(e) {}
+
+        let link = '';
+        for (const node of item.childNodes) {
+          if (node.nodeName === 'link') {
+            link = (node.textContent || '').trim();
+            if (link) break;
+          }
+        }
+        if (!link) {
+          const guid = item.querySelector('guid')?.textContent?.trim() || '';
+          if (guid.startsWith('http')) link = guid;
+        }
+
+        return {
+          title:         item.querySelector('title')?.textContent || '',
+          link,
+          img:           mediaUrl || imgFromDescription(desc) || '',
+          date:          item.querySelector('pubDate')?.textContent || '',
+          content:       content || desc || '<p>No content.</p>',
+          description:   desc,
+          contentImages: extractImagesFromHTML(content),
+          _isRtl:        key === 'AR' || key === 'Sport_AR'
+        };
+      });
+    }
+
+    function formatDate(ds) {
+      try { return new Date(ds).toLocaleString('fr-FR', { hour12: false }); }
+      catch(e) { return ds; }
+    }
+
+    function extractYouTubeLink(html) {
+      if (!html) return '';
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      const ytMatch = d.innerHTML.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+      return ytMatch ? `https://youtu.be/${ytMatch[1]}` : '';
+    }
+
+    // ── Render card ────────────────────────────────────────────────────────
+    function createCard(article, eager = false) {
+      const fallback = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect fill="%23222"/></svg>';
+      const hasCarousel = article.contentImages.length > 1;
+
+      const card = document.createElement('div');
+      card.className = 'deck-card';
+
+      const img = document.createElement('img');
+      img.className = 'deck-card-img';
+      img.src = article.img || fallback;
+      img.loading = eager ? 'eager' : 'lazy';
+      img.fetchPriority = eager ? 'high' : 'auto';
+      img.alt = '';
+      // FIX: onerror must be a function, not a string
+      img.onerror = () => { img.src = fallback; img.onerror = null; };
+      card.appendChild(img);
+
+      const h3 = document.createElement('h3');
+      h3.textContent = article.title;
+      card.appendChild(h3);
+
+      const date = document.createElement('div');
+      date.className = 'deck-card-date';
+      date.textContent = formatDate(article.date);
+      card.appendChild(date);
+
+      const btns = document.createElement('div');
+      btns.className = 'deck-card-btns';
+
+      const copyLink = document.createElement('button');
+      copyLink.className = 'deck-btn copy-link';
+      copyLink.textContent = 'Copy Link';
+      btns.appendChild(copyLink);
+
+      const copyTitle = document.createElement('button');
+      copyTitle.className = 'deck-btn copy-title';
+      copyTitle.textContent = 'Copy Title';
+      btns.appendChild(copyTitle);
+
+      const copyBoth = document.createElement('button');
+      copyBoth.className = 'deck-btn copy-both';
+      copyBoth.textContent = 'Copy Title + Link';
+      btns.appendChild(copyBoth);
+
+      const ytLink = extractYouTubeLink(article.content);
+      if (ytLink) {
+        const copyTitleYt = document.createElement('button');
+        copyTitleYt.className = 'deck-btn copy-title-yt';
+        copyTitleYt.textContent = 'Copy Title + YT Link';
+        copyTitleYt.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(`${article.title}\n${ytLink}`, copyTitleYt);
+        });
+        btns.appendChild(copyTitleYt);
+      }
+
+      if (hasCarousel) {
+        const carousel = document.createElement('span');
+        carousel.className = 'deck-btn carousel-tag';
+        carousel.textContent = 'Carousel';
+        btns.appendChild(carousel);
+      }
+
+      card.appendChild(btns);
+
+      // Events
+      card.addEventListener('click', e => {
+        if (e.target.closest('.deck-card-btns')) return;
+        openModal(article);
+      });
+      copyLink.addEventListener('click',  e => { e.stopPropagation(); copyToClipboard(article.link, copyLink); });
+      copyTitle.addEventListener('click', e => { e.stopPropagation(); copyToClipboard(article.title, copyTitle); });
+      copyBoth.addEventListener('click',  e => { e.stopPropagation(); copyToClipboard(`${article.title}\n${article.link}`, copyBoth); });
+
+      return card;
+    }
+
+    // ── Render full feed ──────────────────────────────────────────────────
+    function renderFeed(key, articles) {
+      const feed = document.getElementById(`feed-${key}`);
+      if (!feed) return;
+
+      const scrollTop = feed.scrollTop;
+      feed.innerHTML = '';
+
+      if (!articles || !articles.length) {
+        const msg = document.createElement('div');
+        msg.className = 'deck-loading';
+        msg.textContent = 'No articles found.';
+        feed.appendChild(msg);
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      articles.forEach((a, i) => frag.appendChild(createCard(a, i === 0)));
+      feed.appendChild(frag);
+
+      if (scrollTop > 80) feed.scrollTop = scrollTop;
+    }
+
+    // ── Status label per column ───────────────────────────────────────────
+    function setStatus(key, state, text, title) {
+      const el = document.getElementById(`status-${key}`);
+      if (!el) return;
+      el.className = 'deck-refresh-status' + (state ? ` ${state}` : '');
+      el.textContent = text;
+      if (title) el.title = title; else el.removeAttribute('title');
+    }
+
+    // ── Per-column fetch + render ─────────────────────────────────────────
+    async function refreshColumn(key, url, isRetry = false) {
+      setStatus(key, 'refreshing', '↻ fetching…');
+      try {
+        const articles = await fetchArticles(key, url);
+        if (!articles.length) throw new Error('empty feed');
+
+        colState[key] = { fetchedAt: Date.now(), articles };
+        saveCache();
+
+        renderFeed(key, articles);
+        setStatus(key, '', 'updated ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+      } catch(e) {
+        if (!isRetry) {
+          setStatus(key, '', 'retrying…');
+          setTimeout(() => refreshColumn(key, url, true), 4000);
+          return;
+        }
+        const detail = e && e.errors
+          ? e.errors.map((err, i) => `${PROXIES[i].proxyName}: ${err && err.message ? err.message : err}`).join(' | ')
+          : (e && e.message ? e.message : String(e));
+        setStatus(key, 'error', '⚠ failed', detail);
+
+        const feed = document.getElementById(`feed-${key}`);
+        if (feed && !feed.querySelector('.deck-card')) {
+          feed.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'deck-loading';
+          const msg = document.createElement('div');
+          msg.textContent = '⚠ Failed to load';
+          msg.style.cssText = 'margin-bottom:8px;font-size:0.8rem;color:var(--text3);';
+          const btn = document.createElement('button');
+          btn.textContent = '↺ Retry';
+          btn.style.cssText = 'font-size:0.72rem;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;font-family:inherit;';
+          btn.onclick = () => { wrap.innerHTML = ''; wrap.textContent = 'Retrying…'; refreshColumn(key, url, false); };
+          wrap.appendChild(msg);
+          wrap.appendChild(btn);
+          feed.appendChild(wrap);
+        }
+        console.warn('Feed error', key, e);
+      }
+    }
+
+    // ── Build columns ──────────────────────────────────────────────────────
+    const container = document.getElementById('deckContainer');
+
+    Object.keys(sources).forEach(key => {
+      const col = document.createElement('div');
+      col.className = 'deck-column' + (key === 'AR' || key === 'Sport_AR' ? ' rtl' : '');
+      col.id = `col-${key}`;
+      col.innerHTML = `
+        <div class="deck-col-header">
+          <h2>${labels[key]}</h2>
+          <span class="deck-refresh-status" id="status-${key}"></span>
+        </div>
+        <div class="deck-col-feed" id="feed-${key}">
+          <div class="deck-loading">Loading…</div>
+        </div>`;
+      container.appendChild(col);
+    });
+
+    // ── Boot: load cache → render immediately → then fetch fresh ──────────
+    loadCache();
+
+    Object.keys(sources).forEach(key => {
+      const state = colState[key];
+      if (state && state.articles && state.articles.length) {
+        renderFeed(key, state.articles);
+        const age = Math.round((Date.now() - state.fetchedAt) / 60000);
+        setStatus(key, '', `cached ${age}m ago`);
+      }
+    });
+
+    // Stagger initial fetches slightly to avoid hammering proxies all at once
+    Object.entries(sources).forEach(([key, url], i) => {
+      setTimeout(() => refreshColumn(key, url), i * 400);
+    });
+
+    // ── 1-minute refresh loop (store IDs for potential cleanup) ───────────
+    Object.entries(sources).forEach(([key, url]) => {
+      intervalIds[key] = setInterval(() => refreshColumn(key, url), REFRESH_INTERVAL);
+    });
+
+    // ── Visibility-based refresh ──────────────────────────────────────────
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      Object.entries(sources).forEach(([key, url]) => {
+        const state = colState[key];
+        const age = state ? Date.now() - state.fetchedAt : Infinity;
+        if (age >= REFRESH_INTERVAL) refreshColumn(key, url);
+      });
+    });
+
+    // ── Modal ──────────────────────────────────────────────────────────────
+    function openModal(article) {
+      const overlay = document.getElementById('modalOverlay');
+      const body    = document.getElementById('modalBody');
+      const hasCarousel = article.contentImages.length > 1;
+      const isRTL = article._isRtl;
+
+      let mediaHTML = '';
+      if (hasCarousel) {
+        mediaHTML = `<div class="slider">
+          ${article.contentImages.map((src, i) => `<img src="${src}" class="slide ${i===0?'active':''}" alt="">`).join('')}
+          <button class="slider-btn slider-prev">&#10094;</button>
+          <button class="slider-btn slider-next">&#10095;</button>
+        </div>`;
+      } else if (article.img) {
+        mediaHTML = `<img class="modal-img" src="${article.img}" alt="">`;
+      }
+
+      let contentHTML = article.content;
+      if (hasCarousel) {
+        const tmp = document.createElement('div'); tmp.innerHTML = article.content;
+        tmp.querySelectorAll('img').forEach(img => { if (article.contentImages.includes(img.src)) img.remove(); });
+        contentHTML = tmp.innerHTML;
+      }
+
+      body.innerHTML = `
+        <h2>${article.title}</h2>
+        ${mediaHTML}
+        <div class="modal-meta">Published: ${formatDate(article.date)}</div>
+        <a class="modal-link" href="${article.link}" target="_blank" rel="noopener">Open full article →</a>
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div class="modal-content-html">${contentHTML}</div>`;
+
+      overlay.classList.remove('hidden');
+      body.closest('.modal-box').classList.toggle('rtl', isRTL);
+
+      if (!window.twttr?.widgets) {
+        const s = document.createElement('script');
+        s.src = 'https://platform.twitter.com/widgets.js';
+        s.charset = 'utf-8';
+        s.onload = () => window.twttr?.widgets?.load(body);
+        document.head.appendChild(s);
+      } else {
+        twttr.widgets.load(body);
+      }
+
+      const slides = body.querySelectorAll('.slide');
+      if (slides.length > 1) {
+        let cur = 0;
+        const show = i => slides.forEach((s,j) => s.classList.toggle('active', j===i));
+        body.querySelector('.slider-prev').onclick = () => { cur = (cur - 1 + slides.length) % slides.length; show(cur); };
+        body.querySelector('.slider-next').onclick = () => { cur = (cur + 1) % slides.length; show(cur); };
+      }
+    }
+
+    document.getElementById('modalClose').addEventListener('click', () =>
+      document.getElementById('modalOverlay').classList.add('hidden'));
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modalOverlay'))
+        document.getElementById('modalOverlay').classList.add('hidden');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.getElementById('modalOverlay').classList.add('hidden');
+    });
+
+    // ── Mobile tab bar ─────────────────────────────────────────────────────
+    const COLS_LIST = Object.keys(sources);
+    const IS_MOBILE = () => window.innerWidth <= 700;
+    let mobileActiveIndex = 0;
+
+    function buildMobileTabs() {
+      const bar = document.getElementById('mobileTabBar');
+      bar.innerHTML = '';
+      COLS_LIST.forEach((key, i) => {
+        const tab = document.createElement('div');
+        tab.className = 'mobile-tab' + (i === 0 ? ' active' : '');
+
+        const dot = document.createElement('div');
+        dot.className = 'mobile-tab-dot';
+        dot.textContent = labels[key].charAt(0).toUpperCase();
+
+        const lbl = document.createElement('span');
+        lbl.className = 'mobile-tab-label';
+        lbl.textContent = labels[key];
+
+        tab.appendChild(dot);
+        tab.appendChild(lbl);
+        tab.addEventListener('click', () => switchMobileTab(i));
+        bar.appendChild(tab);
+      });
+    }
+
+    function switchMobileTab(newIndex, direction) {
+      if (!IS_MOBILE() || newIndex === mobileActiveIndex) return;
+      const dir = direction !== undefined ? direction : (newIndex > mobileActiveIndex ? 'right' : 'left');
+      const animClass = dir === 'right' ? 'slide-from-right' : 'slide-from-left';
+      const oldCol = document.getElementById(`col-${COLS_LIST[mobileActiveIndex]}`);
+      if (oldCol) oldCol.classList.remove('mobile-active');
+      const newCol = document.getElementById(`col-${COLS_LIST[newIndex]}`);
+      if (newCol) {
+        newCol.classList.add('mobile-active');
+        newCol.classList.remove('slide-from-right', 'slide-from-left');
+        void newCol.offsetWidth;
+        newCol.classList.add(animClass);
+        setTimeout(() => newCol.classList.remove(animClass), 300);
+      }
+      document.querySelectorAll('.mobile-tab').forEach((t, i) => t.classList.toggle('active', i === newIndex));
+      const tabs = document.querySelectorAll('.mobile-tab');
+      if (tabs[newIndex]) tabs[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      mobileActiveIndex = newIndex;
+    }
+
+    function applyMobileLayout() {
+      COLS_LIST.forEach((key, i) => {
+        const el = document.getElementById(`col-${key}`);
+        if (el) {
+          if (IS_MOBILE()) el.classList.toggle('mobile-active', i === mobileActiveIndex);
+          else el.classList.remove('mobile-active');
+        }
+      });
+    }
+
+    (function initSwipe() {
+      const container = document.getElementById('deckContainer');
+      let tx = 0, ty = 0, swiping = false;
+      container.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; swiping = false; }, { passive: true });
+      container.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - tx, dy = e.touches[0].clientY - ty;
+        if (!swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) swiping = true;
+      }, { passive: true });
+      container.addEventListener('touchend', e => {
+        if (!IS_MOBILE() || !swiping) return;
+        const dx = e.changedTouches[0].clientX - tx;
+        const activeCol = document.getElementById(`col-${COLS_LIST[mobileActiveIndex]}`);
+        const isRtlSwipe = activeCol?.classList.contains('rtl');
+        if (dx < -60 && mobileActiveIndex < COLS_LIST.length - 1) switchMobileTab(mobileActiveIndex + 1, isRtlSwipe ? 'left' : 'right');
+        else if (dx > 60 && mobileActiveIndex > 0) switchMobileTab(mobileActiveIndex - 1, isRtlSwipe ? 'right' : 'left');
+        swiping = false;
+      }, { passive: true });
+    })();
+
+    window.addEventListener('resize', applyMobileLayout);
+    buildMobileTabs();
+    applyMobileLayout();
+  </script>
 </body>
 </html>

@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     .wifi-layout {
       display: grid;
@@ -252,7 +261,142 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+let bgColor = '#0a0a0f';
+let accentColor = '#e8ff47';
+let security = 'WPA';
+let canvasW = 400;
+let canvasH = 500;
 
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+}
 
+function getContrastColor(hex) {
+  const rgb = hexToRgb(hex);
+  return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 186 ? '#000000' : '#ffffff';
+}
+
+function escapeWifi(s) {
+  return s.replace(/([\\:;"])/g, '\\$1');
+}
+
+function generateWifiString(ssid, password, security) {
+  if (security === 'nopass') {
+    return 'WIFI:T:nopass;S:' + escapeWifi(ssid) + ';;';
+  }
+  return 'WIFI:T:' + security + ';S:' + escapeWifi(ssid) + ';P:' + escapeWifi(password) + ';;';
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('wifiCanvas');
+  const ctx = canvas.getContext('2d');
+  const textColor = getContrastColor(bgColor);
+  const ssid = document.getElementById('ssid').value || 'WiFi';
+  const password = document.getElementById('password').value || '';
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const qrCanvas = document.createElement('canvas');
+  const qrText = generateWifiString(ssid, password, security);
+  
+  try {
+    QRCode.toCanvas(qrCanvas, qrText, {
+      width: 220,
+      margin: 1,
+      color: {
+        dark: textColor,
+        light: bgColor
+      }
+    });
+    ctx.drawImage(qrCanvas, (canvasW - 220) / 2, 60);
+  } catch(e) {
+    ctx.fillStyle = textColor;
+    ctx.font = '14px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR: ' + qrText.substring(0, 30), canvasW / 2, 170);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = accentColor;
+  ctx.font = 'bold 40px Syne, sans-serif';
+  ctx.fillText('📶', canvasW / 2, 340);
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 24px Syne, sans-serif';
+  ctx.fillText(ssid, canvasW / 2, 375);
+
+  if (password) {
+    ctx.font = '18px DM Mono, monospace';
+    ctx.fillStyle = textColor;
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(password, canvasW / 2, 405);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.font = '14px DM Sans, sans-serif';
+  ctx.fillStyle = accentColor;
+  ctx.fillText(security === 'nopass' ? 'Open' : security, canvasW / 2, 435);
+
+  ctx.font = '12px DM Sans, sans-serif';
+  ctx.fillStyle = textColor;
+  ctx.globalAlpha = 0.5;
+  ctx.fillText('Scan to connect', canvasW / 2, 470);
+  ctx.globalAlpha = 1;
+}
+
+document.querySelectorAll('.security-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    document.querySelectorAll('.security-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    security = e.target.dataset.security;
+    renderCanvas();
+  });
+});
+
+document.getElementById('bgColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#bgColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    bgColor = e.target.dataset.bg;
+    renderCanvas();
+  }
+});
+
+document.getElementById('accentColors').addEventListener('click', e => {
+  if (e.target.classList.contains('color-btn')) {
+    document.querySelectorAll('#accentColors .color-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    accentColor = e.target.dataset.accent;
+    renderCanvas();
+  }
+});
+
+['ssid', 'password'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderCanvas);
+});
+
+document.getElementById('downloadPngBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('wifiCanvas');
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wifi-card.png';
+    a.click();
+  }, 'image/png');
+});
+
+renderCanvas();
+</script>
 </body>
 </html>

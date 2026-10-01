@@ -9,7 +9,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <style>
     
     
@@ -190,7 +199,225 @@
     </div>
   </div>
 
-  
-  
+  <script src="../assets/theme.js"></script>
+  <script>
+    (function() {
+      const fileInput = document.getElementById('fileInput');
+      const dropzone = document.getElementById('dropzone');
+      const workspace = document.getElementById('workspace');
+      const canvas = document.getElementById('previewCanvas');
+      const ctx = canvas.getContext('2d');
+      const placeholder = document.getElementById('placeholder');
+
+      let originalImage = null;
+      let currentImage = null;
+      let showOriginal = false;
+
+      // Sliders
+      const sliders = {
+        brightness: document.getElementById('brightness'),
+        contrast: document.getElementById('contrast'),
+        saturate: document.getElementById('saturate'),
+        blur: document.getElementById('blur'),
+        hue: document.getElementById('hue'),
+        opacity: document.getElementById('opacity'),
+        invert: document.getElementById('invert'),
+        vibrance: document.getElementById('vibrance')
+      };
+
+      const valDisplays = {
+        brightness: document.getElementById('brightnessVal'),
+        contrast: document.getElementById('contrastVal'),
+        saturate: document.getElementById('saturateVal'),
+        blur: document.getElementById('blurVal'),
+        hue: document.getElementById('hueVal'),
+        opacity: document.getElementById('opacityVal'),
+        invert: document.getElementById('invertVal'),
+        vibrance: document.getElementById('vibranceVal')
+      };
+
+      // File handling
+      dropzone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', handleFile);
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) loadImage(file);
+      });
+
+      function handleFile(e) {
+        const file = e.target.files[0];
+        if (file) loadImage(file);
+      }
+
+      function loadImage(file) {
+        if (file.size > 10 * 1024 * 1024) { alert('File too large. Max 10MB.'); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            originalImage = img;
+            currentImage = img;
+            workspace.style.display = 'grid';
+            placeholder.style.display = 'none';
+            resetSliders();
+            applyFilters();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // Slider events
+      Object.keys(sliders).forEach(key => {
+        sliders[key].addEventListener('input', () => {
+          valDisplays[key].textContent = sliders[key].value;
+          clearActivePreset();
+          applyFilters();
+        });
+      });
+
+      // Presets
+      const presets = {
+        none: { brightness: 100, contrast: 100, saturate: 100, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 100 },
+        vintage: { brightness: 110, contrast: 90, saturate: 70, blur: 0, hue: 25, opacity: 100, invert: 0, vibrance: 120 },
+        bw: { brightness: 100, contrast: 130, saturate: 0, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 100 },
+        sepia: { brightness: 105, contrast: 90, saturate: 50, blur: 0, hue: 30, opacity: 100, invert: 0, vibrance: 110 },
+        invert: { brightness: 100, contrast: 100, saturate: 100, blur: 0, hue: 0, opacity: 100, invert: 100, vibrance: 100 },
+        cool: { brightness: 105, contrast: 95, saturate: 85, blur: 0, hue: 190, opacity: 100, invert: 0, vibrance: 115 },
+        warm: { brightness: 115, contrast: 95, saturate: 130, blur: 0, hue: 20, opacity: 100, invert: 0, vibrance: 125 },
+        dramatic: { brightness: 85, contrast: 150, saturate: 90, blur: 0, hue: 0, opacity: 100, invert: 0, vibrance: 90 },
+        fade: { brightness: 120, contrast: 80, saturate: 85, blur: 0, hue: 0, opacity: 80, invert: 0, vibrance: 95 }
+      };
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.preset;
+          document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (preset === 'none') { resetSliders(); }
+          else if (presets[preset]) {
+            const p = presets[preset];
+            Object.keys(sliders).forEach(key => {
+              if (p[key] !== undefined) {
+                sliders[key].value = p[key];
+                valDisplays[key].textContent = p[key];
+              }
+            });
+            applyFilters();
+          }
+        });
+      });
+
+      function clearActivePreset() {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      }
+
+      function resetSliders() {
+        Object.keys(sliders).forEach(key => {
+          sliders[key].value = key === 'brightness' || key === 'contrast' || key === 'saturate' || key === 'opacity' ? 100 : 0;
+          valDisplays[key].textContent = sliders[key].value;
+        });
+        clearActivePreset();
+        document.querySelector('[data-preset="none"]').classList.add('active');
+      }
+
+      // Apply filters
+      function applyFilters() {
+        if (!originalImage) return;
+        canvas.width = originalImage.width;
+        canvas.height = originalImage.height;
+
+        const b = sliders.brightness.value;
+        const c = sliders.contrast.value;
+        const s = sliders.saturate.value;
+        const bl = sliders.blur.value;
+        const h = sliders.hue.value;
+        const o = sliders.opacity.value;
+        const inv = sliders.invert.value;
+        const v = sliders.vibrance.value;
+
+        // Apply CSS filters first (brightness, contrast, blur, hue, opacity, invert)
+        ctx.filter = `brightness(${b}%) contrast(${c}%) blur(${bl}px) hue-rotate(${h}deg) opacity(${o}%) invert(${inv}%)`;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(originalImage, 0, 0);
+        ctx.filter = 'none';
+
+        // Apply saturation (CSS saturate)
+        if (s != 100) {
+          ctx.filter = `saturate(${s}%)`;
+          ctx.drawImage(canvas, 0, 0);
+          ctx.filter = 'none';
+        }
+
+        // Apply vibrance (smart saturation via pixel manipulation)
+        if (v != 100) {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const vibranceAmount = (v - 100) / 100; // -1 to 1
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            const max = Math.max(r, g, b);
+            const avg = (r + g + b) / 3;
+            const amt = ((Math.abs(max - avg) * 2 / 255) * vibranceAmount);
+
+            if (v > 100) {
+              // Boost less-saturated colors more
+              data[i]   += (max - r) * amt;
+              data[i+1] += (max - g) * amt;
+              data[i+2] += (max - b) * amt;
+            } else {
+              // Desaturate (move toward average)
+              data[i]   = r + (avg - r) * -amt;
+              data[i+1] = g + (avg - g) * -amt;
+              data[i+2] = b + (avg - b) * -amt;
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+      }
+
+      // Compare toggle
+      const compareToggle = document.getElementById('compareToggle');
+      const canvasWrap = canvas.parentElement;
+
+      canvasWrap.addEventListener('mouseenter', () => {
+        if (compareToggle.checked && originalImage) {
+          showOriginal = true;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(originalImage, 0, 0);
+        }
+      });
+
+      canvasWrap.addEventListener('mouseleave', () => {
+        if (showOriginal) {
+          showOriginal = false;
+          applyFilters();
+        }
+      });
+
+      // Reset
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        resetSliders();
+        applyFilters();
+      });
+
+      // Export
+      function exportCanvas(format) {
+        if (!originalImage) return;
+        const link = document.createElement('a');
+        link.download = `filtered-image.${format}`;
+        link.href = canvas.toDataURL(format === 'jpg' ? 'image/jpeg' : 'image/png', 0.92);
+        link.click();
+      }
+
+      document.getElementById('exportPNG').addEventListener('click', () => exportCanvas('png'));
+      document.getElementById('exportJPG').addEventListener('click', () => exportCanvas('jpg'));
+    })();
+  </script>
 </body>
 </html>

@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+<script>
+  (function() {
+    var STORAGE_KEY = "mts-theme";
+    var theme = localStorage.getItem(STORAGE_KEY);
+    if (!theme) {
+      theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
 
@@ -697,6 +706,388 @@
   </div><!-- /editor-layout -->
 </div>
 
+<script>
+  // ── State ──
+  let state = {
+    imgSrc: null,    // data URL or blob URL
+    title: '',
+    desc: '',
+    site: '',
+    url: '',
+  };
 
+  let currentMode    = 'manual';
+  let currentPlatform = 'x';
+
+  // ── Element refs ──
+  const ogTitle    = document.getElementById('ogTitle');
+  const ogDesc     = document.getElementById('ogDesc');
+  const ogSite     = document.getElementById('ogSite');
+  const urlInput   = document.getElementById('urlInput');
+  const dropzone   = document.getElementById('dropzone');
+  const imgUpload  = document.getElementById('imgUpload');
+  const uploadText = document.getElementById('uploadText');
+  const clearImgBtn= document.getElementById('clearImgBtn');
+  const fetchBtn   = document.getElementById('fetchBtn');
+  const urlNotice  = document.getElementById('urlNotice');
+  const metaSnippet= document.getElementById('metaSnippet');
+  const platNames  = { x: 'X / Twitter', fb: 'Facebook', li: 'LinkedIn', wa: 'WhatsApp' };
+
+  // ── Mode switching ──
+  document.getElementById('modeTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.mode-tab');
+    if (!tab) return;
+    currentMode = tab.dataset.mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.getElementById('manualPanel').style.display = currentMode === 'manual' ? '' : 'none';
+    document.getElementById('urlPanel').style.display    = currentMode === 'url'    ? '' : 'none';
+  });
+
+  // ── Platform switching ──
+  document.querySelectorAll('.ptab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPlatform = btn.dataset.plat;
+      document.querySelectorAll('.ptab').forEach(b => b.classList.toggle('active', b === btn));
+      ['x','fb','li','wa'].forEach(p => {
+        document.getElementById('preview-' + p).style.display = p === currentPlatform ? '' : 'none';
+      });
+      document.getElementById('activePlatName').textContent = platNames[currentPlatform];
+    });
+  });
+
+  // ── Image upload ──
+  dropzone.addEventListener('click', () => imgUpload.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+  });
+  imgUpload.addEventListener('change', () => { if (imgUpload.files[0]) loadImageFile(imgUpload.files[0]); });
+
+  function loadImageFile(file) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      state.imgSrc = ev.target.result;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ ' + file.name;
+      clearImgBtn.style.display = '';
+      updateAll();
+    };
+    reader.readAsDataURL(file);
+    imgUpload.value = '';
+  }
+
+  clearImgBtn.addEventListener('click', () => {
+    state.imgSrc = null;
+    dropzone.classList.remove('has-file');
+    uploadText.innerHTML = 'Drag image here or <span class="upload-browse">choose file</span>';
+    clearImgBtn.style.display = 'none';
+    updateAll();
+  });
+
+  // ── Field inputs ──
+  ogTitle.addEventListener('input', () => { state.title = ogTitle.value; updateAll(); });
+  ogDesc.addEventListener('input',  () => { state.desc  = ogDesc.value;  updateAll(); });
+  ogSite.addEventListener('input',  () => { state.site  = ogSite.value;  updateAll(); });
+
+  // ── Char counters ──
+  function updateCounters() {
+    const tc = document.getElementById('titleCount');
+    const dc = document.getElementById('descCount');
+    const tl = state.title.length;
+    const dl = state.desc.length;
+    tc.textContent = tl + ' / 60 rec.';
+    tc.className = 'char-count' + (tl > 60 ? ' warn' : '');
+    dc.textContent = dl + ' / 155 rec.';
+    dc.className = 'char-count' + (dl > 155 ? ' warn' : '');
+  }
+
+  // ── URL fetch — multi-strategy ──────────────────────────────────────────
+  //
+  // Strategy 1: Claude API (web_search tool) — server-side, bypasses CORS
+  // Strategy 2..4: CORS proxy chain — corsproxy.io → allorigins.win → cors.sh
+  //
+  // ─────────────────────────────────────────────────────────────────────────
+
+  function parseOGFromHTML(html, baseUrl) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const getMeta = (...selectors) => {
+      for (const s of selectors) {
+        const el = doc.querySelector(s);
+        if (el && el.getAttribute('content')) return el.getAttribute('content').trim();
+      }
+      return '';
+    };
+    const title = getMeta('meta[property="og:title"]','meta[name="twitter:title"]') || doc.title || '';
+    const desc  = getMeta('meta[property="og:description"]','meta[name="twitter:description"]','meta[name="description"]');
+    const img   = getMeta('meta[property="og:image"]','meta[name="twitter:image"]','meta[property="og:image:secure_url"]');
+    const site  = getMeta('meta[property="og:site_name"]') || (baseUrl ? new URL(baseUrl).hostname : '');
+    const imgAbs = img && !img.startsWith('http') && baseUrl ? new URL(img, baseUrl).href : img;
+    return { title, desc, img: imgAbs, site };
+  }
+
+  // Strategy 1: Claude API with web_search to extract OG tags
+  async function fetchViaClaudeAPI(url) {
+    const prompt = `Fetch the URL "${url}" using web_search and extract its Open Graph (OG) meta tags.
+Return ONLY a JSON object with these exact keys (empty string if not found):
+{ "title": "", "desc": "", "img": "", "site": "" }
+- title = og:title or twitter:title or <title>
+- desc  = og:description or twitter:description or meta description
+- img   = og:image or twitter:image (full absolute URL)
+- site  = og:site_name or the domain
+No explanation. Only the JSON.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = text.match(/\{[\s\S]*?\}/);
+    if (!match) throw new Error('No JSON in response');
+    const json = JSON.parse(match[0]);
+    if (!json.title && !json.img) throw new Error('Empty result');
+    return json;
+  }
+
+  // Strategy 2-4: CORS proxy chain
+  const PROXIES = [
+    url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, extract: async r => ({ html: await r.text() }) }),
+    url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, extract: async r => ({ html: (await r.json()).contents }) }),
+    url => ({ url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, extract: async r => ({ html: await r.text() }) }),
+  ];
+
+  async function fetchViaProxy(targetUrl) {
+    for (const proxyFn of PROXIES) {
+      const { url: proxyUrl, extract } = proxyFn(targetUrl);
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) continue;
+        const { html } = await extract(res);
+        if (!html || html.length < 200) continue;
+        const data = parseOGFromHTML(html, targetUrl);
+        if (data.title || data.img) return data;
+      } catch { continue; }
+    }
+    throw new Error('All proxies failed');
+  }
+
+  function setNotice(type, html) {
+    urlNotice.className = 'notice' + (type ? ' ' + type : '');
+    urlNotice.innerHTML = html;
+  }
+
+  function applyFetchedData(data, url) {
+    ogTitle.value = data.title || '';
+    ogDesc.value  = data.desc  || '';
+    ogSite.value  = data.site  || (url ? new URL(url).hostname : '');
+    state.title   = data.title || '';
+    state.desc    = data.desc  || '';
+    state.site    = data.site  || (url ? new URL(url).hostname : '');
+    state.url     = url;
+    if (data.img) {
+      state.imgSrc = data.img;
+      dropzone.classList.add('has-file');
+      uploadText.textContent = '✓ Image from URL';
+      clearImgBtn.style.display = '';
+    }
+    updateAll();
+  }
+
+  fetchBtn.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '<span class="spin"></span>';
+
+    // Step 1 — try Claude API
+    setNotice('', '⏳ Fetching via AI… <span style="color:var(--text3);font-size:.78rem">(trying Claude API)</span>');
+    try {
+      const data = await fetchViaClaudeAPI(url);
+      applyFetchedData(data, url);
+      setNotice('success', '✓ Metadata extracted via <strong>Claude AI</strong> from <strong>' + new URL(url).hostname + '</strong>.');
+      fetchBtn.disabled = false;
+      fetchBtn.innerHTML = 'Fetch';
+      return;
+    } catch (e) {
+      // fall through to proxy chain
+    }
+
+    // Step 2 — try CORS proxy chain
+    setNotice('', '⏳ AI fetch unavailable — trying CORS proxies… <span style="color:var(--text3);font-size:.78rem">(3 attempts)</span>');
+    try {
+      const data = await fetchViaProxy(url);
+      applyFetchedData(data, url);
+      const missing = [];
+      if (!data.title) missing.push('title');
+      if (!data.desc)  missing.push('description');
+      if (!data.img)   missing.push('image');
+      const warn = missing.length ? ` — missing: <em>${missing.join(', ')}</em>` : '';
+      setNotice(missing.length ? 'warn' : 'success',
+        `✓ Metadata extracted via proxy from <strong>${new URL(url).hostname}</strong>${warn}.`);
+    } catch {
+      setNotice('error',
+        '✗ Could not fetch that URL. The site likely blocks all external requests. <br>'
+      + '<strong>Try Manual mode</strong> — open the URL in your browser, view source, and paste the og: tags yourself.');
+    }
+
+    fetchBtn.disabled = false;
+    fetchBtn.innerHTML = 'Fetch';
+  });
+
+  // ── Update all previews ──
+  function imgHTML(src, altText) {
+    if (!src) {
+      return `<div class="img-placeholder"><span class="img-placeholder-icon">🖼</span><span>${altText || 'No image set'}</span></div>`;
+    }
+    return `<img src="${src}" alt="OG image" onerror="this.parentNode.innerHTML='<div class=img-placeholder><span class=img-placeholder-icon>⚠</span><span>Image failed to load</span></div>'">`;
+  }
+
+  function updateAll() {
+    const t    = state.title || 'Page title will appear here';
+    const d    = state.desc  || 'Description will appear here';
+    const site = state.site  || (state.url ? new URL(state.url).hostname : 'example.com');
+    const img  = state.imgSrc;
+
+    // X
+    document.getElementById('x-img-wrap').innerHTML  = imgHTML(img);
+    document.getElementById('x-domain').textContent  = site;
+    document.getElementById('x-title').textContent   = t;
+    document.getElementById('x-desc').textContent    = d;
+
+    // Facebook
+    document.getElementById('fb-img-wrap').innerHTML  = imgHTML(img);
+    document.getElementById('fb-domain').textContent  = site.toUpperCase();
+    document.getElementById('fb-title').textContent   = t;
+    document.getElementById('fb-desc').textContent    = d;
+
+    // LinkedIn
+    document.getElementById('li-img-wrap').innerHTML  = imgHTML(img);
+    document.getElementById('li-title').textContent   = t;
+    document.getElementById('li-domain').textContent  = site;
+
+    // WhatsApp
+    document.getElementById('wa-img-wrap').innerHTML  = imgHTML(img);
+    document.getElementById('wa-title').textContent   = t;
+    document.getElementById('wa-desc').textContent    = d;
+    document.getElementById('wa-domain').textContent  = site;
+
+    updateCounters();
+    updateValidation();
+    updateMeta();
+  }
+
+  // ── Validation ──
+  function updateValidation() {
+    const hasImg   = !!state.imgSrc;
+    const hasTitle = state.title.trim().length > 0;
+    const hasDesc  = state.desc.trim().length  > 0;
+    const titleOk  = state.title.trim().length <= 70;
+    const descOk   = state.desc.trim().length  <= 200;
+
+    // Tag pills
+    document.querySelectorAll('.tag').forEach(tag => {
+      const name = tag.dataset.tag;
+      let present = false;
+      if (name === 'og:image') present = hasImg;
+      else if (name === 'twitter:image') present = hasImg;
+      else if (name === 'og:title') present = hasTitle;
+      else if (name === 'og:description') present = hasDesc;
+      else if (name === 'og:url') present = !!state.url || !!state.title;
+      else if (name === 'twitter:card') present = hasImg;
+      tag.className = 'tag ' + (present ? 'present' : 'missing');
+    });
+
+    // Platform checks
+    const checks = {
+      x: {
+        ok:   hasImg && hasTitle,
+        msg:  !hasImg  ? 'Missing og:image — no card shown' :
+              !hasTitle ? 'Missing og:title' :
+              !titleOk  ? 'Title too long (>70 chars)' :
+              '✓ Card will display'
+      },
+      fb: {
+        ok:   hasImg && hasTitle,
+        msg:  !hasImg  ? 'Needs og:image for rich preview' :
+              !hasTitle ? 'Needs og:title' :
+              !descOk   ? 'Description too long' :
+              '✓ Card will display'
+      },
+      li: {
+        ok:   hasImg && hasTitle,
+        msg:  !hasImg  ? 'Image required for card preview' :
+              !hasTitle ? 'Title required' :
+              '✓ Card will display (cached 7 days)'
+      },
+      wa: {
+        ok:   hasTitle,
+        msg:  !hasTitle ? 'Needs og:title at minimum' :
+              !hasImg   ? 'Image optional but improves preview' :
+              '✓ Preview works (image helps)'
+      }
+    };
+
+    Object.entries(checks).forEach(([plat, { ok, msg }]) => {
+      const el = document.getElementById('v-' + plat);
+      const vs = document.getElementById('vs-' + plat);
+      el.className = 'vcheck ' + (ok ? 'ok' : (plat === 'wa' && hasTitle ? 'warn' : 'error'));
+      vs.textContent = msg;
+    });
+  }
+
+  // ── Meta snippet ──
+  function updateMeta() {
+    const t    = state.title || '';
+    const d    = state.desc  || '';
+    const site = state.site  || '';
+    const img  = state.imgSrc || '[YOUR_IMAGE_URL]';
+    const url  = state.url || '[YOUR_PAGE_URL]';
+
+    const esc  = s => s.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    metaSnippet.textContent = [
+      `<!-- Primary -->`,
+      `<meta property="og:type"        content="website" />`,
+      `<meta property="og:url"         content="${esc(url)}" />`,
+      t && `<meta property="og:title"       content="${esc(t)}" />`,
+      d && `<meta property="og:description" content="${esc(d)}" />`,
+      img && img !== '[YOUR_IMAGE_URL]' && `<meta property="og:image"       content="${esc(img)}" />`,
+      site && `<meta property="og:site_name"  content="${esc(site)}" />`,
+      ``,
+      `<!-- Twitter / X -->`,
+      img && img !== '[YOUR_IMAGE_URL]' && `<meta name="twitter:card"        content="summary_large_image" />`,
+      t && `<meta name="twitter:title"       content="${esc(t)}" />`,
+      d && `<meta name="twitter:description" content="${esc(d)}" />`,
+      img && img !== '[YOUR_IMAGE_URL]' && `<meta name="twitter:image"       content="${esc(img)}" />`,
+    ].filter(Boolean).join('\n');
+  }
+
+  // ── Copy meta tags ──
+  document.getElementById('copyMetaBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(metaSnippet.textContent);
+      const btn = document.getElementById('copyMetaBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = '⎘ Copy meta tags', 2000);
+    } catch { alert('Copy failed — select and copy manually.'); }
+  });
+
+  // ── Init ──
+  updateAll();
+</script>
 </body>
 </html>

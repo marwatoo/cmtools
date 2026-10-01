@@ -7,10 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
+  <script>
+    (function() {
+      var t = localStorage.getItem('mts-theme') ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
+  <script src="../assets/theme.js"></script>
   <style>
     /* ════════════════════════════════════════
        LAYOUT
@@ -930,6 +936,702 @@
   </div>
 </div>
 
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+var notes        = [];
+var activeNoteId = null;
+var saveTimeout  = null;
+var selectMode   = false;
+var selectedIds  = new Set();
+var searchQuery  = '';
+var sortMode     = 'updated';
 
+var undoSnapshot  = null;
+var undoTimerId   = null;
+var UNDO_DURATION = 5000;
+var modalCb       = null;
+
+var COLOR_OPTS = [
+  {c:null,     l:'None'},
+  {c:'#e8ff47',l:'Yellow'},
+  {c:'#7c6bff',l:'Purple'},
+  {c:'#ff6b6b',l:'Red'},
+  {c:'#6bffb8',l:'Green'},
+  {c:'#6bb5ff',l:'Blue'},
+  {c:'#ffb86b',l:'Orange'},
+  {c:'#ff6bd6',l:'Pink'},
+];
+
+var FONT_SIZE_KEY = 'mts-notes-font-size';
+
+/* ═══════════════════════════════════════════
+   INDEXED DB
+═══════════════════════════════════════════ */
+var DB_NAME  = 'MediaToolsNotes';
+var DB_VER   = 1;
+var STORE    = 'notes';
+var KEY_META = '__meta__';
+
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror   = function() { reject(req.error); };
+  });
+}
+
+function idbGetAll() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  });
+}
+
+function idbSaveAll(items) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx    = db.transaction(STORE, 'readwrite');
+      var store = tx.objectStore(STORE);
+      store.clear();
+      for (var i = 0; i < items.length; i++) store.put(items[i], i);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror    = function() { reject(tx.error); };
+    });
+  });
+}
+
+function idbGetMeta(key) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY_META);
+      req.onsuccess = function() { resolve(req.result ? req.result[key] : null); };
+      req.onerror   = function() { resolve(null); };
+    });
+  });
+}
+
+function idbSetMeta(key, val) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx    = db.transaction(STORE, 'readwrite');
+      var store = tx.objectStore(STORE);
+      var req   = store.get(KEY_META);
+      req.onsuccess = function() {
+        var meta = req.result || {};
+        meta[key] = val;
+        store.put(meta, KEY_META);
+        resolve();
+      };
+      req.onerror = function() { resolve(); };
+    });
+  });
+}
+
+function idbSize() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() {
+        var bytes = 0;
+        for (var i = 0; i < req.result.length; i++) bytes += new Blob([JSON.stringify(req.result[i])]).size;
+        resolve(bytes);
+      };
+      req.onerror = function() { resolve(0); };
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════ */
+var currentFontSize = '1rem';
+
+function loadNotes() {
+  idbGetMeta(FONT_SIZE_KEY).then(function(size) {
+    if (size) { currentFontSize = size; applyFontSize(size); }
+  });
+  idbGetAll().then(function(items) {
+    notes = items.filter(function(x) { return x !== null && x !== undefined && x.id; });
+    renderNotesList();
+    updateStorageBar();
+  }).catch(function() { notes = []; renderNotesList(); });
+}
+
+function saveNotes() {
+  idbSaveAll(notes).catch(function() {});
+  updateStorageBar();
+}
+
+function updateStorageBar() {
+  idbSize().then(function(bytes) {
+    try {
+      var pct = Math.min(100, bytes / (5*1024*1024) * 100);
+      var bar = document.getElementById('storageBar');
+      var txt = document.getElementById('storageText');
+      bar.style.width = pct.toFixed(1)+'%';
+      bar.className   = 'storage-bar-fill'+(pct>85?' danger':pct>60?' warn':'');
+      txt.textContent = (bytes/1024).toFixed(1)+' KB';
+      txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
+    } catch(e){}
+  });
+}
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function genId() { return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+function fmtDate(ts) {
+  var d=new Date(ts), mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d.getDate()).padStart(2,'0')+' '+mo[d.getMonth()]+' '+
+         String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function hl(text, q) {
+  if (!q) return esc(text);
+  return esc(text).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');
+}
+function uniqueName(base, excludeId) {
+  var taken = notes.filter(function(n){return n.id!==excludeId;}).map(function(n){return n.name;});
+  if (taken.indexOf(base)===-1) return base;
+  var i=2; while(taken.indexOf(base+' ('+i+')')!==-1) i++;
+  return base+' ('+i+')';
+}
+
+/* ═══════════════════════════════════════════
+   SORT + FILTER
+═══════════════════════════════════════════ */
+function filteredNotes() {
+  var list = notes.slice();
+  if (sortMode==='updated')     list.sort(function(a,b){return b.updatedAt-a.updatedAt;});
+  else if (sortMode==='created')list.sort(function(a,b){return b.createdAt-a.createdAt;});
+  else list.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  if (!searchQuery) return list;
+  var q = searchQuery.toLowerCase();
+  return list.filter(function(n){
+    return (n.name||'').toLowerCase().indexOf(q)!==-1 ||
+           (n.text||'').toLowerCase().indexOf(q)!==-1;
+  });
+}
+
+/* ═══════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════ */
+function renderNotesList() {
+  var list = filteredNotes();
+  var html = '';
+
+  if (list.length===0) {
+    html = '<div class="notes-list-empty">'+
+      (searchQuery ? '🔍 No notes match<br>"'+esc(searchQuery)+'"' : 'No notes yet.<br>Press <strong>+ New</strong> or <kbd style="font-size:0.65rem;padding:1px 5px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;">Ctrl N</kbd> to start.')+
+      '</div>';
+  } else {
+    list.forEach(function(note) {
+      var isActive   = note.id===activeNoteId;
+      var isSelected = selectedIds.has(note.id);
+      var cls = 'note-item'+(isActive?' active':'')+(isSelected?' selected':'');
+      var dotStyle = note.color ? ' style="--dot-color:'+note.color+'"' : '';
+
+      // Smart preview: show snippet around search match in content
+      var preview;
+      if (searchQuery && (note.text||'').toLowerCase().indexOf(searchQuery.toLowerCase())!==-1 &&
+          (note.name||'').toLowerCase().indexOf(searchQuery.toLowerCase())===-1) {
+        var idx   = note.text.toLowerCase().indexOf(searchQuery.toLowerCase());
+        var start = Math.max(0, idx-18);
+        var snip  = (start>0?'…':'')+note.text.substring(start, idx+55).replace(/\n/g,' ');
+        preview   = hl(snip, searchQuery);
+      } else {
+        preview = esc(note.text ? note.text.substring(0,80).replace(/\n/g,' ') : 'Empty note');
+      }
+
+      html += '<div class="'+cls+'" data-id="'+note.id+'">'+
+        '<div class="note-checkbox">'+(isSelected?'✓':'')+'</div>'+
+        '<div class="note-color-dot"'+dotStyle+'></div>'+
+        '<div class="note-item-body">'+
+          '<div class="note-item-name">'+hl(note.name||'Untitled',searchQuery)+'</div>'+
+          '<div class="note-item-preview">'+preview+'</div>'+
+          '<div class="note-item-date">'+fmtDate(note.updatedAt)+'</div>'+
+        '</div>'+
+        '<button class="note-item-delete" data-id="'+note.id+'" title="Delete">×</button>'+
+        '</div>';
+    });
+  }
+
+  document.getElementById('notesList').innerHTML = html;
+  document.getElementById('notesList').classList.toggle('select-mode', selectMode);
+
+  var total=notes.length, shown=list.length;
+  document.getElementById('notesCountText').textContent =
+    (searchQuery&&shown<total) ? shown+' of '+total+' note'+(total!==1?'s':'') : total+' note'+(total!==1?'s':'');
+
+  updateSelectionBar();
+
+  // Events
+  document.querySelectorAll('.note-item[data-id]').forEach(function(el){
+    el.addEventListener('click', function(){
+      if (selectMode) toggleSelect(el.dataset.id);
+      else { openNote(el.dataset.id); closeSidebarMobile(); }
+    });
+  });
+  document.querySelectorAll('.note-item-delete[data-id]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      softDelete(btn.dataset.id);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════
+   OPEN / NEW / DELETE
+═══════════════════════════════════════════ */
+function openNote(id) {
+  var note = notes.find(function(n){return n.id===id;});
+  if (!note) return;
+  activeNoteId = id;
+
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('editorToolbar').style.display = 'flex';
+  document.getElementById('editorBody').style.display    = 'flex';
+
+  document.getElementById('noteNameInput').value = note.name;
+  var ed = document.getElementById('noteEditor');
+  ed.innerHTML = note.text || '';
+  ed.setAttribute('dir', note.rtl?'rtl':'ltr');
+  ed.style.textAlign = note.rtl?'right':'left';
+  document.getElementById('rtlToggle').classList.toggle('active',!!note.rtl);
+
+  updateColorSwatch(note.color||null);
+  updateStats();
+  document.getElementById('mobileNoteLabel').textContent = note.name||'Untitled';
+  renderNotesList();
+}
+
+function newNote() {
+  var note = {
+    id: genId(), name: uniqueName('Untitled',null), text: '',
+    rtl: true, color: null, createdAt: Date.now(), updatedAt: Date.now()
+  };
+  notes.push(note);
+  saveNotes();
+  openNote(note.id);
+  setTimeout(function(){ var ni=document.getElementById('noteNameInput'); ni.focus(); ni.select(); },50);
+}
+
+function softDelete(id) {
+  undoSnapshot = JSON.parse(JSON.stringify(notes));
+  var note = notes.find(function(n){return n.id===id;});
+  var label = note ? '"'+(note.name||'Untitled')+'"' : 'Note';
+  notes = notes.filter(function(n){return n.id!==id;});
+  selectedIds.delete(id);
+  saveNotes();
+  if (activeNoteId===id) clearEditor();
+  renderNotesList();
+  showToast(label+' deleted');
+}
+
+function hardDelete(ids) {
+  notes = notes.filter(function(n){return ids.indexOf(n.id)===-1;});
+  ids.forEach(function(id){selectedIds.delete(id);});
+  if (ids.indexOf(activeNoteId)!==-1) clearEditor();
+  saveNotes();
+  renderNotesList();
+}
+
+function clearEditor() {
+  activeNoteId = null;
+  document.getElementById('emptyState').style.display    = 'flex';
+  document.getElementById('editorToolbar').style.display = 'none';
+  document.getElementById('editorBody').style.display    = 'none';
+  document.getElementById('mobileNoteLabel').textContent = 'No note selected';
+}
+
+/* ═══════════════════════════════════════════
+   AUTOSAVE
+═══════════════════════════════════════════ */
+function scheduleSave() {
+  var ind = document.getElementById('saveIndicator');
+  ind.textContent = 'saving…'; ind.classList.remove('saved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(function(){
+    var note = notes.find(function(n){return n.id===activeNoteId;});
+    if (!note) return;
+    var raw = document.getElementById('noteNameInput').value.trim()||'Untitled';
+    if (raw!==note.name) {
+      note.name = uniqueName(raw, note.id);
+      document.getElementById('noteNameInput').value = note.name;
+    }
+    note.text = document.getElementById('noteEditor').innerHTML;
+    note.updatedAt = Date.now();
+    saveNotes();
+    ind.textContent = 'saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent=''; }, 1500);
+    document.getElementById('mobileNoteLabel').textContent = note.name;
+    renderNotesList();
+  }, 400);
+}
+
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+function updateStats() {
+  var t = document.getElementById('noteEditor').textContent;
+  document.getElementById('statWords').textContent = t.trim()===''?0:t.trim().split(/\s+/).length;
+  document.getElementById('statChars').textContent = t.length;
+  document.getElementById('statLines').textContent = t===''?0:t.split('\n').length;
+}
+
+/* ═══════════════════════════════════════════
+   COLOR LABELS
+═══════════════════════════════════════════ */
+function buildColorPalette() {
+  var pal = document.getElementById('colorPalette');
+  COLOR_OPTS.forEach(function(opt){
+    var dot = document.createElement('div');
+    dot.className = 'color-dot-opt'+(opt.c?'':' none');
+    if (opt.c) dot.style.background = opt.c;
+    dot.title = opt.l;
+    dot.addEventListener('click', function(e){
+      e.stopPropagation();
+      setNoteColor(opt.c);
+      document.getElementById('colorPalette').classList.remove('open');
+    });
+    pal.appendChild(dot);
+  });
+}
+function setNoteColor(color) {
+  var note = notes.find(function(n){return n.id===activeNoteId;});
+  if (!note) return;
+  note.color = color||null;
+  saveNotes();
+  updateColorSwatch(color);
+  renderNotesList();
+}
+function updateColorSwatch(color) {
+  var btn = document.getElementById('colorSwatchBtn');
+  btn.style.background  = color||'var(--bg3)';
+  btn.style.borderColor = color||'var(--border2)';
+  document.querySelectorAll('.color-dot-opt').forEach(function(d,i){
+    d.classList.toggle('active', COLOR_OPTS[i].c===color);
+  });
+}
+document.getElementById('colorSwatchBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  document.getElementById('colorPalette').classList.toggle('open');
+});
+document.addEventListener('click', function(){
+  document.getElementById('colorPalette').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   UNDO TOAST
+═══════════════════════════════════════════ */
+function showToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast = document.getElementById('undoToast');
+  var bar   = document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent = msg;
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  toast.classList.add('visible');
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      bar.style.transition = 'width '+UNDO_DURATION+'ms linear';
+      bar.style.width = '0%';
+    });
+  });
+  undoTimerId = setTimeout(function(){ hideToast(); undoSnapshot=null; }, UNDO_DURATION);
+}
+function hideToast() {
+  document.getElementById('undoToast').classList.remove('visible');
+  clearTimeout(undoTimerId);
+}
+document.getElementById('toastUndoBtn').addEventListener('click', function(){
+  if (!undoSnapshot) return;
+  notes = undoSnapshot; undoSnapshot = null;
+  saveNotes(); renderNotesList(); hideToast();
+  if (activeNoteId && notes.find(function(n){return n.id===activeNoteId;})) openNote(activeNoteId);
+});
+
+/* ═══════════════════════════════════════════
+   CONFIRM MODAL
+═══════════════════════════════════════════ */
+function showModal(title, body, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent  = body;
+  modalCb = cb;
+  document.getElementById('confirmModal').classList.add('open');
+}
+document.getElementById('modalCancel').addEventListener('click', function(){
+  document.getElementById('confirmModal').classList.remove('open'); modalCb=null;
+});
+document.getElementById('modalConfirm').addEventListener('click', function(){
+  document.getElementById('confirmModal').classList.remove('open');
+  if (modalCb) { modalCb(); modalCb=null; }
+});
+document.getElementById('confirmModal').addEventListener('click', function(e){
+  if (e.target===this){ this.classList.remove('open'); modalCb=null; }
+});
+
+/* ═══════════════════════════════════════════
+   SELECTION
+═══════════════════════════════════════════ */
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  var btn = document.getElementById('selectModeBtn');
+  btn.classList.toggle('active', selectMode);
+  btn.textContent = selectMode ? 'Done' : 'Select';
+  document.getElementById('selectionBar').classList.toggle('visible', selectMode);
+  renderNotesList();
+}
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderNotesList();
+}
+function updateSelectionBar() {
+  var count   = selectedIds.size;
+  var visible = filteredNotes();
+  var allSel  = visible.length>0 && visible.every(function(n){return selectedIds.has(n.id);});
+  document.getElementById('selCount').textContent = count===0?'None selected':count+' selected';
+  document.getElementById('selAllBtn').textContent = allSel?'None':'All';
+  var cp = document.getElementById('selCopyBtn');
+  var dl = document.getElementById('selDeleteBtn');
+  cp.style.opacity = dl.style.opacity = count===0?'0.4':'1';
+  cp.disabled = dl.disabled = count===0;
+}
+document.getElementById('selAllBtn').addEventListener('click', function(){
+  var vis = filteredNotes();
+  var allSel = vis.length>0 && vis.every(function(n){return selectedIds.has(n.id);});
+  if (allSel) vis.forEach(function(n){selectedIds.delete(n.id);}); else vis.forEach(function(n){selectedIds.add(n.id);});
+  renderNotesList();
+});
+document.getElementById('selDeleteBtn').addEventListener('click', function(){
+  if (selectedIds.size===0) return;
+  var ids=Array.from(selectedIds), c=ids.length;
+  showModal('Delete '+c+' note'+(c!==1?'s':'')+'?',
+    'Permanently removes '+(c===1?'this note':'these '+c+' notes')+'. This cannot be undone.',
+    function(){ hardDelete(ids); });
+});
+document.getElementById('selCopyBtn').addEventListener('click', function(){
+  if (selectedIds.size===0) return;
+  var text = Array.from(selectedIds).map(function(id){
+    var n=notes.find(function(x){return x.id===id;});
+    return n?'── '+(n.name||'Untitled')+' ──\n'+n.text:'';
+  }).filter(Boolean).join('\n\n');
+  copyToClipboard(text, document.getElementById('selCopyBtn'), 'Copy');
+});
+
+/* ═══════════════════════════════════════════
+   COPY
+═══════════════════════════════════════════ */
+function copyToClipboard(text, btn, lbl) {
+  function flash(){ if(!btn)return; var o=lbl||btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('flash'); setTimeout(function(){btn.textContent=o;btn.classList.remove('flash');},1500); }
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash).catch(function(){fbCopy(text);flash();});
+  else { fbCopy(text); flash(); }
+}
+function fbCopy(t){ var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0;'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+
+/* ═══════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════ */
+document.getElementById('exportBtn').addEventListener('click', function(){
+  var blob = new Blob([JSON.stringify(notes,null,2)],{type:'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='mts-notes-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', function(){
+  document.getElementById('importFile').value=''; document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', function(e){
+  var file=e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try {
+      var imp=JSON.parse(ev.target.result);
+      if (!Array.isArray(imp)) throw new Error();
+      var c=imp.length;
+      showModal('Import '+c+' note'+(c!==1?'s':'')+'?',
+        'Merges with your '+notes.length+' existing note'+(notes.length!==1?'s.':'.')+' Duplicate names will be renamed automatically.',
+        function(){
+          imp.forEach(function(n){
+            if (!n.id||notes.find(function(x){return x.id===n.id;})) n.id=genId();
+            n.name=uniqueName(n.name||'Untitled',null);
+            n.createdAt=n.createdAt||Date.now(); n.updatedAt=n.updatedAt||Date.now();
+            notes.push(n);
+          });
+          saveNotes(); renderNotesList();
+        });
+    } catch(err) { alert('Could not parse file. Make sure it is a valid MTS notes JSON export.'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ═══════════════════════════════════════════
+   SORT
+═══════════════════════════════════════════ */
+document.querySelectorAll('.sort-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.sort-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active'); sortMode=btn.dataset.sort; renderNotesList();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   EDITOR WIRING
+═══════════════════════════════════════════ */
+
+// Format toolbar
+document.getElementById('formatToolbar').addEventListener('click', function(e){
+  var btn = e.target.closest('.fmt-btn');
+  if (!btn) return;
+  e.preventDefault();
+  document.execCommand(btn.dataset.cmd, false, null);
+  document.getElementById('noteEditor').focus();
+  scheduleSave();
+});
+
+// Track cursor position to toggle active state of format buttons
+function updateFormatState() {
+  ['bold','italic','underline','strikeThrough','insertOrderedList','insertUnorderedList'].forEach(function(cmd){
+    var el = document.querySelector('.fmt-btn[data-cmd="'+cmd+'"]');
+    if (el) el.classList.toggle('active', document.queryCommandState(cmd));
+  });
+}
+document.getElementById('noteEditor').addEventListener('mouseup', updateFormatState);
+document.getElementById('noteEditor').addEventListener('keyup', updateFormatState);
+
+document.getElementById('rtlToggle').addEventListener('click', function(){
+  var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+  note.rtl=!note.rtl;
+  var ed=document.getElementById('noteEditor');
+  ed.setAttribute('dir',note.rtl?'rtl':'ltr'); ed.style.textAlign=note.rtl?'right':'left';
+  document.getElementById('rtlToggle').classList.toggle('active',note.rtl);
+  scheduleSave();
+});
+
+document.getElementById('copyContentBtn').addEventListener('click', function(){
+  var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+  copyToClipboard(document.getElementById('noteEditor').textContent, document.getElementById('copyContentBtn'), 'Copy');
+});
+
+document.getElementById('cleanWsBtn').addEventListener('click', function(){
+  var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+  var ed=document.getElementById('noteEditor');
+
+  // 1. Convert HTML → plain text, treating block-level tags as newlines
+  var text = ed.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<[^>]+>/g, '')        // strip all remaining tags (removes all formatting)
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  // 2. Clean whitespace — works for both Arabic and Latin text
+  var cleaned = text
+    .replace(/[ \t\u00a0]+/g, ' ')  // collapse 2+ spaces/tabs (any script)
+    .replace(/\n+/g, '\n\n')        // any run of newlines → exactly 2 (paragraph separator)
+    .replace(/[ \t]+$/gm, '')       // strip trailing spaces on each line
+    .trim();
+
+  // 3. Re-encode as safe HTML and restore line breaks as <br>
+  var htmlOut = cleaned
+    .split('\n')
+    .map(function(l){ return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); })
+    .join('<br>');
+
+  ed.innerHTML = htmlOut;
+  scheduleSave();
+  updateStats();
+  var btn=document.getElementById('cleanWsBtn');
+  btn.textContent='✓ Done'; btn.classList.add('flash');
+  setTimeout(function(){btn.textContent='Clean WS';btn.classList.remove('flash');},1200);
+});
+
+document.getElementById('newNoteBtn').addEventListener('click', newNote);
+document.getElementById('selectModeBtn').addEventListener('click', toggleSelectMode);
+document.getElementById('noteNameInput').addEventListener('input', scheduleSave);
+document.getElementById('noteEditor').addEventListener('input', function(){ scheduleSave(); updateStats(); });
+document.getElementById('searchInput').addEventListener('input', function(){ searchQuery=this.value.trim(); renderNotesList(); });
+
+/* ═══════════════════════════════════════════
+   FONT SIZE
+   ═══════════════════════════════════════════ */
+function applyFontSize(size) {
+  document.getElementById('noteEditor').style.fontSize = size;
+  document.getElementById('fontSizeSelect').value = size;
+  idbSetMeta(FONT_SIZE_KEY, size).catch(function(){});
+  currentFontSize = size;
+}
+document.getElementById('fontSizeSelect').addEventListener('change', function(){
+  applyFontSize(this.value);
+});
+// Apply saved font size on load
+applyFontSize(currentFontSize);
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', function(e){
+  var mod = e.ctrlKey||e.metaKey;
+  if (mod && e.key==='n') { e.preventDefault(); newNote(); }
+  if (mod && e.key==='s') {
+    e.preventDefault();
+    clearTimeout(saveTimeout);
+    var note=notes.find(function(n){return n.id===activeNoteId;}); if(!note) return;
+    var raw=document.getElementById('noteNameInput').value.trim()||'Untitled';
+    if (raw!==note.name){ note.name=uniqueName(raw,note.id); document.getElementById('noteNameInput').value=note.name; }
+    note.text=document.getElementById('noteEditor').innerHTML; note.updatedAt=Date.now(); saveNotes();
+    var ind=document.getElementById('saveIndicator'); ind.textContent='saved'; ind.classList.add('saved');
+    setTimeout(function(){ind.textContent='';},1500); renderNotesList();
+  }
+  if (e.key==='Escape') {
+    document.getElementById('colorPalette').classList.remove('open');
+    document.getElementById('confirmModal').classList.remove('open'); modalCb=null;
+    closeSidebarMobile();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════ */
+function openSidebarMobile() {
+  document.getElementById('notesSidebar').classList.add('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.add('visible');
+}
+function closeSidebarMobile() {
+  document.getElementById('notesSidebar').classList.remove('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.remove('visible');
+}
+document.getElementById('mobileSidebarToggle').addEventListener('click', openSidebarMobile);
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebarMobile);
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+buildColorPalette();
+loadNotes();
+updateStorageBar();
+renderNotesList();
+if (notes.length>0) openNote(notes[0].id);
+</script>
 </body>
 </html>

@@ -7,12 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
+  <script>
+    (function() {
+      var t = localStorage.getItem('mts-theme') ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/global.css" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  
-  
-  
+  <script src="../assets/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
     /* ════════════════════════════════════════
        LAYOUT
@@ -651,6 +657,952 @@
   </div>
 </div>
 
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+var files        = [];
+var currentFile  = null;
+var viewMode     = 'split';
+var rtlMode      = false;
+var sortMode     = 'updated';
+var searchQuery  = '';
+var selectMode   = false;
+var selectedIds  = new Set();
+var saveTimeout  = null;
+var undoSnapshot = null;
+var undoTimerId  = null;
+var UNDO_DURATION = 5000;
+var confirmCb    = null;
+var promptCb     = null;
+var moveTarget   = null;
+var moveDest     = null;
+var ctxTarget    = null;
 
+var COLOR_OPTS = [
+  {c:null,     l:'None'},
+  {c:'#e8ff47',l:'Yellow'},
+  {c:'#7c6bff',l:'Purple'},
+  {c:'#ff6b6b',l:'Red'},
+  {c:'#6bffb8',l:'Green'},
+  {c:'#6bb5ff',l:'Blue'},
+  {c:'#ffb86b',l:'Orange'},
+  {c:'#ff6bd6',l:'Pink'},
+];
+
+/* ═══════════════════════════════════════════
+   INDEXED DB
+═══════════════════════════════════════════ */
+var DB_NAME  = 'MediaToolsMdNotes';
+var DB_VER   = 1;
+var STORE    = 'files';
+
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror   = function() { reject(req.error); };
+  });
+}
+
+function idbGetAll() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  });
+}
+
+function idbSaveAll(items) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve, reject) {
+      var tx    = db.transaction(STORE, 'readwrite');
+      var store = tx.objectStore(STORE);
+      store.clear();
+      for (var i = 0; i < items.length; i++) store.put(items[i], i);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror    = function() { reject(tx.error); };
+    });
+  });
+}
+
+function idbSize() {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(STORE, 'readonly');
+      var req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function() {
+        var bytes = 0;
+        for (var i = 0; i < req.result.length; i++) bytes += new Blob([JSON.stringify(req.result[i])]).size;
+        resolve(bytes);
+      };
+      req.onerror = function() { resolve(0); };
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════ */
+function loadFiles() {
+  idbGetAll().then(function(items) {
+    files = items.filter(function(x) { return x !== null && x !== undefined; }).map(function(f) {
+      if (f.name && f.name.endsWith('/.folder')) f.isFolder = true;
+      return f;
+    });
+    renderTree();
+    updateStorageBar();
+  }).catch(function() { files = []; renderTree(); });
+}
+
+function saveToStorage() {
+  idbSaveAll(files).catch(function() {});
+  updateStorageBar();
+}
+
+function updateStorageBar() {
+  idbSize().then(function(bytes) {
+    try {
+      var pct = Math.min(100, bytes / (5*1024*1024) * 100);
+      var bar = document.getElementById('storageBar');
+      var txt = document.getElementById('storageText');
+      bar.style.width = pct.toFixed(1) + '%';
+      bar.className   = 'storage-bar-fill' + (pct>85?' danger':pct>60?' warn':'');
+      txt.textContent = (bytes/1024).toFixed(1) + ' KB';
+      txt.style.color = pct>85?'#ff4444':pct>60?'#ff8800':'var(--text3)';
+    } catch(e) {}
+  });
+}
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function hlText(text, q) {
+  if (!q) return esc(text);
+  return esc(text).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');
+}
+function getFolderNames() {
+  var seen = {};
+  files.forEach(function(f) {
+    if (f.isFolder) seen[f.name.replace('/.folder','')] = true;
+    else if (f.name.includes('/')) seen[f.name.split('/').slice(0,-1).join('/')] = true;
+  });
+  return Object.keys(seen).sort();
+}
+
+/* ═══════════════════════════════════════════
+   SORT + FILTER
+═══════════════════════════════════════════ */
+function filteredFiles() {
+  var list = files.filter(function(f){ return !f.isFolder; });
+  if (sortMode === 'updated')      list.sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+  else if (sortMode === 'created') list.sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+  else list.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  if (!searchQuery) return list;
+  var q = searchQuery.toLowerCase();
+  return list.filter(function(f){
+    return (f.name||'').toLowerCase().includes(q) || (f.content||'').toLowerCase().includes(q);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   RENDER TREE
+═══════════════════════════════════════════ */
+function renderTree() {
+  var allFiles = filteredFiles();
+  var byFolder = {};
+  var rootFiles = [];
+  var folderSet = {};
+
+  // collect folder markers
+  files.filter(function(f){ return f.isFolder; }).forEach(function(f){
+    folderSet[f.name.replace('/.folder','')] = true;
+  });
+  // bin files into folders or root
+  allFiles.forEach(function(f) {
+    var slash = f.name.indexOf('/');
+    if (slash !== -1) {
+      var folder = f.name.substring(0, slash);
+      folderSet[folder] = true;
+      if (!byFolder[folder]) byFolder[folder] = [];
+      byFolder[folder].push(f);
+    } else {
+      rootFiles.push(f);
+    }
+  });
+
+  var html = '';
+  var allFolderNames = Object.keys(folderSet).sort();
+
+  allFolderNames.forEach(function(folder) {
+    var folderFiles = byFolder[folder] || [];
+    var filesHtml   = folderFiles.map(renderFileItem).join('');
+    html += '<li class="tree-item folder" data-folder="' + esc(folder) + '">' +
+      '<span class="tree-icon">📁</span>' +
+      '<span class="tree-item-name">' + esc(folder) + '</span>' +
+      '</li>' +
+      '<ul class="tree-children show" id="folder-' + esc(folder) + '">' + filesHtml + '</ul>';
+  });
+  rootFiles.forEach(function(f){ html += renderFileItem(f); });
+
+  if (allFolderNames.length === 0 && rootFiles.length === 0) {
+    html = '<div class="file-tree-empty">No files yet.<br>Press <strong>+ New</strong> to start.</div>';
+  }
+  document.getElementById('fileTree').innerHTML = html;
+
+  var total = files.filter(function(f){ return !f.isFolder; }).length;
+  var shown = allFiles.length;
+  document.getElementById('filesCountText').textContent =
+    (searchQuery && shown < total) ? shown+' of '+total+' file'+(total!==1?'s':'') : total+' file'+(total!==1?'s':'');
+  updateSelectionBar();
+}
+
+function renderFileItem(f) {
+  var isActive   = currentFile && currentFile.id === f.id;
+  var isSelected = selectedIds.has(f.id);
+  var dotStyle   = f.color ? ' style="--dot-color:' + f.color + '"' : '';
+  var cls = 'tree-item' + (isActive?' active':'') + (isSelected?' selected':'');
+  var displayName = f.name.split('/').pop();
+  return '<li class="' + cls + '" data-id="' + f.id + '">' +
+    '<div class="file-checkbox">' + (isSelected?'✓':'') + '</div>' +
+    '<div class="file-color-dot"' + dotStyle + '></div>' +
+    '<span class="tree-icon">📄</span>' +
+    '<span class="tree-item-name">' + hlText(displayName, searchQuery) + '</span>' +
+    '<button class="tree-item-delete" data-id="' + f.id + '" title="Delete">×</button>' +
+    '</li>';
+}
+
+/* ═══════════════════════════════════════════
+   TREE EVENTS (delegated)
+═══════════════════════════════════════════ */
+document.getElementById('fileTree').addEventListener('click', function(e) {
+  // delete button
+  var delBtn = e.target.closest('.tree-item-delete');
+  if (delBtn) { e.stopPropagation(); softDeleteFile(delBtn.dataset.id); return; }
+  // folder click → toggle
+  var folderItem = e.target.closest('.tree-item.folder');
+  if (folderItem && !e.target.closest('.tree-children')) {
+    var fn = folderItem.dataset.folder;
+    var el = document.getElementById('folder-' + fn);
+    if (el) el.classList.toggle('show');
+    return;
+  }
+  // file click
+  var item = e.target.closest('.tree-item[data-id]');
+  if (item) {
+    e.stopPropagation();
+    if (selectMode) toggleSelect(item.dataset.id);
+    else { openFile(item.dataset.id); closeSidebarMobile(); }
+  }
+});
+
+// Context menu (right-click + long-press)
+(function() {
+  var pressTimer = null;
+  document.getElementById('fileTree').addEventListener('contextmenu', function(e) {
+    var file   = e.target.closest('.tree-item[data-id]');
+    var folder = e.target.closest('.tree-item.folder[data-folder]');
+    if (file)   { e.preventDefault(); showCtxForFile(file.dataset.id, e.clientX, e.clientY); }
+    else if (folder) { e.preventDefault(); showCtxForFolder(folder.dataset.folder, e.clientX, e.clientY); }
+  });
+  document.getElementById('fileTree').addEventListener('touchstart', function(e) {
+    var file   = e.target.closest('.tree-item[data-id]');
+    var folder = e.target.closest('.tree-item.folder[data-folder]');
+    if (!file && !folder) return;
+    var touch = e.touches[0];
+    pressTimer = setTimeout(function() {
+      if (file)   showCtxForFile(file.dataset.id, touch.clientX, touch.clientY);
+      else if (folder) showCtxForFolder(folder.dataset.folder, touch.clientX, touch.clientY);
+    }, 550);
+  }, { passive: true });
+  ['touchend','touchcancel','touchmove'].forEach(function(ev) {
+    document.getElementById('fileTree').addEventListener(ev, function(){ clearTimeout(pressTimer); }, { passive: true });
+  });
+})();
+
+/* ═══════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════ */
+function showCtxForFile(id, x, y) {
+  ctxTarget = { type: 'file', id: id };
+  document.getElementById('ctxMove').style.display  = 'flex';
+  document.getElementById('ctxColor').style.display = 'flex';
+  positionCtx(x, y);
+}
+function showCtxForFolder(folderName, x, y) {
+  ctxTarget = { type: 'folder', name: folderName };
+  document.getElementById('ctxMove').style.display  = 'none';
+  document.getElementById('ctxColor').style.display = 'none';
+  positionCtx(x, y);
+}
+function positionCtx(x, y) {
+  var menu = document.getElementById('ctxMenu');
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  menu.classList.add('open');
+  var rect = menu.getBoundingClientRect();
+  if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width)  + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
+}
+function closeCtx() { document.getElementById('ctxMenu').classList.remove('open'); }
+document.addEventListener('click', function(e) { if (!e.target.closest('#ctxMenu')) closeCtx(); });
+
+document.getElementById('ctxRename').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget) return;
+  if (ctxTarget.type === 'folder') {
+    showPrompt('📁', 'Rename Folder', null, ctxTarget.name, 'Rename', function(newName) {
+      if (!newName || newName === ctxTarget.name) return;
+      if (getFolderNames().includes(newName)) { showInfoToast('Folder name already taken'); return; }
+      var oldName = ctxTarget.name;
+      // Update folder marker
+      var marker = files.find(function(f){ return f.isFolder && f.name === oldName + '/.folder'; });
+      if (marker) marker.name = newName + '/.folder';
+      // Update all children — support nested paths
+      files.forEach(function(f) {
+        if (!f.isFolder && f.name.split('/')[0] === oldName) {
+          f.name = newName + f.name.slice(oldName.length);
+          if (currentFile && currentFile.id === f.id) {
+            currentFile = f;
+            document.getElementById('currentFileName').textContent = f.name;
+            document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+          }
+        }
+      });
+      saveToStorage(); renderTree();
+    });
+  } else {
+    var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+    showPrompt('✏️', 'Rename File', null, f.name.split('/').pop(), 'Rename', function(newName) {
+      if (!newName) return;
+      var dir     = f.name.includes('/') ? f.name.split('/').slice(0,-1).join('/') + '/' : '';
+      var fullNew = dir + newName;
+      if (files.find(function(x){ return x.name === fullNew && x.id !== f.id; })) {
+        showInfoToast('File name already taken'); return;
+      }
+      f.name = fullNew;
+      if (currentFile && currentFile.id === f.id) {
+        currentFile = f;
+        document.getElementById('currentFileName').textContent = f.name;
+        document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+      }
+      saveToStorage(); renderTree();
+    });
+  }
+});
+
+document.getElementById('ctxMove').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget || ctxTarget.type !== 'file') return;
+  var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+  openMoveModal(f);
+});
+
+document.getElementById('ctxColor').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget || ctxTarget.type !== 'file') return;
+  var f = files.find(function(x){ return x.id == ctxTarget.id; }); if (!f) return;
+  openColorModal(f);
+});
+
+document.getElementById('ctxDelete').addEventListener('click', function() {
+  closeCtx(); if (!ctxTarget) return;
+  if (ctxTarget.type === 'folder') {
+    var fn = ctxTarget.name;
+    var childCount = files.filter(function(f){ return !f.isFolder && f.name.split('/')[0] === fn; }).length;
+    showConfirm('🗑️', 'Delete "' + fn + '"?',
+      'Deletes folder' + (childCount ? ' and its ' + childCount + ' file'+(childCount!==1?'s':'') : '') + '. Cannot be undone.',
+      'Delete', function() {
+        files = files.filter(function(f) {
+          if (f.isFolder && f.name === fn + '/.folder') return false;
+          if (!f.isFolder && f.name.split('/')[0] === fn) {
+            if (currentFile && currentFile.id === f.id) clearEditor();
+            return false;
+          }
+          return true;
+        });
+        saveToStorage(); renderTree();
+      });
+  } else {
+    softDeleteFile(ctxTarget.id);
+  }
+});
+
+/* ═══════════════════════════════════════════
+   OPEN / NEW / DELETE
+═══════════════════════════════════════════ */
+function openFile(id) {
+  var f = files.find(function(x){ return x.id == id; });
+  if (!f || f.isFolder) return;
+  currentFile = f;
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('editorToolbar').style.display = 'flex';
+  document.getElementById('editorBody').style.display    = '';
+  document.getElementById('editorStats').style.display   = 'flex';
+  document.getElementById('currentFileName').textContent = f.name;
+  document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+  document.getElementById('mdEditor').value = f.content || '';
+  rtlMode = !!f.rtl;
+  document.getElementById('rtlBtn').classList.toggle('active', rtlMode);
+  document.getElementById('mdEditor').setAttribute('dir', rtlMode?'rtl':'ltr');
+  document.getElementById('mdEditor').style.textAlign = rtlMode?'right':'left';
+  updateColorSwatch(f.color || null);
+  renderPreview();
+  updateStats();
+  renderTree();
+}
+
+function newFile(nameHint) {
+  var name = nameHint || 'Untitled.md';
+  var base = name.replace(/\.[^.]*$/, ''), ext = name.match(/\.[^.]*$/)?.[0] || '.md', i = 1;
+  while (files.find(function(f){ return f.name === name; })) {
+    name = base + ' (' + (i++) + ')' + ext;
+  }
+  var f = { id: genId(), name: name, content: '', color: null, rtl: false, createdAt: Date.now(), updatedAt: Date.now() };
+  files.push(f);
+  saveToStorage();
+  openFile(f.id);
+  renderTree();
+}
+
+function softDeleteFile(id) {
+  var f = files.find(function(x){ return x.id == id; }); if (!f) return;
+  undoSnapshot = JSON.parse(JSON.stringify(files));
+  var label = '"' + f.name.split('/').pop() + '"';
+  files = files.filter(function(x){ return x.id != id; });
+  selectedIds.delete(id);
+  if (currentFile && currentFile.id == id) clearEditor();
+  saveToStorage(); renderTree();
+  showToast(label + ' deleted');
+}
+
+function clearEditor() {
+  currentFile = null;
+  document.getElementById('emptyState').style.display    = 'flex';
+  document.getElementById('editorToolbar').style.display = 'none';
+  document.getElementById('editorBody').style.display    = 'none';
+  document.getElementById('editorStats').style.display   = 'none';
+  document.getElementById('mobileFileLabel').textContent = 'No file selected';
+}
+
+/* ═══════════════════════════════════════════
+   AUTO-SAVE
+═══════════════════════════════════════════ */
+function scheduleSave() {
+  var ind = document.getElementById('saveIndicator');
+  ind.textContent = 'saving…'; ind.classList.remove('saved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(function() {
+    if (!currentFile) return;
+    var f = files.find(function(x){ return x.id === currentFile.id; }); if (!f) return;
+    f.content   = document.getElementById('mdEditor').value;
+    f.updatedAt = Date.now();
+    saveToStorage();
+    ind.textContent = 'saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent = ''; }, 1500);
+    renderTree();
+  }, 400);
+}
+
+/* ═══════════════════════════════════════════
+   PREVIEW
+═══════════════════════════════════════════ */
+function renderPreview() {
+  var md      = document.getElementById('mdEditor').value;
+  var preview = document.getElementById('mdPreview');
+  if (!md.trim()) {
+    preview.innerHTML = '<em style="opacity:.4;font-size:.9rem">Start typing to see preview…</em>';
+    return;
+  }
+  try {
+    marked.setOptions({ highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try { return hljs.highlight(code, { language: lang }).value; } catch(e) {}
+      }
+      try { return hljs.highlightAuto(code).value; } catch(e) {}
+      return code;
+    }});
+    preview.innerHTML = marked.parse(md);
+    preview.querySelectorAll('pre code').forEach(function(b){ hljs.highlightElement(b); });
+    preview.style.direction = rtlMode ? 'rtl' : 'ltr';
+    preview.style.textAlign = rtlMode ? 'right' : 'left';
+  } catch(e) {
+    preview.innerHTML = '<span style="color:var(--accent3)">Render error: ' + esc(e.message) + '</span>';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+function updateStats() {
+  var t = document.getElementById('mdEditor').value;
+  document.getElementById('statWords').textContent = t.trim()===''?0:t.trim().split(/\s+/).length;
+  document.getElementById('statChars').textContent = t.length;
+  document.getElementById('statLines').textContent = t===''?0:t.split('\n').length;
+}
+
+/* ═══════════════════════════════════════════
+   VIEW MODE
+═══════════════════════════════════════════ */
+function setView(mode) {
+  viewMode = mode;
+  var body = document.getElementById('editorBody');
+  body.className = 'editor-body view-' + mode;
+  body.style.display = '';
+  var btn = document.getElementById('viewToggleBtn');
+  btn.textContent = mode==='split'?'Split':mode==='editor'?'Preview':'Edit';
+  btn.classList.toggle('active', mode !== 'split');
+  if (mode !== 'editor') renderPreview();
+}
+
+/* ═══════════════════════════════════════════
+   COLOR LABELS
+═══════════════════════════════════════════ */
+function buildColorPalettes() {
+  ['colorPalette','colorModalPalette'].forEach(function(palId) {
+    var pal = document.getElementById(palId);
+    COLOR_OPTS.forEach(function(opt) {
+      var dot = document.createElement('div');
+      dot.className = 'color-dot-opt' + (opt.c?'':' none');
+      if (opt.c) dot.style.background = opt.c;
+      dot.title = opt.l; dot.dataset.color = opt.c||'';
+      dot.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // For inline palette act on currentFile; for modal palette override in openColorModal
+        if (palId === 'colorPalette' && currentFile) {
+          setFileColor(currentFile.id, opt.c||null);
+          document.getElementById('colorPalette').classList.remove('open');
+        }
+      });
+      pal.appendChild(dot);
+    });
+  });
+}
+function setFileColor(id, color) {
+  var f = files.find(function(x){ return x.id == id; }); if (!f) return;
+  f.color = color||null;
+  if (currentFile && currentFile.id == id) updateColorSwatch(f.color);
+  saveToStorage(); renderTree();
+}
+function updateColorSwatch(color) {
+  var btn = document.getElementById('colorSwatchBtn');
+  btn.style.background  = color||'var(--bg3)';
+  btn.style.borderColor = color||'var(--border2)';
+  document.querySelectorAll('#colorPalette .color-dot-opt').forEach(function(d) {
+    d.classList.toggle('active', (d.dataset.color||null) === (color||null));
+  });
+}
+document.getElementById('colorSwatchBtn').addEventListener('click', function(e) {
+  e.stopPropagation(); if (!currentFile) return;
+  document.getElementById('colorPalette').classList.toggle('open');
+});
+document.addEventListener('click', function() {
+  document.getElementById('colorPalette').classList.remove('open');
+});
+
+function openColorModal(f) {
+  document.getElementById('colorModal').classList.add('open');
+  document.querySelectorAll('#colorModalPalette .color-dot-opt').forEach(function(d) {
+    d.classList.toggle('active', (d.dataset.color||null) === (f.color||null));
+    d.onclick = function(e) {
+      e.stopPropagation();
+      setFileColor(f.id, d.dataset.color||null);
+      document.querySelectorAll('#colorModalPalette .color-dot-opt').forEach(function(x){ x.classList.remove('active'); });
+      d.classList.add('active');
+    };
+  });
+}
+document.getElementById('colorModalClose').addEventListener('click', function() {
+  document.getElementById('colorModal').classList.remove('open');
+});
+document.getElementById('colorModal').addEventListener('click', function(e) {
+  if (e.target===this) this.classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   MOVE MODAL  ← BUG FIX for folders
+═══════════════════════════════════════════ */
+function openMoveModal(f) {
+  moveTarget = f;
+  // Current folder of this file (for files inside a folder)
+  moveDest = f.name.includes('/') ? f.name.split('/').slice(0,-1).join('/') : null;
+
+  var folderNames = getFolderNames();
+  var listEl = document.getElementById('folderList');
+  listEl.innerHTML = '';
+
+  var rootBtn = document.createElement('button');
+  rootBtn.className = 'folder-option' + (moveDest===null?' selected':'');
+  rootBtn.innerHTML = '🗂 Root (no folder)';
+  rootBtn.addEventListener('click', function() {
+    moveDest = null;
+    listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+    rootBtn.classList.add('selected');
+  });
+  listEl.appendChild(rootBtn);
+
+  folderNames.forEach(function(folder) {
+    var btn = document.createElement('button');
+    btn.className = 'folder-option' + (moveDest===folder?' selected':'');
+    btn.innerHTML = '📁 ' + esc(folder);
+    btn.addEventListener('click', function() {
+      moveDest = folder;
+      listEl.querySelectorAll('.folder-option').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+    listEl.appendChild(btn);
+  });
+
+  document.getElementById('moveModal').classList.add('open');
+}
+document.getElementById('moveConfirmBtn').addEventListener('click', function() {
+  if (!moveTarget) return;
+  var f = files.find(function(x){ return x.id===moveTarget.id; }); if (!f) return;
+  // Use only the filename (last segment) — fixes the bug where baseName was '.folder'
+  var baseName = f.name.split('/').pop();
+  var newName  = moveDest ? moveDest + '/' + baseName : baseName;
+  if (files.find(function(x){ return x.name===newName && x.id!==f.id; })) {
+    showInfoToast('File already exists there'); return;
+  }
+  f.name = newName;
+  if (currentFile && currentFile.id===f.id) {
+    currentFile = f;
+    document.getElementById('currentFileName').textContent = f.name;
+    document.getElementById('mobileFileLabel').textContent = f.name.split('/').pop();
+  }
+  saveToStorage();
+  document.getElementById('moveModal').classList.remove('open');
+  renderTree();
+});
+document.getElementById('moveCancelBtn').addEventListener('click', function() {
+  document.getElementById('moveModal').classList.remove('open');
+});
+document.getElementById('moveModal').addEventListener('click', function(e) {
+  if (e.target===this) this.classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   FOLDERS
+═══════════════════════════════════════════ */
+function createFolder(name) {
+  if (!name) return;
+  if (files.find(function(f){ return f.isFolder && f.name===name+'/.folder'; })) {
+    showInfoToast('Folder already exists'); return;
+  }
+  files.push({ id:genId(), name:name+'/.folder', content:'', isFolder:true, createdAt:Date.now(), updatedAt:Date.now() });
+  saveToStorage(); renderTree();
+}
+document.getElementById('newFolderBtn').addEventListener('click', function() {
+  showPrompt('📁','New Folder',null,'','Create',function(name){ if(name) createFolder(name); });
+});
+document.getElementById('toggleTreeBtn').addEventListener('click', function() {
+  var isExp = this.classList.contains('active');
+  document.querySelectorAll('.tree-children').forEach(function(el){
+    el.classList.toggle('show', !isExp);
+  });
+  this.classList.toggle('active', !isExp);
+});
+
+/* ═══════════════════════════════════════════
+   SELECTION
+═══════════════════════════════════════════ */
+function toggleSelectMode() {
+  selectMode = !selectMode; selectedIds.clear();
+  var btn = document.getElementById('selectModeBtn');
+  btn.classList.toggle('active', selectMode);
+  btn.textContent = selectMode ? 'Done' : 'Select';
+  document.getElementById('selectionBar').classList.toggle('visible', selectMode);
+  renderTree();
+}
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderTree();
+}
+function updateSelectionBar() {
+  var count = selectedIds.size;
+  var vis   = filteredFiles();
+  var allSel = vis.length>0 && vis.every(function(f){ return selectedIds.has(f.id); });
+  document.getElementById('selCount').textContent = count===0?'None selected':count+' selected';
+  document.getElementById('selAllBtn').textContent = allSel?'None':'All';
+  var dl = document.getElementById('selDeleteBtn');
+  dl.style.opacity = count===0?'0.4':'1'; dl.disabled = count===0;
+}
+document.getElementById('selAllBtn').addEventListener('click', function() {
+  var vis = filteredFiles(), allSel = vis.length>0 && vis.every(function(f){ return selectedIds.has(f.id); });
+  if (allSel) vis.forEach(function(f){ selectedIds.delete(f.id); });
+  else vis.forEach(function(f){ selectedIds.add(f.id); });
+  renderTree();
+});
+document.getElementById('selDeleteBtn').addEventListener('click', function() {
+  if (selectedIds.size===0) return;
+  var ids=Array.from(selectedIds), c=ids.length;
+  showConfirm('🗑️','Delete '+c+' file'+(c!==1?'s':'')+'?',
+    'Permanently removes '+(c===1?'this file':'these '+c+' files')+'. Cannot be undone.',
+    'Delete',function() {
+      files = files.filter(function(f){ return ids.indexOf(f.id)===-1; });
+      ids.forEach(function(id){ selectedIds.delete(id); });
+      if (currentFile && ids.indexOf(currentFile.id)!==-1) clearEditor();
+      saveToStorage(); renderTree();
+    });
+});
+document.getElementById('selectModeBtn').addEventListener('click', toggleSelectMode);
+
+/* ═══════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════ */
+document.getElementById('exportBtn').addEventListener('click', function() {
+  var blob = new Blob([JSON.stringify(files,null,2)],{type:'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='mdnotes-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('importBtn').addEventListener('click', function() {
+  document.getElementById('importFile').value=''; document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', function(e) {
+  var file=e.target.files[0]; if (!file) return;
+  var reader=new FileReader();
+  reader.onload=function(ev) {
+    try {
+      var imp=JSON.parse(ev.target.result);
+      if (!Array.isArray(imp)) throw new Error();
+      var c=imp.length;
+      showConfirm('📥','Import '+c+' item'+(c!==1?'s':'')+'?',
+        'Merges with your '+files.length+' existing item'+(files.length!==1?'s.':'.'),'Import',function() {
+          imp.forEach(function(f) {
+            if (!f.id||files.find(function(x){ return x.id===f.id; })) f.id=genId();
+            f.createdAt=f.createdAt||Date.now(); f.updatedAt=f.updatedAt||Date.now();
+            files.push(f);
+          });
+          saveToStorage(); renderTree();
+        });
+    } catch(err) { showInfoToast('Could not parse file'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ═══════════════════════════════════════════
+   COPY CONTENT
+═══════════════════════════════════════════ */
+function copyToClipboard(text, btn, lbl) {
+  function flash() {
+    if (!btn) return;
+    var orig=lbl||btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('flash');
+    setTimeout(function(){ btn.textContent=orig; btn.classList.remove('flash'); },1500);
+  }
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(flash).catch(function(){ fbCopy(text); flash(); });
+  else { fbCopy(text); flash(); }
+}
+function fbCopy(t) {
+  var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0;';
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+}
+document.getElementById('copyContentBtn').addEventListener('click', function() {
+  if (!currentFile) return;
+  copyToClipboard(document.getElementById('mdEditor').value, this, 'Copy MD');
+});
+
+/* ═══════════════════════════════════════════
+   TOOLBAR WIRING
+═══════════════════════════════════════════ */
+document.getElementById('viewToggleBtn').addEventListener('click', function() {
+  if (viewMode==='split') setView('editor');
+  else if (viewMode==='editor') setView('preview');
+  else setView('split');
+});
+document.getElementById('rtlBtn').addEventListener('click', function() {
+  if (!currentFile) return;
+  rtlMode = !rtlMode; this.classList.toggle('active', rtlMode);
+  var ta = document.getElementById('mdEditor');
+  ta.setAttribute('dir', rtlMode?'rtl':'ltr'); ta.style.textAlign=rtlMode?'right':'left';
+  var f = files.find(function(x){ return x.id===currentFile.id; });
+  if (f) { f.rtl=rtlMode; saveToStorage(); }
+  renderPreview();
+});
+document.getElementById('deleteFileBtn').addEventListener('click', function() {
+  if (!currentFile) return; softDeleteFile(currentFile.id);
+});
+document.getElementById('newFileBtn').addEventListener('click', function() {
+  showPrompt('📄','New File',null,'Untitled.md','Create',function(name){ if(name){ newFile(name); closeSidebarMobile(); } });
+});
+document.getElementById('mdEditor').addEventListener('input', function() {
+  scheduleSave(); renderPreview(); updateStats();
+});
+
+/* ═══════════════════════════════════════════
+   SEARCH + SORT
+═══════════════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', function() {
+  searchQuery=this.value.trim(); renderTree();
+});
+document.querySelectorAll('.sort-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sort-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active'); sortMode=btn.dataset.sort; renderTree();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════ */
+function openSidebarMobile() {
+  document.getElementById('mdSidebar').classList.add('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.add('visible');
+}
+function closeSidebarMobile() {
+  document.getElementById('mdSidebar').classList.remove('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.remove('visible');
+}
+document.getElementById('mobileSidebarToggle').addEventListener('click', openSidebarMobile);
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebarMobile);
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', function(e) {
+  var mod = e.ctrlKey||e.metaKey;
+  if (mod && e.key==='n') { e.preventDefault(); document.getElementById('newFileBtn').click(); }
+  if (mod && e.key==='s') {
+    e.preventDefault(); if (!currentFile) return;
+    clearTimeout(saveTimeout);
+    var f=files.find(function(x){ return x.id===currentFile.id; }); if (!f) return;
+    f.content=document.getElementById('mdEditor').value; f.updatedAt=Date.now(); saveToStorage();
+    var ind=document.getElementById('saveIndicator');
+    ind.textContent='saved'; ind.classList.add('saved');
+    setTimeout(function(){ ind.textContent=''; },1500);
+    renderTree();
+  }
+  if (mod && e.key==='p') { e.preventDefault(); if(currentFile) document.getElementById('viewToggleBtn').click(); }
+  if (e.key==='Escape') {
+    closeCtx();
+    document.getElementById('colorPalette').classList.remove('open');
+    ['confirmModal','promptModal','moveModal','colorModal'].forEach(function(id){ document.getElementById(id).classList.remove('open'); });
+    closeSidebarMobile();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+function showToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast=document.getElementById('undoToast'), bar=document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastUndoBtn').style.display='';
+  bar.style.transition='none'; bar.style.width='100%';
+  toast.classList.add('visible');
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    bar.style.transition='width '+UNDO_DURATION+'ms linear'; bar.style.width='0%';
+  }); });
+  undoTimerId=setTimeout(function(){ hideToast(); undoSnapshot=null; },UNDO_DURATION);
+}
+function hideToast() {
+  document.getElementById('undoToast').classList.remove('visible'); clearTimeout(undoTimerId);
+}
+function showInfoToast(msg) {
+  clearTimeout(undoTimerId);
+  var toast=document.getElementById('undoToast'), bar=document.getElementById('toastBar');
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastUndoBtn').style.display='none';
+  bar.style.transition='none'; bar.style.width='0%';
+  toast.classList.add('visible');
+  undoTimerId=setTimeout(function(){ hideToast(); document.getElementById('toastUndoBtn').style.display=''; },2200);
+}
+document.getElementById('toastUndoBtn').addEventListener('click', function() {
+  if (!undoSnapshot) return;
+  files=undoSnapshot; undoSnapshot=null;
+  saveToStorage(); renderTree(); hideToast();
+  if (currentFile && files.find(function(f){ return f.id===currentFile.id; })) openFile(currentFile.id);
+  else clearEditor();
+});
+
+/* ═══════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════ */
+function showConfirm(icon, title, body, okLabel, cb) {
+  document.getElementById('confirmIcon').textContent  = icon||'⚠️';
+  document.getElementById('confirmTitle').textContent = title||'Confirm';
+  document.getElementById('confirmBody').textContent  = body||'';
+  var okBtn=document.getElementById('confirmOk');
+  okBtn.textContent=okLabel||'OK';
+  okBtn.className='modal-btn '+(okLabel==='Import'?'confirm':'danger');
+  confirmCb=cb||null;
+  document.getElementById('confirmCancel').style.display='';
+  document.getElementById('confirmModal').classList.add('open');
+}
+document.getElementById('confirmCancel').addEventListener('click', function() {
+  document.getElementById('confirmModal').classList.remove('open'); confirmCb=null;
+});
+document.getElementById('confirmOk').addEventListener('click', function() {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmCb) { confirmCb(); confirmCb=null; }
+});
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+  if (e.target===this) { this.classList.remove('open'); confirmCb=null; }
+});
+
+function showPrompt(icon, title, body, defaultVal, okLabel, cb) {
+  document.getElementById('promptIcon').textContent  = icon||'📄';
+  document.getElementById('promptTitle').textContent = title||'';
+  var bodyEl=document.getElementById('promptBody');
+  if (body) { bodyEl.textContent=body; bodyEl.style.display='block'; } else bodyEl.style.display='none';
+  var inp=document.getElementById('promptInput');
+  inp.value=defaultVal||''; inp.placeholder=defaultVal||'';
+  document.getElementById('promptOk').textContent=okLabel||'OK';
+  promptCb=cb||null;
+  document.getElementById('promptModal').classList.add('open');
+  setTimeout(function(){ inp.focus(); inp.select(); },50);
+}
+function submitPrompt() {
+  var val=document.getElementById('promptInput').value.trim();
+  document.getElementById('promptModal').classList.remove('open');
+  if (promptCb) { promptCb(val); promptCb=null; }
+}
+document.getElementById('promptOk').addEventListener('click', submitPrompt);
+document.getElementById('promptInput').addEventListener('keydown', function(e){ if(e.key==='Enter') submitPrompt(); });
+document.getElementById('promptCancel').addEventListener('click', function() {
+  document.getElementById('promptModal').classList.remove('open'); promptCb=null;
+});
+document.getElementById('promptModal').addEventListener('click', function(e) {
+  if (e.target===this) { this.classList.remove('open'); promptCb=null; }
+});
+
+/* ═══════════════════════════════════════════
+   DROP .md FILES ANYWHERE
+═══════════════════════════════════════════ */
+document.addEventListener('dragover', function(e){ e.preventDefault(); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  var dropped=Array.from(e.dataTransfer.files).filter(function(f){ return /\.(md|markdown|txt)$/i.test(f.name); });
+  if (!dropped.length) return;
+  dropped.forEach(function(file) {
+    var reader=new FileReader();
+    reader.onload=function(ev) {
+      var name=file.name, i=1;
+      while (files.find(function(f){ return f.name===name; })) {
+        name=file.name.replace(/\.[^.]+$/,'')+'('+(i++)+')'+(file.name.match(/\.[^.]+$/)?.[0]||'');
+      }
+      files.push({ id:genId(), name:name, content:ev.target.result, color:null, rtl:false, createdAt:Date.now(), updatedAt:Date.now() });
+      saveToStorage(); renderTree();
+      showInfoToast('"'+name+'" imported');
+    };
+    reader.readAsText(file);
+  });
+});
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+buildColorPalettes();
+loadFiles();
+updateStorageBar();
+setView('split');
+</script>
 </body>
 </html>
